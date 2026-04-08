@@ -3,17 +3,36 @@ name: meetstream
 description: >
   Build meeting intelligence with MeetStream's bot API. Use this skill whenever a developer
   wants to: join a meeting with a bot, record or transcribe meetings, stream live audio/video,
-  build AI coaching tools, note-taking agents, CRM auto-update pipelines, or anything that
-  processes meeting data programmatically. Supports Zoom, Google Meet, and Microsoft Teams.
-  When the user provides a MeetStream API key, Claude should generate complete, production-ready
-  code — not just snippets. Activate on any mention of MeetStream, meeting bots, recording
-  meetings via API, live meeting transcription, or "joining a meeting programmatically."
+  build AI coaching tools, note-taking agents, CRM auto-update pipelines, calendar automation,
+  or anything that processes meeting data programmatically. Supports Zoom, Google Meet, and
+  Microsoft Teams. Activate on any mention of MeetStream, meeting bots, recording meetings
+  via API, live transcription, "joining a meeting programmatically", or "build me a notetaker".
+  When the user asks to BUILD or CREATE an integration, always enter plan mode first using the
+  superpowers:writing-plans skill before writing any code.
 mcp_server: https://docs.meetstream.ai/_mcp/server
 ---
 
 # MeetStream Developer Skill
 
-You are a MeetStream integration expert. When a developer asks you to build anything involving meeting bots, transcription, or real-time meeting data, you write **complete working implementations** — not outlines or pseudocode. Ask for their API key if they haven't provided one, then build it.
+You are a MeetStream integration expert. Your job is to build **complete, production-ready implementations** — not outlines or pseudocode.
+
+---
+
+## Step 0: Before Writing Any Code
+
+**If the user asks you to BUILD, CREATE, IMPLEMENT, or SET UP a MeetStream integration:**
+
+1. Invoke the `superpowers:writing-plans` skill first
+2. Create the project folder if it doesn't exist
+3. Read `references/code-patterns-node.md` or `references/code-patterns-python.md` for the relevant patterns
+4. Write the full plan to `docs/superpowers/plans/YYYY-MM-DD-<feature-name>.md`
+5. Offer subagent-driven vs inline execution
+
+**Skip plan mode only if** the user explicitly says "quick snippet", "just show me", or "skip planning".
+
+**If the user just has a question** (how does X work, what's the API for Y) — answer directly, no plan needed.
+
+---
 
 ## Setup: One Line of Config
 
@@ -26,18 +45,27 @@ API keys are created at https://app.meetstream.ai/api-keys.
 
 Base URL: `https://api.meetstream.ai/api/v1/`
 
+Default language: **Python** unless the user specifies otherwise.
+
 ---
 
-## What to Build and How
+## Gathering Requirements
 
-When a developer describes their use case, map it to one of these patterns and implement the full solution:
+Before planning or building, ask:
+1. **API key** — if not provided, ask. Link: https://app.meetstream.ai/api-keys
+2. **Platform** — Google Meet, Teams, Zoom, or all? (Zoom needs extra setup)
+3. **Language** — Python or Node.js/TypeScript?
+4. **Use case** — see patterns below
 
-### Pattern 1: Record a Meeting and Get the Transcript
-The most common starting point. Bot joins, records, transcript is fetched after the meeting ends.
+---
 
-See `references/code-patterns-node.md` and `references/code-patterns-python.md` for complete server implementations.
+## Use Case Patterns
 
-**Core request:**
+Map the user's request to one of these, then read the relevant code pattern file for the full implementation.
+
+### Pattern 1: Record + Transcript (most common)
+Bot joins, records, transcript fetched post-meeting.
+
 ```json
 POST /bots/create_bot
 {
@@ -60,26 +88,17 @@ Returns `{ "bot_id": "..." }`. Wait for `transcription.processed` webhook, then:
 GET /bots/{bot_id}/get_bot_transcript
 ```
 
-### Pattern 2: Real-Time Transcription (AI Agents, Live Coaching)
-Bot streams transcript chunks to your server as words are spoken.
+### Pattern 2: Real-Time Transcription (AI agents, live coaching)
+Transcript chunks stream to your WebSocket server as words are spoken.
 
 ```json
-POST /bots/create_bot
 {
-  "meeting_link": "...",
-  "bot_name": "AI Coach",
-  "audio_required": true,
-  "video_required": false,
-  "live_transcription_required": {
-    "websocket_url": "wss://your-server.com/transcripts"
-  },
-  "live_audio_required": {
-    "websocket_url": "wss://your-server.com/audio"
-  }
+  "live_transcription_required": { "websocket_url": "wss://your-server.com/transcripts" },
+  "live_audio_required": { "websocket_url": "wss://your-server.com/audio" }
 }
 ```
 
-Each transcript chunk arrives as:
+Each chunk:
 ```json
 {
   "speakerName": "Alice",
@@ -89,37 +108,37 @@ Each transcript chunk arrives as:
 }
 ```
 
-### Pattern 3: Interactive Bot (Sends Messages or Audio)
-Bot joins and can respond in the meeting chat or speak via TTS.
+### Pattern 3: Interactive Bot (chat messages or TTS audio)
+Bot joins and can respond in meeting chat or speak.
 
-Set `socket_connection_url` at creation:
 ```json
-{
-  "socket_connection_url": { "url": "wss://your-server.com/bot-control" }
-}
+{ "socket_connection_url": { "url": "wss://your-server.com/bot-control" } }
 ```
 
-When bot joins, it sends `{ "type": "ready", "bot_id": "..." }` to your WebSocket. You then send:
+On join, bot sends `{ "type": "ready", "bot_id": "..." }` to your WSS. You send back:
 ```json
-{ "command": "sendmsg", "message": "Meeting summary coming up!", "bot_id": "..." }
-```
-Or play audio:
-```json
-{ "command": "sendaudio", "audiochunk": "<base64 PCM audio>" }
+{ "command": "sendmsg", "message": "Notes captured!", "bot_id": "..." }
+{ "command": "sendaudio", "audiochunk": "<base64 PCM>" }
 ```
 
 ### Pattern 4: Calendar-Automated Bot
-Bot joins every meeting on a Google Calendar automatically — no per-meeting API calls.
+Bot auto-joins every Google Calendar meeting — no per-meeting API calls.
 
 ```
 POST /calendar/create-calendar
 { "refresh_token": "...", "client_id": "...", "client_secret": "..." }
 ```
 
-After connecting, list upcoming events with `GET /calendar/events`, view scheduled bots with `GET /calendar/scheduled`.
+List upcoming: `GET /calendar/events` | Scheduled bots: `GET /calendar/scheduled`
 
-### Pattern 5: Participant Tracking
-Get participant join/leave events during the meeting in real-time:
+### Pattern 5: Note-Taker (full pipeline)
+Webhook server + bot creation + transcript fetch + AI summary + delivery (email/Slack/Notion).
+
+Read `references/code-patterns-node.md` Pattern 4 for the complete Next.js implementation.
+Build plan should include: webhook handler, transcript fetch, LLM summary, delivery layer.
+
+### Pattern 6: Participant Tracking
+Real-time join/leave events during the meeting:
 
 ```json
 {
@@ -135,49 +154,19 @@ Get participant join/leave events during the meeting in real-time:
 
 ---
 
-## Bot Lifecycle (Know This Before Writing Code)
+## Bot Lifecycle
 
 ```
-create_bot → bot.joining (102) → bot.inmeeting (200) → [live streams run] 
-→ bot.stopped (500) → audio.processed → transcription.processed → ready to fetch
+create_bot → bot.joining (102) → bot.inmeeting (200) → [streams run]
+→ bot.stopped (500) → audio.processed → transcription.processed → fetch data
 ```
 
-Never call `get_bot_transcript` until `transcription.processed` fires. Always set `callback_url` — it's how you know when processing is done.
+**Never call `get_bot_transcript` until `transcription.processed` fires.** The endpoint returns nothing or an error if called early. Always set `callback_url`.
 
 ---
 
-## Full Endpoint Map
+## Always Include These Timeouts
 
-See `references/api-reference.md` for the complete endpoint list with params and return types.
-
----
-
-## Platform-Specific Notes
-
-| Platform | Setup Required |
-|----------|----------------|
-| Google Meet | None — works immediately |
-| Microsoft Teams | None — works immediately |
-| Zoom | Need to register a Zoom app and add credentials to MeetStream dashboard. See: https://docs.meetstream.ai/guides/zoom/zoom-marketplace-app-setup |
-
-**Zoom note:** In development mode, Zoom bots can only join meetings hosted by the account that owns the app. For production (joining any meeting), the Zoom app must be submitted and approved by Zoom.
-
----
-
-## Transcription Providers
-
-| Provider | Mode | Best For |
-|----------|------|---------|
-| `deepgram` + model `nova-3` | Post-processing | Accuracy, cost efficiency |
-| `deepgram_streaming` | Real-time | Live coaching, live agents |
-| `assemblyai` + model `universal` | Post-processing | High accuracy, speaker diarization |
-| `assemblyai_streaming` | Real-time | Real-time pipelines |
-
----
-
-## Automatic Leave Timeouts
-
-Always configure these to avoid runaway bots:
 ```json
 {
   "automatic_leave": {
@@ -189,93 +178,91 @@ Always configure these to avoid runaway bots:
 }
 ```
 
-Set `recording_permission_denied_timeout` to `10` seconds — if permission is denied, the bot leaves immediately instead of sitting in the meeting.
+`recording_permission_denied_timeout: 10` is critical — without it, a denied bot sits in the meeting indefinitely.
+
+---
+
+## Platform Notes
+
+| Platform | Extra Setup |
+|----------|-------------|
+| Google Meet | None |
+| Microsoft Teams | None |
+| Zoom | Register a Zoom app + add credentials to MeetStream dashboard → https://docs.meetstream.ai/guides/zoom/zoom-marketplace-app-setup |
+
+**Zoom dev mode** restricts bots to meetings hosted by the app owner's account. For external meetings, submit the Zoom app to production.
+
+---
+
+## Transcription Providers
+
+| Provider | Mode | Best For |
+|----------|------|---------|
+| `deepgram` + `nova-3` | Post-processing | Accuracy, cost efficiency — default |
+| `deepgram_streaming` | Real-time | Live coaching, live agents |
+| `assemblyai` + `universal` | Post-processing | Speaker diarization |
+| `assemblyai_streaming` | Real-time | Real-time pipelines |
 
 ---
 
 ## Webhook Handler Requirements
 
-Your `callback_url` endpoint must:
-- Use HTTPS (not HTTP)
-- Be publicly accessible (use ngrok or similar for local dev)
-- Return HTTP 200 within 5 seconds
-- Handle idempotency (events may be retried)
+- Must use HTTPS (use ngrok for local dev: `ngrok http 3000`)
+- Must return HTTP 200 within 5 seconds — respond first, process async
+- Handle idempotency — events may be retried
 
 ---
 
-## Data Retrieval After Meeting
+## Data Available After Meeting
 
-After `transcription.processed` fires:
+After `transcription.processed`:
 
-| What you want | Endpoint |
-|--------------|---------|
-| Full transcript with speaker labels | `GET /bots/{bot_id}/get_bot_transcript` |
-| Who spoke when (timeline) | `GET /bots/{bot_id}/get_bot_speaker_timeline` |
+| Data | Endpoint |
+|------|---------|
+| Transcript with speaker labels | `GET /bots/{bot_id}/get_bot_transcript` |
+| Speaker timeline | `GET /bots/{bot_id}/get_bot_speaker_timeline` |
 | In-meeting chat | `GET /bots/{bot_id}/get_bot_chat` |
 | Audio file | `GET /bots/{bot_id}/get_bot_audio` |
 | Video file | `GET /bots/{bot_id}/get_bot_video` |
 | Participant list | `GET /bots/{bot_id}/get_bot_participants` |
-| Bot session metadata | `GET /bots/{bot_id}/get_bot_detail` |
+| Session metadata | `GET /bots/{bot_id}/get_bot_detail` |
 | Screenshot | `GET /bots/{bot_id}/get_bot_screenshot` |
 
 ---
 
-## Data Retention and Cleanup
+## Data Retention
 
-Default: data is deleted after 7 days. To change:
+Default: 7 days. Override:
 ```json
-{
-  "recording_config": {
-    "retention": { "type": "timed", "hours": 24 }
-  }
-}
+{ "recording_config": { "retention": { "type": "timed", "hours": 24 } } }
 ```
 
-Delete manually: `DELETE /bots/{bot_id}/delete_bot_data`
-
-A `data_deletion` callback fires when deletion completes.
+Delete manually: `DELETE /bots/{bot_id}/delete_bot_data` — fires `data_deletion` callback.
 
 ---
 
-## Common Mistakes to Avoid
+## Common Mistakes
 
-**1. Calling get_bot_transcript before transcription.processed**
-Always wait for the callback before fetching. The endpoint returns nothing or an error if called early.
-
-**2. Callback URL not publicly accessible**
-Use ngrok in development: `ngrok http 3000` → use the `https://` URL.
-
-**3. Zoom bot can't join external meetings**
-Zoom development mode restricts bots to the app owner's account. For external meetings, submit the Zoom app to production.
-
-**4. Missing audio_required flag**
-`audio_required: true` must be set explicitly for audio recording. `video_required` defaults vary.
-
-**5. No timeout configured**
-Always set `automatic_leave.everyone_left_timeout` — otherwise the bot stays in an empty meeting indefinitely.
+1. **Fetching transcript too early** — always wait for `transcription.processed`
+2. **HTTP callback URL** — must be HTTPS; use ngrok for local dev
+3. **Zoom dev mode** — can only join app owner's meetings until app is approved
+4. **Missing `audio_required: true`** — audio is not recorded without this flag
+5. **No timeout** — always set `everyone_left_timeout` or the bot runs forever
 
 ---
 
-## When the Developer Provides an API Key
+## Code Reference Files
 
-Ask: "What are you building?" then write the complete implementation:
-
-1. **If they say "record and transcribe"** → write a webhook server + bot creation call + transcript fetch, all in one runnable file
-2. **If they say "real-time transcription"** → write the WebSocket server + bot creation call
-3. **If they say "AI agent that joins meetings"** → write the WebSocket control server + bot creation + command loop
-4. **If they say "auto-join calendar meetings"** → write the OAuth flow + calendar connect + event listing
-5. **If they say "note-taker"** → write the full server: webhook handler + bot creation + transcript fetch + summary generation hook
-
-Default language: **Python** unless they specify otherwise. Also offer Node.js/TypeScript.
-
-Read `references/code-patterns-python.md` for complete Python implementations.
-Read `references/code-patterns-node.md` for complete Node.js/TypeScript implementations.
+Read these when building:
+- `references/code-patterns-node.md` — complete Node.js/TypeScript implementations
+- `references/code-patterns-python.md` — complete Python implementations
+- `references/api-reference.md` — full endpoint map with params and return types
 
 ---
 
 ## MCP Server
 
-When you need to look up specific endpoint parameters, response schemas, or edge cases not covered here, query the MeetStream documentation MCP server:
+For specific endpoint parameters, response schemas, or edge cases not covered above:
 ```
 https://docs.meetstream.ai/_mcp/server
 ```
