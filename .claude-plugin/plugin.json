@@ -1,18 +1,8 @@
 {
   "name": "meetstream",
-  "display_name": "MeetStream",
-  "description": "Build meeting intelligence with MeetStream's bot API. Join, record, transcribe, and stream meetings on Zoom, Google Meet, and Microsoft Teams. Configure your API key and Claude handles all implementation — from single-bot setups to real-time transcription pipelines and calendar-automated workflows.",
-  "version": "1.0.0",
-  "author": "MeetStream.ai",
-  "homepage": "https://meetstream.ai",
-  "documentation": "https://docs.meetstream.ai",
-  "skills": [
-    "skills/meetstream"
-  ],
-  "mcp_servers": [
-    {
-      "name": "meetstream-docs",
-      "url": "https://docs.meetstream.ai/_mcp/server"
-    }
-  ]
+  "description": "Build meeting intelligence with MeetStream's bot API. Join, record, transcribe, and stream meetings on Zoom, Google Meet, and Microsoft Teams. Configure your API key once and Claude handles all implementation.",
+  "author": {
+    "name": "MeetStream.ai",
+    "email": "hello@meetstream.ai"
+  }
 }
