@@ -1,54 +1,64 @@
 # MeetStream Claude Plugin
 
-Enables Claude to build complete meeting bot integrations using the MeetStream API.
+Build complete meeting bot integrations without writing boilerplate. Get your MeetStream API key, install this plugin, and tell Claude what you're building — it handles the rest.
 
-## What it does
+## What you can build
 
-Once installed, Claude can generate complete, production-ready code for:
-- Recording Zoom / Google Meet / Teams meetings via bot
+- Record Zoom, Google Meet, or Teams meetings via a single API call
 - Real-time transcription with speaker attribution
-- Live audio/video streaming over WebSocket
-- Interactive bots that send messages or audio in meetings
-- Calendar-automated bot scheduling
-- Full note-taking agents (transcript + AI summary)
-
-The developer provides their MeetStream API key. Claude handles everything else.
+- Live audio/video streaming over WebSocket to your own models
+- Interactive bots that send messages or audio into meetings
+- Calendar-automated bots that join every meeting on a schedule
+- Full note-taking agents — transcript + AI summary, delivered post-call
 
 ## Setup
 
-1. Get a MeetStream API key: https://app.meetstream.ai/api-keys
-2. Install this plugin in Claude
-3. Tell Claude what you're building — it will generate complete implementations
+1. **Get your API key** — [app.meetstream.ai](https://app.meetstream.ai)
+2. **Install this plugin** in Claude
+3. **Tell Claude what you're building** — it will generate complete, runnable code
 
-## Supported Platforms
-
-- Google Meet (no setup required)
-- Microsoft Teams (no setup required)
-- Zoom (requires Zoom app setup — see https://docs.meetstream.ai/guides/zoom/zoom-marketplace-app-setup)
-
-## Plugin Structure
+## Example prompts
 
 ```
-plugin.json                          # Claude plugin manifest
+"Build a Python webhook server that records my Zoom calls and emails me a transcript when it's done."
+
+"Create a real-time transcription pipeline that streams speaker-attributed text to my WebSocket server."
+
+"Write a Next.js API route that joins a meeting, waits for it to end, and generates an AI summary with action items."
+
+"Set up calendar automation so a MeetStream bot joins every Google Meet on my calendar."
+```
+
+## Supported platforms
+
+- Google Meet
+- Microsoft Teams
+- Zoom (requires Zoom app setup — [docs.meetstream.ai/guides/zoom](https://docs.meetstream.ai/guides/zoom/zoom-marketplace-app-setup))
+
+## Install
+
+```
+/plugin marketplace add meetstream-ai/claude-plugin
+/plugin install meetstream@meetstream-ai
+/reload-plugins
+```
+
+## What's included
+
+```
+.claude-plugin/plugin.json          # Plugin manifest
 skills/meetstream/
-├── SKILL.md                         # Core skill — patterns, lifecycle, platform notes
+├── SKILL.md                        # Core skill — patterns, lifecycle, platform notes
 └── references/
-    ├── api-reference.md             # Full endpoint map with params and return types
-    ├── code-patterns-python.md      # Complete Python implementations
-    └── code-patterns-node.md        # Complete Node.js / TypeScript implementations
+    ├── api-reference.md            # Full endpoint map with params and return types
+    ├── code-patterns-python.md     # Complete Python implementations
+    └── code-patterns-node.md       # Complete Node.js / TypeScript implementations
 ```
 
-## MCP Server
+Claude also queries the [MeetStream MCP server](https://docs.meetstream.ai/_mcp/server) directly for up-to-date parameter schemas and edge cases.
 
-This plugin also registers the MeetStream documentation MCP server:
-```
-https://docs.meetstream.ai/_mcp/server
-```
+## Links
 
-Claude queries it directly for detailed parameter schemas and edge cases.
-
-## Publishing to Claude Marketplace
-
-1. Ensure `plugin.json` has correct `name`, `display_name`, `description`, and `version`
-2. Submit at https://claude.ai/plugins/submit (when marketplace launches)
-3. Or install locally in Claude Desktop via Settings > Extensions > Install from directory
+- Docs: [docs.meetstream.ai](https://docs.meetstream.ai)
+- Dashboard: [app.meetstream.ai](https://app.meetstream.ai)
+- Website: [meetstream.ai](https://meetstream.ai)
