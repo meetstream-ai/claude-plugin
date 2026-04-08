@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://meetstream.ai/favicon.png" alt="MeetStream Logo" width="80" />
+<img src="https://framerusercontent.com/images/qADooqa4mVlS7haEXkSI2cgaE.png" alt="MeetStream Logo" width="80" />
 
 # MeetStream × Claude
 
@@ -189,6 +189,6 @@ Claude also queries the [MeetStream MCP server](https://docs.meetstream.ai/_mcp/
 
 <div align="center">
 
-Built with ❤️ by [MeetStream.ai](https://meetstream.ai) &nbsp;·&nbsp; Powered by <img src="https://anthropic.com/favicon.ico" alt="Anthropic" width="14" style="vertical-align:middle"/> [Claude](https://claude.ai)
+Built with ❤️ by [MeetStream.ai](https://meetstream.ai) &nbsp;·&nbsp; Powered by <img src="https://upload.wikimedia.org/wikipedia/commons/7/78/Anthropic_logo.svg" alt="Anthropic" width="14" style="vertical-align:middle"/> [Claude](https://claude.ai)
 
 </div>
