@@ -15,16 +15,22 @@ Drop in your API key. Tell Claude what you're building. Ship in minutes.
 
 ---
 
+> **MeetStream** is a meeting bot API that lets developers programmatically join, record, transcribe, and stream Zoom, Google Meet, and Microsoft Teams meetings. This Claude plugin gives Claude full knowledge of the MeetStream API so it can generate complete, production-ready integrations — note-takers, AI coaching tools, CRM auto-updaters, calendar bots, and more.
+
+---
+
 ## ✨ What you can build
 
 | | Use Case |
 |--|---------|
-| 🎙️ | Record Zoom, Google Meet, or Teams meetings via a single API call |
-| 📝 | Real-time transcription with speaker attribution |
-| 🔊 | Live audio/video streaming over WebSocket to your own models |
-| 🤖 | Interactive bots that send messages or audio into meetings |
-| 📅 | Calendar-automated bots that join every meeting on a schedule |
-| 📬 | Full note-taking agents — transcript + AI summary, delivered post-call |
+| 🎙️ | **AI meeting notetaker** — bot joins, records, emails summary to attendees |
+| 📝 | **Real-time transcription** with per-speaker attribution |
+| 🔊 | **Live audio/video streaming** over WebSocket to your own models |
+| 🤖 | **Interactive meeting bots** that send messages or play audio |
+| 📅 | **Calendar-automated bots** that join every meeting on a schedule |
+| 🧠 | **Sales coaching tools** — live objection detection, talk-time tracking |
+| 📊 | **CRM auto-update pipelines** — extract action items, sync to HubSpot/Salesforce |
+| 🗓️ | **Post-call follow-up agents** — transcript → summary → email in one pipeline |
 
 ---
 
@@ -44,6 +50,8 @@ Drop in your API key. Tell Claude what you're building. Ship in minutes.
 "Write a Next.js API route that joins a meeting, waits for it to end, and generates an AI summary with action items."
 
 "Set up calendar automation so a MeetStream bot joins every Google Meet on my calendar."
+
+"Build a sales coaching bot that detects competitor mentions and objections in real time."
 ```
 
 ---
@@ -83,23 +91,64 @@ Drop in your API key. Tell Claude what you're building. Ship in minutes.
 git clone https://github.com/meetstream-ai/claude-plugin.git ~/.claude-plugins/meetstream
 ```
 
-Or add to your plugin config:
-```json
-{
-  "marketplace": "https://github.com/meetstream-ai/claude-plugin",
-  "plugin": "meetstream"
-}
-```
-
 ---
 
 ## 🌐 Supported Platforms
 
 | Platform | Setup |
 |----------|-------|
-| ✅ Google Meet | Works immediately |
-| ✅ Microsoft Teams | Works immediately |
-| ⚙️ Zoom | Requires a Zoom app → [setup guide](https://docs.meetstream.ai/guides/zoom/zoom-marketplace-app-setup) |
+| ✅ Google Meet | Works immediately — no setup |
+| ✅ Microsoft Teams | Works immediately — no setup |
+| ⚙️ Zoom | Requires a Zoom Marketplace app → [setup guide](https://docs.meetstream.ai/guides/zoom/zoom-marketplace-app-setup) |
+
+---
+
+## 🏗️ How It Works
+
+```
+Your code  →  POST /bots/create_bot  →  Bot joins meeting
+                                              ↓
+                                    Meeting ends
+                                              ↓
+                              Webhook fires: transcription.processed
+                                              ↓
+                              GET /bots/{id}/get_bot_transcript
+                                              ↓
+                              Claude generates summary / action items
+                                              ↓
+                              Deliver to email / Slack / Notion / CRM
+```
+
+MeetStream handles the hard parts: platform compatibility, bot admission, audio capture, speaker diarization, and post-processing. You write business logic.
+
+---
+
+## 💡 Example Integrations
+
+**Note-taker with email delivery (Node.js)**
+```typescript
+// Bot joins → meeting ends → Claude summarizes → email sent
+await createBot({ meetingLink, callbackUrl: '/webhook' })
+// On transcription.processed webhook:
+const transcript = await getTranscript(botId)
+const summary = await claude.summarize(transcript)
+await sendEmail(attendees, summary)
+```
+
+**Live sales coaching (Python)**
+```python
+# Transcript chunks stream to your WebSocket in real time
+async def on_chunk(chunk):
+    if "competitor" in chunk["transcript"].lower():
+        alert_sales_rep(f"Competitor mention: {chunk['transcript']}")
+```
+
+**Calendar automation (one-time setup)**
+```bash
+# Connect Google Calendar → bots auto-join every meeting
+POST /calendar/create-calendar
+{ "refresh_token": "...", "client_id": "...", "client_secret": "..." }
+```
 
 ---
 
@@ -113,12 +162,12 @@ Or add to your plugin config:
 skills/meetstream/
 ├── SKILL.md                ← Core skill: patterns, lifecycle, platform notes
 └── references/
-    ├── api-reference.md    ← Full endpoint map
+    ├── api-reference.md          ← Full endpoint map with params + return types
     ├── code-patterns-python.md   ← Complete Python implementations
     └── code-patterns-node.md     ← Complete Node.js / TypeScript implementations
 ```
 
-Claude also queries the [MeetStream MCP server](https://docs.meetstream.ai/_mcp/server) for live parameter schemas and edge cases.
+Claude also queries the [MeetStream MCP server](https://docs.meetstream.ai/_mcp/server) directly for live parameter schemas and edge cases.
 
 ---
 
@@ -128,8 +177,15 @@ Claude also queries the [MeetStream MCP server](https://docs.meetstream.ai/_mcp/
 - 📖 Docs: [docs.meetstream.ai](https://docs.meetstream.ai)
 - 🎛️ Dashboard: [app.meetstream.ai](https://app.meetstream.ai)
 - 🐙 GitHub: [github.com/meetstream-ai/claude-plugin](https://github.com/meetstream-ai/claude-plugin)
+- 💬 Support: [hello@meetstream.ai](mailto:hello@meetstream.ai)
 
 ---
+
+<!-- GitHub SEO keywords -->
+<!-- meeting bot API, AI notetaker, meeting transcription, Zoom bot, Google Meet bot, Teams bot, 
+     Claude plugin, meeting intelligence, real-time transcription, meeting recording API,
+     meeting SDK, developer tools, speech-to-text, speaker diarization, calendar automation,
+     webhook, note-taking agent, sales coaching, CRM integration, AI meeting assistant -->
 
 <div align="center">
 
