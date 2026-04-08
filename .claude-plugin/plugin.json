@@ -1,8 +1,12 @@
 {
   "name": "meetstream",
   "description": "Build meeting intelligence with MeetStream's bot API. Join, record, transcribe, and stream meetings on Zoom, Google Meet, and Microsoft Teams. Configure your API key once and Claude handles all implementation.",
+  "version": "1.0.0",
   "author": {
     "name": "MeetStream.ai",
     "email": "hello@meetstream.ai"
-  }
+  },
+  "homepage": "https://meetstream.ai",
+  "repository": "https://github.com/meetstream-ai/claude-plugin",
+  "license": "MIT"
 }
