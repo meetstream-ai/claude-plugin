@@ -1,19 +1,22 @@
 {
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "meetstream-ai",
+  "description": "MeetStream plugins for building meeting bot integrations",
   "owner": {
     "name": "MeetStream.ai",
-    "url": "https://meetstream.ai"
+    "email": "hello@meetstream.ai"
   },
   "plugins": [
     {
       "name": "meetstream",
-      "display_name": "MeetStream — Meeting Bot API",
       "description": "Build meeting intelligence with MeetStream's bot API. Join, record, transcribe, and stream meetings on Zoom, Google Meet, and Microsoft Teams. Configure your API key once and Claude handles all implementation.",
-      "version": "1.0.0",
-      "source": "meetstream-ai/claude-plugin",
-      "path": ".claude-plugin/plugin.json",
-      "category": "developer-tools",
-      "tags": ["meeting-bot", "transcription", "api", "zoom", "google-meet", "teams"]
+      "source": {
+        "source": "url",
+        "url": "https://github.com/meetstream-ai/claude-plugin.git",
+        "sha": "422130c911a0650c587615b475f9e1e685b59c49"
+      },
+      "homepage": "https://meetstream.ai",
+      "category": "developer-tools"
     }
   ]
 }
