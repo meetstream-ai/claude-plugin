@@ -18,7 +18,7 @@ Creates a bot and sends it to a meeting.
 - `bot_name` (string) — name shown in the meeting
 - `audio_required` (bool) — set `true` to record audio
 - `bot_message` (string) — message posted in meeting chat on join
-- `bot_image` (string) — profile image URL (jpeg/png/gif); must be a **publicly accessible URL**, not base64
+- `bot_image_url` (string) — profile image URL (jpeg/png/gif); must be a **publicly accessible URL**, not base64
 - `join_at` (string) — schedule future join: `YYYY-MM-DDTHH:MM:SSZ`
 - `callback_url` (string) — HTTPS endpoint for lifecycle webhook events
 - `socket_connection_url` (object) — `{ "url": "wss://..." }` for real-time bot control

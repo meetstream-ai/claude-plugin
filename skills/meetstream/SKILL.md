@@ -182,12 +182,12 @@ create_bot → bot.joining (102) → bot.inmeeting (200) → [streams run]
 
 ---
 
-## Bot Avatar (bot_image)
+## Bot Avatar (bot_image_url)
 
-To show a custom profile picture in meetings, pass a **publicly accessible URL** via `bot_image`:
+To show a custom profile picture in meetings, pass a **publicly accessible URL** via `bot_image_url`:
 
 ```json
-{ "bot_image": "https://your-server.com/avatar.png" }
+{ "bot_image_url": "https://your-server.com/avatar.png" }
 ```
 
 **Important:** MeetStream fetches this URL externally. You cannot pass base64 data. The image must be reachable without authentication. If you store images in a database (e.g., Firestore), serve them from a public HTTP endpoint on your own server.
@@ -261,7 +261,7 @@ Delete manually: `DELETE /bots/{bot_id}/delete_bot_data` — fires `data_deletio
 4. **Missing `audio_required: true`** — audio is not recorded without this flag
 5. **No timeout** — always set `everyone_left_timeout` or the bot runs forever
 6. **`recording_permission_denied_timeout` under 60** — API returns HTTP 400. Minimum is 60 seconds. The old default of 10 in docs was wrong.
-7. **`bot_image` as base64** — must be a publicly accessible URL; MeetStream fetches it from your server
+7. **`bot_image_url` as base64** — must be a publicly accessible URL; MeetStream fetches it from your server
 8. **Calendar endpoint typo** — it's `POST /calendar/create-calendar` (hyphen), not `create_calendar` (underscore)
 9. **`remove_bot` as DELETE** — it's `GET /bots/{id}/remove_bot`, not a DELETE method
 10. **`get_bot_participants` flat strings** — returns `[{ name, displayName, ... }]`; map with `p.name ?? p.displayName ?? 'Unknown'`
