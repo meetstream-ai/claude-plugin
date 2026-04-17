@@ -18,7 +18,7 @@ Creates a bot and sends it to a meeting.
 - `bot_name` (string) — name shown in the meeting
 - `audio_required` (bool) — set `true` to record audio
 - `bot_message` (string) — message posted in meeting chat on join
-- `bot_image_url` (string) — profile image (jpeg/png/gif URL)
+- `bot_image` (string) — profile image URL (jpeg/png/gif); must be a **publicly accessible URL**, not base64
 - `join_at` (string) — schedule future join: `YYYY-MM-DDTHH:MM:SSZ`
 - `callback_url` (string) — HTTPS endpoint for lifecycle webhook events
 - `socket_connection_url` (object) — `{ "url": "wss://..." }` for real-time bot control
@@ -79,6 +79,7 @@ Screenshot captured during the meeting.
 
 ### GET `/bots/{bot_id}/get_bot_participants`
 List of participants detected in the meeting.
+Returns `[{ "name": "Alice", "displayName": "Alice Smith", ... }]` — not flat strings. Map with `p.name ?? p.displayName ?? 'Unknown'`.
 
 ---
 
@@ -211,13 +212,14 @@ Transcription providers: `deepgram` | `deepgram_streaming` | `assemblyai` | `ass
   "automatic_leave": {
     "waiting_room_timeout": 300,
     "everyone_left_timeout": 60,
-    "in_call_recording_timeout": 7200,
-    "recording_permission_denied_timeout": 10
+    "in_call_recording_timeout": 14400,
+    "recording_permission_denied_timeout": 60
   }
 }
 ```
 
 All values in seconds. Max recording duration default: 4 hours (14400s).
+**`recording_permission_denied_timeout` minimum is 60.** Values under 60 return HTTP 400.
 
 ---
 

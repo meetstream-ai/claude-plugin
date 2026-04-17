@@ -42,7 +42,7 @@ def create_bot(meeting_link: str, callback_url: str) -> str:
             "waiting_room_timeout": 300,
             "everyone_left_timeout": 60,
             "in_call_recording_timeout": 7200,
-            "recording_permission_denied_timeout": 10
+            "recording_permission_denied_timeout": 60  # minimum 60; values under 60 return HTTP 400
         }
     })
     resp.raise_for_status()
@@ -133,7 +133,7 @@ def create_realtime_bot(meeting_link: str) -> str:
             "waiting_room_timeout": 300,
             "everyone_left_timeout": 60,
             "in_call_recording_timeout": 7200,
-            "recording_permission_denied_timeout": 10
+            "recording_permission_denied_timeout": 60  # minimum 60; values under 60 return HTTP 400
         }
     })
     resp.raise_for_status()
@@ -205,7 +205,7 @@ def create_interactive_bot(meeting_link: str) -> str:
         },
         "automatic_leave": {
             "everyone_left_timeout": 60,
-            "recording_permission_denied_timeout": 10
+            "recording_permission_denied_timeout": 60  # minimum 60; values under 60 return HTTP 400
         }
     })
     resp.raise_for_status()
@@ -375,7 +375,7 @@ def join_meeting(meeting_link: str) -> str:
             "waiting_room_timeout": 300,
             "everyone_left_timeout": 60,
             "in_call_recording_timeout": 7200,
-            "recording_permission_denied_timeout": 10
+            "recording_permission_denied_timeout": 60  # minimum 60; values under 60 return HTTP 400
         }
     })
     resp.raise_for_status()

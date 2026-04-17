@@ -172,13 +172,25 @@ create_bot → bot.joining (102) → bot.inmeeting (200) → [streams run]
   "automatic_leave": {
     "waiting_room_timeout": 300,
     "everyone_left_timeout": 60,
-    "in_call_recording_timeout": 7200,
-    "recording_permission_denied_timeout": 10
+    "in_call_recording_timeout": 14400,
+    "recording_permission_denied_timeout": 60
   }
 }
 ```
 
-`recording_permission_denied_timeout: 10` is critical — without it, a denied bot sits in the meeting indefinitely.
+**`recording_permission_denied_timeout` minimum is 60 seconds.** The API returns HTTP 400 for any value under 60. Without this field, a bot that gets its recording permission denied will sit in the meeting indefinitely.
+
+---
+
+## Bot Avatar (bot_image)
+
+To show a custom profile picture in meetings, pass a **publicly accessible URL** via `bot_image`:
+
+```json
+{ "bot_image": "https://your-server.com/avatar.png" }
+```
+
+**Important:** MeetStream fetches this URL externally. You cannot pass base64 data. The image must be reachable without authentication. If you store images in a database (e.g., Firestore), serve them from a public HTTP endpoint on your own server.
 
 ---
 
@@ -248,6 +260,13 @@ Delete manually: `DELETE /bots/{bot_id}/delete_bot_data` — fires `data_deletio
 3. **Zoom dev mode** — can only join app owner's meetings until app is approved
 4. **Missing `audio_required: true`** — audio is not recorded without this flag
 5. **No timeout** — always set `everyone_left_timeout` or the bot runs forever
+6. **`recording_permission_denied_timeout` under 60** — API returns HTTP 400. Minimum is 60 seconds. The old default of 10 in docs was wrong.
+7. **`bot_image` as base64** — must be a publicly accessible URL; MeetStream fetches it from your server
+8. **Calendar endpoint typo** — it's `POST /calendar/create-calendar` (hyphen), not `create_calendar` (underscore)
+9. **`remove_bot` as DELETE** — it's `GET /bots/{id}/remove_bot`, not a DELETE method
+10. **`get_bot_participants` flat strings** — returns `[{ name, displayName, ... }]`; map with `p.name ?? p.displayName ?? 'Unknown'`
+11. **Deepgram model without language** — `nova-3` requires `language: 'en'` to be set explicitly in the provider config
+12. **`custom_attributes` with non-string values** — all values must be strings; don't pass numbers or booleans
 
 ---
 

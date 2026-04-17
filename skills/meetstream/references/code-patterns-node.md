@@ -38,7 +38,7 @@ async function createBot(meetingLink: string, callbackUrl: string): Promise<stri
       waiting_room_timeout: 300,
       everyone_left_timeout: 60,
       in_call_recording_timeout: 7200,
-      recording_permission_denied_timeout: 10
+      recording_permission_denied_timeout: 60  // minimum 60; values under 60 return HTTP 400
     }
   }, { headers })
 
@@ -144,7 +144,7 @@ async function createRealtimeBot(meetingLink: string): Promise<string> {
       waiting_room_timeout: 300,
       everyone_left_timeout: 60,
       in_call_recording_timeout: 7200,
-      recording_permission_denied_timeout: 10
+      recording_permission_denied_timeout: 60  // minimum 60; values under 60 return HTTP 400
     }
   }, { headers })
 
@@ -202,7 +202,7 @@ async function createInteractiveBot(meetingLink: string): Promise<string> {
     },
     automatic_leave: {
       everyone_left_timeout: 60,
-      recording_permission_denied_timeout: 10
+      recording_permission_denied_timeout: 60  // minimum 60; values under 60 return HTTP 400
     }
   }, { headers })
 
