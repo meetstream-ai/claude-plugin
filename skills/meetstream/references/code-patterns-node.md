@@ -46,8 +46,19 @@ async function createBot(meetingLink: string, callbackUrl: string): Promise<stri
   return data.bot_id
 }
 
+async function getBotDetail(botId: string): Promise<any> {
+  const { data } = await axios.get(`${BASE_URL}/bots/${botId}/detail`, { headers })
+  return data
+}
+
 async function getTranscript(botId: string): Promise<any> {
-  const { data } = await axios.get(`${BASE_URL}/bots/${botId}/get_bot_transcript`, { headers })
+  // Step 1: get transcript_id from bot detail
+  const detail = await getBotDetail(botId)
+  const transcriptId = detail.bot_details?.transcript_id ?? detail.transcript_id
+  if (!transcriptId) throw new Error(`No transcript_id found for bot ${botId}`)
+
+  // Step 2: fetch transcript using the transcript_id
+  const { data } = await axios.get(`${BASE_URL}/bots/${botId}/get_bot_transcript/${transcriptId}`, { headers })
   return data
 }
 
@@ -231,10 +242,20 @@ const meetstreamHeaders = {
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
+async function getBotDetail(botId: string): Promise<any> {
+  const { data } = await axios.get(`${BASE_URL}/bots/${botId}/detail`, { headers: meetstreamHeaders })
+  return data
+}
+
 async function generateSummary(botId: string): Promise<string> {
-  // Fetch transcript
+  // Step 1: get transcript_id from bot detail
+  const detail = await getBotDetail(botId)
+  const transcriptId = detail.bot_details?.transcript_id ?? detail.transcript_id
+  if (!transcriptId) throw new Error(`No transcript_id found for bot ${botId}`)
+
+  // Step 2: fetch transcript using the transcript_id
   const { data: transcriptData } = await axios.get(
-    `${BASE_URL}/bots/${botId}/get_bot_transcript`,
+    `${BASE_URL}/bots/${botId}/get_bot_transcript/${transcriptId}`,
     { headers: meetstreamHeaders }
   )
 

@@ -51,9 +51,23 @@ def create_bot(meeting_link: str, callback_url: str) -> str:
     return data["bot_id"]
 
 
+def get_bot_detail(bot_id: str) -> dict:
+    """Fetch bot session metadata including transcript_id."""
+    resp = requests.get(f"{BASE_URL}/bots/{bot_id}/detail", headers=HEADERS)
+    resp.raise_for_status()
+    return resp.json()
+
+
 def get_transcript(bot_id: str) -> dict:
     """Fetch full transcript. Call only after transcription.processed fires."""
-    resp = requests.get(f"{BASE_URL}/bots/{bot_id}/get_bot_transcript", headers=HEADERS)
+    # Step 1: get transcript_id from bot detail
+    detail = get_bot_detail(bot_id)
+    transcript_id = (detail.get("bot_details") or {}).get("transcript_id") or detail.get("transcript_id")
+    if not transcript_id:
+        raise ValueError(f"No transcript_id found for bot {bot_id}")
+
+    # Step 2: fetch transcript using the transcript_id
+    resp = requests.get(f"{BASE_URL}/bots/{bot_id}/get_bot_transcript/{transcript_id}", headers=HEADERS)
     resp.raise_for_status()
     return resp.json()
 
@@ -383,9 +397,17 @@ def join_meeting(meeting_link: str) -> str:
 
 
 def fetch_and_summarize(bot_id: str):
-    # Fetch transcript
+    # Step 1: get transcript_id from bot detail
+    detail_resp = requests.get(f"{BASE_URL}/bots/{bot_id}/detail", headers=MEETSTREAM_HEADERS)
+    detail_resp.raise_for_status()
+    detail = detail_resp.json()
+    transcript_id = (detail.get("bot_details") or {}).get("transcript_id") or detail.get("transcript_id")
+    if not transcript_id:
+        raise ValueError(f"No transcript_id found for bot {bot_id}")
+
+    # Step 2: fetch transcript using the transcript_id
     resp = requests.get(
-        f"{BASE_URL}/bots/{bot_id}/get_bot_transcript",
+        f"{BASE_URL}/bots/{bot_id}/get_bot_transcript/{transcript_id}",
         headers=MEETSTREAM_HEADERS
     )
     resp.raise_for_status()
