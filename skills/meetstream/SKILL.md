@@ -83,9 +83,10 @@ POST /bots/create_bot
 }
 ```
 
-Returns `{ "bot_id": "..." }`. Wait for `transcription.processed` webhook, then:
+Returns `{ "bot_id": "..." }`. Wait for `transcription.processed` webhook, then use the two-step transcript fetch:
 ```
-GET /bots/{bot_id}/get_bot_transcript
+GET /bots/{bot_id}/detail                          → get bot_details.transcript_id
+GET /bots/{bot_id}/get_bot_transcript/{transcript_id}  → get the transcript
 ```
 
 ### Pattern 2: Real-Time Transcription (AI agents, live coaching)
@@ -231,13 +232,13 @@ After `transcription.processed`:
 
 | Data | Endpoint |
 |------|---------|
-| Transcript with speaker labels | `GET /bots/{bot_id}/get_bot_transcript` |
+| Transcript with speaker labels | `GET /bots/{bot_id}/get_bot_transcript/{transcript_id}` — get `transcript_id` from `/detail` first |
 | Speaker timeline | `GET /bots/{bot_id}/get_bot_speaker_timeline` |
 | In-meeting chat | `GET /bots/{bot_id}/get_bot_chat` |
 | Audio file | `GET /bots/{bot_id}/get_bot_audio` |
 | Video file | `GET /bots/{bot_id}/get_bot_video` |
-| Participant list | `GET /bots/{bot_id}/get_bot_participants` |
-| Session metadata | `GET /bots/{bot_id}/get_bot_detail` |
+| Participant list | `GET /bots/{bot_id}/get_participants` |
+| Session metadata | `GET /bots/{bot_id}/detail` |
 | Screenshot | `GET /bots/{bot_id}/get_bot_screenshot` |
 
 ---
@@ -264,7 +265,7 @@ Delete manually: `DELETE /bots/{bot_id}/delete_bot_data` — fires `data_deletio
 7. **`bot_image_url` as base64** — must be a publicly accessible URL; MeetStream fetches it from your server
 8. **Calendar endpoint typo** — it's `POST /calendar/create-calendar` (hyphen), not `create_calendar` (underscore)
 9. **`remove_bot` as DELETE** — it's `GET /bots/{id}/remove_bot`, not a DELETE method
-10. **`get_bot_participants` flat strings** — returns `[{ name, displayName, ... }]`; map with `p.name ?? p.displayName ?? 'Unknown'`
+10. **`get_participants` returns an array directly** — use `/get_participants` (not `get_bot_participants`); response is a direct array `[{ fullName, displayName, ... }]`; map with `p.fullName ?? p.displayName ?? p.name ?? 'Unknown'`
 11. **Deepgram model without language** — `nova-3` requires `language: 'en'` to be set explicitly in the provider config
 12. **`custom_attributes` with non-string values** — all values must be strings; don't pass numbers or booleans
 

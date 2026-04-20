@@ -39,14 +39,27 @@ Current bot status: `joining` → `InMeeting` → `Stopped`
 
 ---
 
-### GET `/bots/{bot_id}/get_bot_detail`
-Full session metadata. Use for debugging.
+### GET `/bots/{bot_id}/detail`
+Full session metadata including `transcript_id`, `StatusTimeline`, `TranscriptStatus`, `AudioStatus`, participant stream IDs.
+
+**Correct endpoint is `/detail`, NOT `/get_bot_detail`.**
+
+Key fields in response:
+- `bot_details.transcript_id` — use this to fetch the transcript
+- `bot_details.TranscriptStatus` — `"Success"` means transcript is ready
+- `bot_details.StatusTimeline.InMeeting.status` — whether bot actually joined
 
 ---
 
-### GET `/bots/{bot_id}/get_bot_transcript`
+### GET `/bots/{bot_id}/get_bot_transcript/{transcript_id}`
 Full post-processed transcript with speaker labels.
 Only available after `transcription.processed` callback.
+
+**Two-step flow required:**
+1. Call `GET /bots/{bot_id}/detail` to get `bot_details.transcript_id`
+2. Call `GET /bots/{bot_id}/get_bot_transcript/{transcript_id}` with that ID
+
+Returns `{ "transcript": [{ "speaker": "Alice", "text": "..." }] }`
 
 ---
 
@@ -77,9 +90,13 @@ Screenshot captured during the meeting.
 
 ---
 
-### GET `/bots/{bot_id}/get_bot_participants`
+### GET `/bots/{bot_id}/get_participants`
 List of participants detected in the meeting.
-Returns `[{ "name": "Alice", "displayName": "Alice Smith", ... }]` — not flat strings. Map with `p.name ?? p.displayName ?? 'Unknown'`.
+
+**Correct endpoint is `/get_participants`, NOT `/get_bot_participants`.**
+
+Returns a direct array (not wrapped): `[{ "fullName": "Alice Smith", "displayName": "Alice", "humanized_status": "not_in_meeting", ... }]`
+Map with `p.fullName ?? p.displayName ?? p.name ?? 'Unknown'`.
 
 ---
 
