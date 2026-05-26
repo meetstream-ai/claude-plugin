@@ -44,13 +44,13 @@ Creates a bot and sends it to a meeting.
 
 > **Important:** `audio_required` is **not** in the `CreateBotRequest` schema. Audio is captured by default. The field DOES exist in calendar-scheduled `bot_config` (different schema).
 
-**Response (200 per spec) — `BotResponse`:**
+**Response — live-verified HTTP 201 Created** (OpenAPI documents 200 but live returns 201) — `BotResponse`:
 ```json
 {
   "bot_id": "string",
   "transcript_id": "string | null",
   "meeting_url": "string",
-  "status": "string"
+  "status": "Active"
 }
 ```
 
@@ -66,19 +66,24 @@ Current bot status. Returns `{ bot_id, status, custom_attributes }`. Status valu
 ---
 
 ### GET `/bots/{bot_id}/detail`
-Full session metadata. Returns `{ bot_details: { ... } }` with these documented fields:
+Full session metadata. Returns `{ bot_details: { ... } }`. The live API returns the following fields (verified by direct API test — the OpenAPI `BotDetailsResponseBotDetails` schema is incomplete):
 
 ```
 BotID, BotImageURL, BotMessage, BotProfile, BotUsername,
 CreatedAt, Duration, EndTime, LastUpdatedAt, ManifestStatus,
-MeetingLink, NativeSTT, OfferingType, Platform,
-StartTime, Status, UserID, RequestPayload, StatusTimeline,
-custom_attributes, caption_file
+MediaS3Bucket, MeetingLink, NativeSTT, OfferingType, Platform,
+PlatformCreatedAt, PlatformStatusCreatedAt, RequestPayload,
+StartTime, Status, StatusCreatedAt, StatusTimeline, UserID,
+AudioStatus, caption_file, participant_events, custom_attributes,
+transcript_id
 ```
 
-> **`bot_details` does NOT contain `transcript_id`.** Don't try to read it from here. Use the `create_bot` response or `GET /bots/{bot_id}/transcriptions`.
+> **`transcript_id` IS at the top level of `bot_details` (live-verified).** Populated when a post-call provider (assemblyai / deepgram / jigsawstack / sarvam / meetstream) is configured; `null` for `meeting_captions` or no provider. This field is **not** listed in the OpenAPI schema but is returned by the live API. Use this as one of three ways to retrieve `transcript_id`:
+> 1. The `create_bot` response (`BotResponse.transcript_id`)
+> 2. `bot_details.transcript_id` on this endpoint
+> 3. `GET /bots/{bot_id}/transcriptions`
 
-`caption_file` is an S3 link to native captions when provider is `meeting_captions`.
+`caption_file` is an S3 link to native captions when provider is `meeting_captions`. `RequestPayload` echoes the exact create_bot body. `StatusTimeline` is a map of lifecycle stages each with `{message, status, timestamp}`. `AudioStatus` mirrors the `audio.processed` event.
 
 ---
 
@@ -265,12 +270,11 @@ Response (`TranscribeResponse`): `{ bot_id, transcript_id, provider, message }`.
 ## Transcription Endpoints
 
 ### GET `/transcript/{transcript_id}/get_transcript`
-Returns the processed transcript by `transcript_id`. The `transcript_id` comes from:
+Returns the processed transcript by `transcript_id`. The `transcript_id` comes from any of four places:
 1. The `create_bot` response (for assemblyai/deepgram/jigsawstack/sarvam/meetstream providers — null for `meeting_captions`)
-2. `GET /bots/{bot_id}/transcriptions` (lists every run)
-3. The `POST /bots/{bot_id}/transcribe` response
-
-> **Not from `/bots/{bot_id}/detail`** — `bot_details` does NOT contain a `transcript_id` field.
+2. **`GET /bots/{bot_id}/detail` → `bot_details.transcript_id`** (live-verified, not in OpenAPI schema)
+3. `GET /bots/{bot_id}/transcriptions` (lists every run)
+4. The `POST /bots/{bot_id}/transcribe` response
 
 Query: `?raw=true` to retrieve raw unformatted provider output.
 
@@ -697,7 +701,7 @@ Each post-call event sent **at most once**. No separate `*.failed` events — fa
 
 ### `transcript_id` is NOT in the webhook payload
 
-`transcription.processed` only signals timing. Fetch `transcript_id` from the `create_bot` response or `GET /bots/{bot_id}/transcriptions`.
+`transcription.processed` only signals timing. Fetch `transcript_id` from one of: the `create_bot` response, `bot_details.transcript_id` on `GET /bots/{bot_id}/detail`, or `GET /bots/{bot_id}/transcriptions`.
 
 ### Sample payloads
 
@@ -808,7 +812,9 @@ Default retention: `{ "type": "timed", "hours": 24 }`.
 
 All values in seconds. Defaults shown above. `recording_permission_denied_timeout` is Zoom-only per the prose docs.
 
-> **Observed behavior (not in OpenAPI):** values below 60 for `recording_permission_denied_timeout` have been seen to return HTTP 400. Stick with 60+ to be safe.
+> **Live-tested constraints (not in OpenAPI):**
+> - `in_call_recording_timeout` minimum is **600 seconds** — the API returns `HTTP 400: "in_call_recording_timeout must be at least 600 seconds"` for any value below 600. Verified by live API test.
+> - `recording_permission_denied_timeout` below 60 has been observed to return HTTP 400. Stick with 60+.
 
 ---
 

@@ -100,23 +100,25 @@ POST /bots/create_bot
 }
 ```
 
-Returns HTTP 200 with `BotResponse`:
+Returns **HTTP 201 Created** with `BotResponse`:
 ```json
 {
   "bot_id": "...",
   "transcript_id": "..." | null,
   "meeting_url": "...",
-  "status": "..."
+  "status": "Active"
 }
 ```
 
-**Important — getting the `transcript_id`:**
+**Where to get the `transcript_id` — three live-verified sources, pick any:**
 
-- For providers `assemblyai`, `deepgram`, `jigsawstack`, `sarvam`, and `meetstream`: the `transcript_id` is returned in the `create_bot` response above. **Store it** — you'll need it to fetch the transcript later.
-- For provider `meeting_captions`: `transcript_id` is **null**. Instead, fetch the caption file from `bot_details.caption_file` on `GET /bots/{bot_id}/detail` (returns an S3 link, when captions are available).
-- After-the-fact discovery: `GET /bots/{bot_id}/transcriptions` lists every transcription run for a bot with `transcript_id`, `provider`, `status`, `download_urls`.
+1. **The `create_bot` response above** (for providers `assemblyai`, `deepgram`, `jigsawstack`, `sarvam`, `meetstream` — `null` for `meeting_captions`). Easiest path.
+2. **`GET /bots/{bot_id}/detail` → `bot_details.transcript_id`** (top-level on `bot_details`). This works after the fact and is also live-verified. NOTE: the OpenAPI spec `BotDetailsResponseBotDetails` does not enumerate this field, but the live API returns it. Trust the live API.
+3. **`GET /bots/{bot_id}/transcriptions`** — lists every transcription run for a bot with `{transcript_id, provider, status, created_at, config, download_urls}`. Use this when you've triggered re-transcription via `/transcribe` or need to list all runs.
 
-**`transcript_id` is NOT in the webhook payload.** The webhook (`transcription.processed`) signals **when** the transcript is ready, but contains only `bot_id`, `event`, `transcript_status`, `message`, `status_code`.
+For provider `meeting_captions`, all three places give you `transcript_id: null` — fetch the S3 caption file from `bot_details.caption_file` on `/detail` instead.
+
+**`transcript_id` is NOT in the webhook payload.** The webhook (`transcription.processed`) signals **when** the transcript is ready but contains only `bot_id`, `event`, `transcript_status`, `message`, `status_code`. Use one of the three sources above to get the ID.
 
 Once you receive the `transcription.processed` webhook, fetch:
 ```
@@ -421,7 +423,9 @@ All values in seconds. Defaults shown above.
 - `in_call_recording_timeout` — max recording duration (default 14400 / 4 hr)
 - `recording_permission_denied_timeout` — wait if recording permission denied (default 60, **Zoom-only** per docs comment)
 
-> **Observed behavior (not in OpenAPI spec):** values below 60 for `recording_permission_denied_timeout` have been seen to return HTTP 400 in practice. The OpenAPI doesn't document a minimum, but staying at 60+ is safe.
+> **Live-tested constraints (not in OpenAPI spec):**
+> - `in_call_recording_timeout` minimum is **600 seconds** — the live API returns `HTTP 400: "in_call_recording_timeout must be at least 600 seconds"` below that. The OpenAPI default of 14400 is fine.
+> - `recording_permission_denied_timeout` below 60 has been seen to return HTTP 400. Stick with 60+.
 
 Without these defaults, a stuck bot can sit in a meeting indefinitely.
 
@@ -592,7 +596,7 @@ After the relevant `*.processed` event fires:
 | Per-participant audio streams | `GET /bots/{bot_id}/get_audio_streams` | Per-segment URLs **valid 10 minutes**; returns 202 while bot is still in meeting |
 | Per-participant recording streams | `GET /bots/{bot_id}/get_recording_streams` | Per-segment URLs **valid 10 minutes**; includes both `participants[]` and `screenshares[]` |
 | Participant list | `GET /bots/{bot_id}/get_participants` | Returns a top-level array of `{deviceId, displayName, fullName, profilePicture, status, humanized_status, streamIds[], lastUpdated, parentDeviceId?}` |
-| Session metadata | `GET /bots/{bot_id}/detail` | Returns `bot_details` with: BotID, BotImageURL, BotMessage, BotProfile, BotUsername, CreatedAt, Duration, EndTime, LastUpdatedAt, ManifestStatus, MeetingLink, NativeSTT, OfferingType, Platform, StartTime, Status, UserID, RequestPayload, StatusTimeline, custom_attributes, **caption_file** (S3 link for native captions). **Does NOT contain `transcript_id`.** |
+| Session metadata | `GET /bots/{bot_id}/detail` | Returns `bot_details` with (live-verified): BotID, BotImageURL, BotMessage, BotProfile, BotUsername, CreatedAt, Duration, EndTime, LastUpdatedAt, ManifestStatus, MediaS3Bucket, MeetingLink, NativeSTT, OfferingType, Platform, PlatformCreatedAt, PlatformStatusCreatedAt, RequestPayload, StartTime, Status, StatusCreatedAt, StatusTimeline, UserID, AudioStatus, caption_file (S3 link for native captions), participant_events, custom_attributes, **and `transcript_id`** (top-level, populated when a post-call provider is set — not enumerated in OpenAPI but returned live). |
 | Screenshots | `GET /bots/{bot_id}/get_screenshots` | |
 | Summary (if generated) | `GET /bots/{bot_id}/summary` | (Path is `/summary`, not `/get_summary`.) |
 
@@ -624,23 +628,24 @@ Manually delete: `DELETE /bots/{bot_id}/delete` — fires the `data_deletion` ca
 
 ## Common Mistakes
 
-1. **Looking for `transcript_id` in the webhook** — it's not there. It's in the `create_bot` response (for assemblyai/deepgram/jigsawstack/sarvam/meetstream providers) or via `GET /bots/{bot_id}/transcriptions`. The webhook only signals timing.
-2. **Looking for `transcript_id` on `/bots/{bot_id}/detail`** — `bot_details` does not include `transcript_id`. It does have `caption_file` (for `meeting_captions` provider).
-3. **Iterating `transcript.transcript[]` with `seg.text`** — the response is a top-level array, and the per-segment text field is `transcript`, not `text`.
-4. **`send_image` body using `image_url`** — the field is `img_url`.
-5. **Fetching transcript before `transcription.processed`** — always wait for the webhook.
-6. **HTTP callback URL** — must be HTTPS; use ngrok / cloudflared for local dev.
-7. **Wrong calendar field names** — Calendar create requires `google_refresh_token` / `google_client_id` / `google_client_secret` (with the `google_` prefix).
-8. **Using `audio_required` on `create_bot`** — not in the OpenAPI schema. Audio is captured by default. (It DOES exist for calendar-scheduled `bot_config`.)
-9. **Skipping `bot_name`** — it's required, not optional.
-10. **Assuming `video_required` defaults to false** — it defaults to `true`. Set it to `false` for transcript-only workflows or you'll burn storage.
-11. **Branching on `status_code`** — it's always 200. Branch on `event` and `bot_status`.
-12. **Expecting webhook retries** — there are none. Always return 2xx, queue work asynchronously, dedupe by `{bot_id, event, timestamp}`.
-13. **Using `websocket_url` for live transcription** — `live_transcription_required` accepts only `webhook_url` (HTTPS POST). The `websocket_url` field is for `live_audio_required`, `live_video_required`, and `socket_connection_url`.
-14. **Sending WAV blobs over `sendaudio`** — bot expects raw PCM16 LE @ 48000 Hz mono, base64-encoded. No WAV header. Resample if your source isn't 48 kHz.
-15. **`/calendar/toggle-recurring/{event_id}` path** — actual path is `POST /calendar/toggle-recurrence` with body `{event_id, recurring_enabled}`. No path param.
-16. **MIA endpoint paths** — they are `/api/v1/mia` (singular) for CRUD; DELETE uses `?agent_config_id=...` query param, not a path id.
-17. **Live video on Zoom** — not supported. Google Meet and Teams only.
+1. **Looking for `transcript_id` in the webhook** — it's not there. The webhook only signals timing. Get the `transcript_id` from the `create_bot` response, `GET /bots/{bot_id}/detail` (`bot_details.transcript_id`), or `GET /bots/{bot_id}/transcriptions`.
+2. **Iterating `transcript.transcript[]` with `seg.text`** — the response is a top-level array, and the per-segment text field is `transcript`, not `text`.
+3. **`send_image` body using `image_url`** — the field is `img_url`.
+4. **Fetching transcript before `transcription.processed`** — always wait for the webhook.
+5. **HTTP callback URL** — must be HTTPS; use ngrok / cloudflared for local dev.
+6. **Wrong calendar field names** — Calendar create requires `google_refresh_token` / `google_client_id` / `google_client_secret` (with the `google_` prefix).
+7. **Using `audio_required` on `create_bot`** — not in the OpenAPI schema. Audio is captured by default. (It DOES exist for calendar-scheduled `bot_config`.)
+8. **Skipping `bot_name`** — it's required, not optional.
+9. **Assuming `video_required` defaults to false** — it defaults to `true`. Set it to `false` for transcript-only workflows or you'll burn storage.
+10. **Branching on `status_code`** — it's always 200. Branch on `event` and `bot_status`.
+11. **Expecting webhook retries** — there are none. Always return 2xx, queue work asynchronously, dedupe by `{bot_id, event, timestamp}`.
+12. **Using `websocket_url` for live transcription** — `live_transcription_required` accepts only `webhook_url` (HTTPS POST). The `websocket_url` field is for `live_audio_required`, `live_video_required`, and `socket_connection_url`.
+13. **Sending WAV blobs over `sendaudio`** — bot expects raw PCM16 LE @ 48000 Hz mono, base64-encoded. No WAV header. Resample if your source isn't 48 kHz.
+14. **`/calendar/toggle-recurring/{event_id}` path** — actual path is `POST /calendar/toggle-recurrence` with body `{event_id, recurring_enabled}`. No path param.
+15. **MIA endpoint paths** — they are `/api/v1/mia` (singular) for CRUD; DELETE uses `?agent_config_id=...` query param, not a path id.
+16. **Live video on Zoom** — not supported. Google Meet and Teams only.
+17. **`in_call_recording_timeout` under 600** — live API rejects with HTTP 400. Minimum 600 seconds.
+18. **Expecting `create_bot` to return HTTP 200** — it returns **HTTP 201 Created** (live-verified). `status` field is typically `"Active"`.
 
 ---
 

@@ -61,7 +61,18 @@ async function resolveTranscriptId(botId: string): Promise<string> {
   const cached = transcriptIds.get(botId)
   if (cached) return cached
 
-  // Documented discovery path: list all transcription runs for the bot
+  // Fastest path: bot_details.transcript_id (live-verified — not in OpenAPI schema
+  // but returned by the API. One round trip vs. /transcriptions which lists all runs.)
+  try {
+    const { data: detail } = await axios.get(`${BASE_URL}/bots/${botId}/detail`, { headers })
+    const tid = detail?.bot_details?.transcript_id
+    if (tid) {
+      transcriptIds.set(botId, tid)
+      return tid
+    }
+  } catch { /* fall through to /transcriptions */ }
+
+  // Fallback: list all transcription runs for the bot (useful if you've called /transcribe to re-transcribe)
   const { data } = await axios.get(`${BASE_URL}/bots/${botId}/transcriptions`, { headers })
   const successful = (data.transcriptions ?? []).find((t: any) => t.status === 'Success')
   if (!successful) throw new Error(`No completed transcript for bot ${botId}`)
@@ -412,6 +423,16 @@ const seenEvents = new Set<string>()
 async function findTranscriptId(botId: string): Promise<string> {
   const cached = transcriptIdCache.get(botId)
   if (cached) return cached
+
+  // Live-verified fast path: bot_details.transcript_id
+  try {
+    const { data: detail } = await axios.get(`${BASE_URL}/bots/${botId}/detail`, { headers: meetstreamHeaders })
+    const tid = detail?.bot_details?.transcript_id
+    if (tid) {
+      transcriptIdCache.set(botId, tid)
+      return tid
+    }
+  } catch { /* fall through */ }
 
   const { data } = await axios.get(
     `${BASE_URL}/bots/${botId}/transcriptions`,
@@ -930,6 +951,13 @@ async function waitForTranscript(botId: string, transcriptId: string | null, tim
 
     if (['Stopped', 'NotAllowed', 'Denied', 'Error'].includes(statusData.status)) {
       let tid = transcriptId
+      if (!tid) {
+        // Live-verified: bot_details.transcript_id (one round trip)
+        try {
+          const { data: detail } = await axios.get(`https://api.meetstream.ai/api/v1/bots/${botId}/detail`, { headers: h })
+          tid = detail?.bot_details?.transcript_id ?? null
+        } catch { /* fall through */ }
+      }
       if (!tid) {
         const { data: list } = await axios.get(
           `https://api.meetstream.ai/api/v1/bots/${botId}/transcriptions`,

@@ -69,12 +69,25 @@ def create_bot(meeting_link: str, callback_url: str) -> tuple[str, str | None]:
 
 
 def resolve_transcript_id(bot_id: str) -> str:
-    """Get transcript_id from cache or by listing transcriptions for the bot."""
+    """Get transcript_id from cache, bot_details.transcript_id, or /transcriptions list."""
     with TRANSCRIPT_IDS_LOCK:
         if bot_id in TRANSCRIPT_IDS:
             return TRANSCRIPT_IDS[bot_id]
 
-    # Documented discovery path
+    # Live-verified fast path: bot_details.transcript_id
+    # (Not in OpenAPI schema but returned by the live API. Single round trip.)
+    try:
+        resp = requests.get(f"{BASE_URL}/bots/{bot_id}/detail", headers=HEADERS, timeout=10)
+        resp.raise_for_status()
+        tid = (resp.json().get("bot_details") or {}).get("transcript_id")
+        if tid:
+            with TRANSCRIPT_IDS_LOCK:
+                TRANSCRIPT_IDS[bot_id] = tid
+            return tid
+    except requests.RequestException:
+        pass
+
+    # Fallback: list every transcription run (useful after /transcribe re-runs)
     resp = requests.get(f"{BASE_URL}/bots/{bot_id}/transcriptions", headers=HEADERS)
     resp.raise_for_status()
     for t in resp.json().get("transcriptions", []):
@@ -729,6 +742,19 @@ def resolve_transcript_id(bot_id: str) -> str:
     with LOCK:
         if bot_id in TRANSCRIPT_IDS:
             return TRANSCRIPT_IDS[bot_id]
+
+    # Live-verified fast path: bot_details.transcript_id
+    try:
+        resp = requests.get(f"{BASE_URL}/bots/{bot_id}/detail", headers=MEETSTREAM_HEADERS, timeout=10)
+        resp.raise_for_status()
+        tid = (resp.json().get("bot_details") or {}).get("transcript_id")
+        if tid:
+            with LOCK:
+                TRANSCRIPT_IDS[bot_id] = tid
+            return tid
+    except requests.RequestException:
+        pass
+
     resp = requests.get(f"{BASE_URL}/bots/{bot_id}/transcriptions", headers=MEETSTREAM_HEADERS)
     resp.raise_for_status()
     for t in resp.json().get("transcriptions", []):
