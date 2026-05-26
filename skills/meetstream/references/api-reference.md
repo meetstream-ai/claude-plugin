@@ -73,10 +73,13 @@ BotID, BotImageURL, BotMessage, BotProfile, BotUsername,
 CreatedAt, Duration, EndTime, LastUpdatedAt, ManifestStatus,
 MediaS3Bucket, MeetingLink, NativeSTT, OfferingType, Platform,
 PlatformCreatedAt, PlatformStatusCreatedAt, RequestPayload,
-StartTime, Status, StatusCreatedAt, StatusTimeline, UserID,
-AudioStatus, caption_file, participant_events, custom_attributes,
+StartTime, Status, StatusCreatedAt, StatusTimeline,
+AudioStatus, TranscriptStatus, UserID,
+caption_file, participant_events, custom_attributes,
 transcript_id
 ```
+
+`StatusTimeline` contains entries for these lifecycle stages (each is `{message, status: bool, timestamp}`): `Scheduled`, `Joining`, `WaitingRoom`, `InMeeting`, `Recording`, `Leaving`, `Stopped`, `BotNotAllowed`, `BotRejected`, `Error`, `AudioProcessing`, `VideoProcessing`, `TranscriptionReady`, `Done`, `MediaExpired`. `status: true` means the stage was reached.
 
 > **`transcript_id` IS at the top level of `bot_details` (live-verified).** Populated when a post-call provider (assemblyai / deepgram / jigsawstack / sarvam / meetstream) is configured; `null` for `meeting_captions` or no provider. This field is **not** listed in the OpenAPI schema but is returned by the live API. Use this as one of three ways to retrieve `transcript_id`:
 > 1. The `create_bot` response (`BotResponse.transcript_id`)
@@ -678,63 +681,130 @@ All three fields are required together to enable MIA.
 
 HTTP POST. Your endpoint MUST return 2xx — **webhooks are not retried on non-2xx**.
 
-Every payload includes: `bot_id`, `event`, `message`, `status_code` (always `200`), `timestamp`, `custom_attributes`. Additional per-event fields below.
+**Full event list (live-verified — captured end-to-end from a real Google Meet bot run against `webhook.site`):**
 
-### Bot lifecycle events
+| # | event | bot_status | status_code | When | Extra payload fields |
+|---|---|---|---|---|---|
+| 1 | `bot.joining` | `Joining` | 200 | Bot is connecting | — |
+| 2 | `bot.inmeeting` | `InMeeting` | 200 | Bot joined the meeting | — |
+| 3 | `bot.recording` | `Recording` | 200 | Recording started | — |
+| 4 | `participant_events.join` / `.leave` | — | — | Participants join/leave (requires `recording_config.realtime_endpoints`) | Nested under `data.data.{action,participant,timestamp}` and `data.bot.{id,metadata}`. No top-level `bot_id` or `bot_status`. |
+| 5 | `bot.leaving` | `Leaving` | 200 | Bot is leaving the meeting | — |
+| 6 | `bot.stopped` | `Stopped` / `NotAllowed` / `Denied` / `Error` | 200 | Bot exited (fires once per bot) | — |
+| 7 | `manifest.completed` | — | 200 | Platform manifest uploaded | `status: "success"`, `manifest_status: "Success"`, `timestamp` |
+| 8 | `audio.processed` | — | 200 | Audio ready to fetch | `status: "success"`, `audio_status: "Success"`, `timestamp` |
+| 9 | `transcription.processed` | — | 200 | Transcript ready | `transcript_status: "Success"`, `timestamp` |
+| 9b | `transcription.failed` | — | **500** | Transcript run failed | `status: "error"`, `transcript_status: "Failed"`, `message` (error detail), `timestamp` |
+| 10 | `video.processed` | — | 200 | Video ready (only when `video_required: true`) | `video_status: "Success"`, `timestamp` |
+| 11 | `bot.done` | `Done` | 200 or 500 | All processing complete — **terminal** | `timestamp`, `message` |
+| 12 | `data_deletion` | — | 200 | Data deleted (manual `/delete` or retention expiry) | `status: "success"`, `deleted_objects: <int>`, `timestamp` |
 
-| event | bot_status | Notes |
-|---|---|---|
-| `bot.joining` | `Joining` | Fires at start. Up to 3× if MeetStream's server-side join retries kick in. |
-| `bot.inmeeting` | `InMeeting` | Fires when join succeeds. **At most once.** |
-| `bot.stopped` | `Stopped` / `NotAllowed` / `Denied` / `Error` | Terminal event. **Exactly once.** Failures surfaced via `bot_status`. |
+Each event fires **at most once** per bot, except `bot.joining` which may fire up to 3× if server-side join retries kick in.
 
-### Post-call processing events (after `bot.stopped`)
-
-| event | Extra payload fields |
-|---|---|
-| `audio.processed` | `audio_status: "Success"` |
-| `transcription.processed` | `transcript_status: "Success"` |
-| `video.processed` | `video_status: "Success"` |
-| `data_deletion` | `status: "success"`, `deleted_objects: <int>`, `timestamp` |
-
-Each post-call event sent **at most once**. No separate `*.failed` events — failures show up in `bot_status` on `bot.stopped`.
+> **Common envelope** — every event (except `participant_events.*`) includes `bot_id`, `event`, `message`, `status_code`, `custom_attributes`. **`timestamp` is NOT on every event** — only post-call events (7–12 in the table above). **`status_code` is NOT always 200** — failure events use 500. The previously-claimed "always 200" and "*.failed events do not exist" rules were both wrong.
 
 ### `transcript_id` is NOT in the webhook payload
 
-`transcription.processed` only signals timing. Fetch `transcript_id` from one of: the `create_bot` response, `bot_details.transcript_id` on `GET /bots/{bot_id}/detail`, or `GET /bots/{bot_id}/transcriptions`.
+`transcription.processed` only signals timing. Fetch `transcript_id` via the canonical path — `GET /bots/{bot_id}/detail` → `bot_details.transcript_id` (also available in the `create_bot` response and `GET /bots/{bot_id}/transcriptions`).
 
-### Sample payloads
+### Sample payloads (live-captured)
 
+**Lifecycle (`bot.joining` / `bot.inmeeting` / `bot.recording` / `bot.leaving` / `bot.stopped`)** — no `timestamp`:
 ```json
 {
   "event": "bot.joining",
-  "bot_id": "6667fd0c-0165-471a-a880-06a1180be377",
+  "bot_id": "dd451299-1471-49ae-b407-c91541242748",
   "bot_status": "Joining",
   "message": "Bot is joining the meeting",
   "status_code": 200,
-  "timestamp": "2026-02-27T07:11:51.863543+00:00",
-  "custom_attributes": {}
+  "custom_attributes": {"your_keys": "echoed back"}
 }
 ```
 
+**Recording:**
 ```json
 {
-  "bot_id": "5b0ff6e7-3cea-4c9f-a6b4-851c5f11cf4f",
-  "event": "transcription.processed",
-  "transcript_status": "Success",
-  "message": "Transcript processing completed successfully",
-  "status_code": 200
+  "event": "bot.recording",
+  "bot_id": "...",
+  "bot_status": "Recording",
+  "message": "Bot started recording",
+  "status_code": 200,
+  "custom_attributes": {...}
 }
 ```
 
+**`participant_events.leave`** — different shape:
 ```json
 {
-  "bot_id": "5b0ff6e7-3cea-4c9f-a6b4-851c5f11cf4f",
-  "event": "data_deletion",
+  "event": "participant_events.leave",
+  "timestamp": "2026-05-26T10:11:14.990Z",
+  "data": {
+    "data": {
+      "action": "leave",
+      "participant": {
+        "id": "spaces/.../devices/290",
+        "name": "Unknown",
+        "full_name": "Skill Audit Bot",
+        "platform": "gmeet"
+      },
+      "timestamp": {"relative": 50.792, "absolute": "2026-05-26T10:11:14.990Z"}
+    },
+    "bot": {"id": "...", "metadata": {}}
+  },
+  "custom_attributes": {...}
+}
+```
+
+**Post-call (`manifest.completed`, `audio.processed`, `transcription.processed`, `video.processed`)** — includes `timestamp` and `status`:
+```json
+{
+  "event": "audio.processed",
+  "bot_id": "...",
   "status": "success",
-  "message": "Bot data deleted successfully",
-  "deleted_objects": 5,
-  "timestamp": "2024-01-15T14:30:00Z",
+  "audio_status": "Success",
+  "message": "Audio processing completed successfully",
+  "status_code": 200,
+  "custom_attributes": {...},
+  "timestamp": "2026-05-26T10:11:23.018672+00:00"
+}
+```
+
+**Failure (`transcription.failed`)** — `status_code: 500`:
+```json
+{
+  "event": "transcription.failed",
+  "bot_id": "...",
+  "status": "error",
+  "transcript_status": "Failed",
+  "message": "Transcript processing error: Deepgram API error: 401",
+  "status_code": 500,
+  "custom_attributes": {...},
+  "timestamp": "2026-05-26T10:11:25.781273+00:00"
+}
+```
+
+**Terminal (`bot.done`)** — fires last:
+```json
+{
+  "event": "bot.done",
+  "bot_id": "...",
+  "bot_status": "Done",
+  "message": "Error: Transcript processing failed: Deepgram API error: 401",
+  "status_code": 500,
+  "timestamp": "2026-05-26T10:11:26.248022+00:00",
+  "custom_attributes": {...}
+}
+```
+
+**Data deletion** — fires after manual `DELETE /bots/{id}/delete` or retention expiry:
+```json
+{
+  "event": "data_deletion",
+  "bot_id": "...",
+  "status": "success",
+  "message": "Successfully deleted 7 objects for bot ...",
+  "deleted_objects": 7,
+  "timestamp": "2026-05-26T10:12:31.488763+00:00",
   "status_code": 200
 }
 ```
@@ -796,25 +866,29 @@ Default retention: `{ "type": "timed", "hours": 24 }`.
 
 ---
 
-## `automatic_leave` Schema
+## `automatic_leave` Schema — Recommended Defaults
 
 ```json
 {
   "automatic_leave": {
     "waiting_room_timeout": 600,
-    "everyone_left_timeout": 300,
-    "voice_inactivity_timeout": 100,
+    "everyone_left_timeout": 600,
+    "voice_inactivity_timeout": 600,
     "in_call_recording_timeout": 14400,
-    "recording_permission_denied_timeout": 60
+    "recording_permission_denied_timeout": 300
   }
 }
 ```
 
-All values in seconds. Defaults shown above. `recording_permission_denied_timeout` is Zoom-only per the prose docs.
+All values in seconds. Use these defaults unless you have a specific reason to deviate.
+
+- `in_call_recording_timeout`: **14400 (4 hours)** — the canonical default for full-length real meetings. Anything less risks the bot dropping out during long sessions.
+- All other timeouts: **600 seconds (10 min)** — prevents premature exit when someone is presenting silently, in the waiting room, or slow to grant Zoom recording permission.
+- `recording_permission_denied_timeout` is **Zoom-only** per the prose docs.
 
 > **Live-tested constraints (not in OpenAPI):**
 > - `in_call_recording_timeout` minimum is **600 seconds** — the API returns `HTTP 400: "in_call_recording_timeout must be at least 600 seconds"` for any value below 600. Verified by live API test.
-> - `recording_permission_denied_timeout` below 60 has been observed to return HTTP 400. Stick with 60+.
+> - `recording_permission_denied_timeout` accepted range is **60–300 seconds**. Below 60 returns HTTP 400; above 300 returns `HTTP 400: "recording_permission_denied_timeout must not exceed 300 seconds"`. Use 300 for max patience.
 
 ---
 

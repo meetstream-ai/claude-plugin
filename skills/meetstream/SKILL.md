@@ -110,15 +110,33 @@ Returns **HTTP 201 Created** with `BotResponse`:
 }
 ```
 
-**Where to get the `transcript_id` — three live-verified sources, pick any:**
+**How to fetch the transcript — canonical pattern:**
 
-1. **The `create_bot` response above** (for providers `assemblyai`, `deepgram`, `jigsawstack`, `sarvam`, `meetstream` — `null` for `meeting_captions`). Easiest path.
-2. **`GET /bots/{bot_id}/detail` → `bot_details.transcript_id`** (top-level on `bot_details`). This works after the fact and is also live-verified. NOTE: the OpenAPI spec `BotDetailsResponseBotDetails` does not enumerate this field, but the live API returns it. Trust the live API.
-3. **`GET /bots/{bot_id}/transcriptions`** — lists every transcription run for a bot with `{transcript_id, provider, status, created_at, config, download_urls}`. Use this when you've triggered re-transcription via `/transcribe` or need to list all runs.
+1. Wait for the `transcription.processed` webhook (signals readiness — but does **not** contain `transcript_id`)
+2. Call `GET /bots/{bot_id}/detail` → read `bot_details.transcript_id`
+3. Call `GET /transcript/{transcript_id}/get_transcript`
 
-For provider `meeting_captions`, all three places give you `transcript_id: null` — fetch the S3 caption file from `bot_details.caption_file` on `/detail` instead.
+This is **stateless** — no need to store `transcript_id` from `create_bot`. The webhook gives you `bot_id`; you derive the rest. Use this everywhere unless you have a specific reason to track ids manually.
 
-**`transcript_id` is NOT in the webhook payload.** The webhook (`transcription.processed`) signals **when** the transcript is ready but contains only `bot_id`, `event`, `transcript_status`, `message`, `status_code`. Use one of the three sources above to get the ID.
+```python
+# The whole flow, after webhook fires:
+detail = requests.get(f"{BASE}/bots/{bot_id}/detail", headers=H).json()
+tid = detail["bot_details"]["transcript_id"]
+segments = requests.get(f"{BASE}/transcript/{tid}/get_transcript", headers=H).json()
+```
+
+**Where `transcript_id` lives — all four live-verified sources:**
+
+| Source | When to use |
+|---|---|
+| `bot_details.transcript_id` on `GET /bots/{bot_id}/detail` | **Canonical / default path.** Stateless — `bot_id` from webhook is all you need. |
+| `BotResponse.transcript_id` in `create_bot` response | Available immediately on bot creation if you want to log it; not required. |
+| `GET /bots/{bot_id}/transcriptions` | Only when you've called `POST /bots/{bot_id}/transcribe` to re-transcribe with a different provider and need to list all runs. |
+| `POST /bots/{bot_id}/transcribe` response | When triggering a fresh transcription run. |
+
+For provider `meeting_captions`, all four give `transcript_id: null` — fetch the S3 caption file from `bot_details.caption_file` on `/detail` instead.
+
+**`transcript_id` is NOT in any webhook payload.** The `transcription.processed` webhook contains only `bot_id`, `event`, `transcript_status`, `message`, `status_code`. Use the canonical `/detail` pattern above to resolve it.
 
 Once you receive the `transcription.processed` webhook, fetch:
 ```
@@ -386,46 +404,92 @@ Supported providers: see `references/api-reference.md` MIA section.
 
 ---
 
-## Bot Lifecycle
+## Bot Lifecycle — Live-Verified
+
+Captured end-to-end from a real Google Meet bot run against `webhook.site`. The skill previously documented 7 events; **the live API actually emits 11+ events** in a richer sequence.
 
 ```
-create_bot → bot.joining → bot.inmeeting → [streams run]
-→ bot.stopped → audio.processed → transcription.processed → fetch data
+create_bot
+  → bot.joining          (Joining, 200)
+  → bot.inmeeting        (InMeeting, 200)
+  → bot.recording        (Recording, 200)        ← skill missed this
+  → participant_events.* (if realtime_endpoints configured; different payload shape)
+  → bot.leaving          (Leaving, 200)          ← skill missed this
+  → bot.stopped          (Stopped|NotAllowed|Denied|Error, 200)
+  → manifest.completed   (200; manifest_status=Success)   ← skill missed this
+  → audio.processed      (200; audio_status=Success)
+  → transcription.processed  OR  transcription.failed  ← skill said *.failed didn't exist; it DOES
+  → video.processed      OR  video.failed (presumed by symmetry)
+  → bot.done             (Done, 200|500)        ← skill missed this — TRUE terminal event
+  → data_deletion        (200) — only after DELETE /bots/{id}/delete or retention expiry
 ```
 
 Notes:
-- Every bot starts with `bot.joining`. If join succeeds you get `bot.inmeeting`; if it fails you may get `bot.stopped` directly with no `bot.inmeeting`.
-- `bot.inmeeting` and `bot.stopped` are sent **at most once** each.
-- `bot.joining` may fire up to **3 times** if MeetStream's server-side join retries kick in.
-- Post-call events (`audio.processed`, `transcription.processed`, `video.processed`, `data_deletion`) arrive asynchronously after `bot.stopped`, each at most once.
+- `bot.joining` may fire up to 3 times if server-side join retries kick in.
+- `bot.inmeeting`, `bot.recording`, `bot.leaving`, `bot.stopped`, `bot.done` each fire at most once per bot.
+- If the bot fails to join (NotAllowed / Denied), you may skip straight from `bot.joining` → `bot.stopped` with no `bot.inmeeting`, `bot.recording`, or `bot.leaving`.
+- **`bot.done` is the TRUE terminal event**, fired after all post-call processing completes (or fails). Use this — not `bot.stopped` — to mark a session fully done.
 - **Never fetch the transcript before `transcription.processed` fires.** Always set `callback_url`.
+
+### Full event reference
+
+| event | bot_status | status_code | When | Extra payload fields |
+|---|---|---|---|---|
+| `bot.joining` | `Joining` | 200 | Bot is connecting | — |
+| `bot.inmeeting` | `InMeeting` | 200 | Bot joined the meeting | — |
+| `bot.recording` | `Recording` | 200 | Recording started | — |
+| `participant_events.join` / `.leave` | — | — | Participants join/leave (requires `recording_config.realtime_endpoints`) | Nested: `data.data.action`, `data.data.participant.{id,name,full_name,platform}`, `data.data.timestamp.{relative,absolute}`, `data.bot.{id,metadata}`. No top-level `bot_id` or `bot_status`. |
+| `bot.leaving` | `Leaving` | 200 | Bot is leaving (e.g. removed by host, meeting ended) | — |
+| `bot.stopped` | `Stopped` / `NotAllowed` / `Denied` / `Error` | 200 | Bot exited the meeting | — |
+| `manifest.completed` | — | 200 | Platform manifest uploaded | `status: "success"`, `manifest_status: "Success"`, `timestamp` |
+| `audio.processed` | — | 200 | Audio ready to fetch | `status: "success"`, `audio_status: "Success"`, `timestamp` |
+| `transcription.processed` | — | 200 | Transcript ready (post-call providers) | `transcript_status: "Success"`, `timestamp` |
+| `transcription.failed` | — | **500** | Transcript failed (e.g. provider auth error) | `status: "error"`, `transcript_status: "Failed"`, `message` (error detail), `timestamp` |
+| `video.processed` | — | 200 | Video ready to fetch (`video_required: true`) | `video_status: "Success"`, `timestamp` |
+| `bot.done` | `Done` | 200 (or 500 if processing failed) | All processing complete — **terminal event** | `timestamp`, `message` (error detail if status_code=500) |
+| `data_deletion` | — | 200 | Data deleted (manual `/delete` or retention) | `status: "success"`, `deleted_objects: <int>`, `timestamp` |
+
+### `status_code` is NOT always 200
+
+Previous versions of this skill claimed `status_code` is always 200. **That is wrong.** Failure events (`transcription.failed`, `video.failed`, `bot.done` when processing errored) carry `status_code: 500`. Always branch on `event` first; use `status_code` only as a quick error indicator.
+
+### Lifecycle internal states (visible via `bot_details.StatusTimeline`)
+
+`StatusTimeline` on `/bots/{bot_id}/detail` shows every stage the bot passed through. Per live observation, the full set of stages is:
+
+`Scheduled`, `Joining`, `WaitingRoom`, `InMeeting`, `Recording`, `Leaving`, `Stopped`, `BotNotAllowed`, `BotRejected`, `Error`, `AudioProcessing`, `VideoProcessing`, `TranscriptionReady`, `Done`, `MediaExpired`
+
+Each entry is `{message, status, timestamp}`. `status: true` means that stage was reached; `false` means it wasn't (e.g. `BotRejected.status: false` if the bot wasn't rejected).
 
 ---
 
-## `automatic_leave` Timeouts
+## `automatic_leave` Timeouts — Recommended Defaults
 
 ```json
 {
   "automatic_leave": {
     "waiting_room_timeout": 600,
-    "everyone_left_timeout": 300,
-    "voice_inactivity_timeout": 100,
+    "everyone_left_timeout": 600,
+    "voice_inactivity_timeout": 600,
     "in_call_recording_timeout": 14400,
-    "recording_permission_denied_timeout": 60
+    "recording_permission_denied_timeout": 300
   }
 }
 ```
 
-All values in seconds. Defaults shown above.
-- `waiting_room_timeout` — wait in waiting room before leaving (default 600 / 10 min)
-- `everyone_left_timeout` — stay after everyone else leaves (default 300 / 5 min)
-- `voice_inactivity_timeout` — wait if no audio detected (default 100)
-- `in_call_recording_timeout` — max recording duration (default 14400 / 4 hr)
-- `recording_permission_denied_timeout` — wait if recording permission denied (default 60, **Zoom-only** per docs comment)
+All values in seconds. Use these defaults unless you have a specific reason to change them — they prevent the bot from dropping out of long real meetings.
+
+- `waiting_room_timeout` — wait in waiting room before leaving — **600s (10 min)**
+- `everyone_left_timeout` — stay after everyone else leaves — **600s (10 min)**
+- `voice_inactivity_timeout` — wait if no audio detected (someone could be presenting silently) — **600s (10 min)**
+- `in_call_recording_timeout` — max recording duration — **14400s (4 hours)**, the canonical default for full-length meetings
+- `recording_permission_denied_timeout` — wait if recording permission denied (**Zoom-only**) — **300s (5 min)** — this is the max the API allows (range is 60–300)
 
 > **Live-tested constraints (not in OpenAPI spec):**
-> - `in_call_recording_timeout` minimum is **600 seconds** — the live API returns `HTTP 400: "in_call_recording_timeout must be at least 600 seconds"` below that. The OpenAPI default of 14400 is fine.
-> - `recording_permission_denied_timeout` below 60 has been seen to return HTTP 400. Stick with 60+.
+> - `in_call_recording_timeout` minimum is **600 seconds** — the live API returns `HTTP 400: "in_call_recording_timeout must be at least 600 seconds"` below that.
+> - `recording_permission_denied_timeout` accepted range is **60–300 seconds** (live-verified). Below 60 returns HTTP 400; above 300 returns `HTTP 400: "recording_permission_denied_timeout must not exceed 300 seconds"`. Use 300 (the max) for maximum patience.
+
+**Why 14400 for `in_call_recording_timeout` specifically:** real meetings often run longer than 30 minutes. Defaulting to anything less risks the bot disconnecting while people are still talking. 4 hours is the canonical safe value for full-length sales / interview / workshop sessions.
 
 Without these defaults, a stuck bot can sit in a meeting indefinitely.
 
@@ -530,44 +594,68 @@ Specified under `recording_config.transcript.provider`. Use **exactly one** prov
 
 ### Webhook payload shape
 
+**Lifecycle events** (`bot.joining`/`bot.inmeeting`/`bot.recording`/`bot.leaving`/`bot.stopped`) — minimal envelope, **no `timestamp`**:
 ```json
 {
   "event": "bot.joining",
-  "bot_id": "6667fd0c-0165-471a-a880-06a1180be377",
+  "bot_id": "dd451299-1471-49ae-b407-c91541242748",
   "bot_status": "Joining",
   "message": "Bot is joining the meeting",
   "status_code": 200,
-  "timestamp": "2026-02-27T07:11:51.863543+00:00",
-  "custom_attributes": {}
+  "custom_attributes": { "your_keys": "echoed back" }
 }
 ```
 
-`status_code` is **always 200** for every event. Branch on `event` and `bot_status`, not `status_code`.
+**Post-call events** (`manifest.completed`, `audio.processed`, `transcription.processed`, `transcription.failed`, `video.processed`, `bot.done`, `data_deletion`) — include `timestamp` and may include `status: "success"|"error"`:
+```json
+{
+  "event": "transcription.failed",
+  "bot_id": "...",
+  "status": "error",
+  "transcript_status": "Failed",
+  "message": "Transcript processing error: Deepgram API error: 401",
+  "status_code": 500,
+  "custom_attributes": {...},
+  "timestamp": "2026-05-26T10:11:25.781273+00:00"
+}
+```
 
-### Event types
+**Important — live-verified, contradicting earlier skill claims:**
+- `timestamp` is NOT on every event. Only post-call events have it.
+- `status_code` is NOT always 200. Failure events use 500.
+- `participant_events.*` payload has a different structure — `bot_id` is nested under `data.bot.id`, no top-level `bot_status`.
+- Branch on `event` first.
 
-| event | When it fires | Extra payload fields |
-|---|---|---|
-| `bot.joining` | Bot is connecting | — |
-| `bot.inmeeting` | Bot joined and is recording | — |
-| `bot.stopped` | Bot lifecycle ended (read `bot_status` for reason) | — |
-| `audio.processed` | Audio ready | `audio_status: "Success"` |
-| `transcription.processed` | Transcript ready | `transcript_status: "Success"` |
-| `video.processed` | Video ready | `video_status: "Success"` |
-| `data_deletion` | Bot data deleted (retention or manual) | `status: "success"`, `deleted_objects: <int>`, `timestamp` |
+### Event types (see live-verified table in [Bot Lifecycle](#bot-lifecycle--live-verified))
+
+12+ events: `bot.joining`, `bot.inmeeting`, **`bot.recording`**, `participant_events.*`, **`bot.leaving`**, `bot.stopped`, **`manifest.completed`**, `audio.processed`, `transcription.processed`, **`transcription.failed`**, `video.processed`, **`bot.done`**, `data_deletion`. Bold = added based on live testing.
 
 ### `bot_status` values
 
-| bot_status | Event | Meaning |
+| bot_status | Event(s) | Meaning |
 |---|---|---|
 | `Joining` | `bot.joining` | Bot is connecting |
-| `InMeeting` | `bot.inmeeting` | Bot is in the meeting and recording |
-| `Stopped` | `bot.stopped` | Normal exit (meeting ended, removed via API, everyone left, voice timeout, host removed) |
-| `NotAllowed` | `bot.stopped` | Could not join (commonly waiting room / lobby timeout) |
+| `InMeeting` | `bot.inmeeting` | Bot is in the meeting |
+| `Recording` | `bot.recording` | Recording active |
+| `Leaving` | `bot.leaving` | Bot is leaving in progress |
+| `Stopped` | `bot.stopped` | Normal exit (meeting ended, removed via API, voice timeout, host removed) |
+| `NotAllowed` | `bot.stopped` | Could not join (waiting-room / lobby timeout) |
 | `Denied` | `bot.stopped` | Host denied join or recording permission |
 | `Error` | `bot.stopped` | Unexpected error during lifecycle |
+| `Done` | `bot.done` | All processing complete — **terminal** |
 
-Failures are surfaced via `bot_status` on `bot.stopped` — there are **no** `audio.failed` / `transcription.failed` / `video.failed` events.
+### `*.failed` events DO exist (skill previously claimed they didn't)
+
+Live-verified: `transcription.failed` is a real event with `status_code: 500`, `transcript_status: "Failed"`, and `message` carrying the upstream error (e.g. provider auth failure). Handle these in your router:
+
+```python
+elif event_type == "transcription.failed":
+    log_error(f"Transcript failed for bot {bot_id}: {payload.get('message')}")
+elif event_type == "bot.done" and payload.get("status_code") == 500:
+    log_error(f"Bot finished with error: {payload.get('message')}")
+```
+
+Symmetric `audio.failed` and `video.failed` aren't yet observed but should be assumed to exist by the same pattern.
 
 ### Webhook signature verification (optional)
 
@@ -596,7 +684,7 @@ After the relevant `*.processed` event fires:
 | Per-participant audio streams | `GET /bots/{bot_id}/get_audio_streams` | Per-segment URLs **valid 10 minutes**; returns 202 while bot is still in meeting |
 | Per-participant recording streams | `GET /bots/{bot_id}/get_recording_streams` | Per-segment URLs **valid 10 minutes**; includes both `participants[]` and `screenshares[]` |
 | Participant list | `GET /bots/{bot_id}/get_participants` | Returns a top-level array of `{deviceId, displayName, fullName, profilePicture, status, humanized_status, streamIds[], lastUpdated, parentDeviceId?}` |
-| Session metadata | `GET /bots/{bot_id}/detail` | Returns `bot_details` with (live-verified): BotID, BotImageURL, BotMessage, BotProfile, BotUsername, CreatedAt, Duration, EndTime, LastUpdatedAt, ManifestStatus, MediaS3Bucket, MeetingLink, NativeSTT, OfferingType, Platform, PlatformCreatedAt, PlatformStatusCreatedAt, RequestPayload, StartTime, Status, StatusCreatedAt, StatusTimeline, UserID, AudioStatus, caption_file (S3 link for native captions), participant_events, custom_attributes, **and `transcript_id`** (top-level, populated when a post-call provider is set — not enumerated in OpenAPI but returned live). |
+| Session metadata | `GET /bots/{bot_id}/detail` | Returns `bot_details` with (live-verified): BotID, BotImageURL, BotMessage, BotProfile, BotUsername, CreatedAt, Duration, EndTime, LastUpdatedAt, ManifestStatus, MediaS3Bucket, MeetingLink, NativeSTT, OfferingType, Platform, PlatformCreatedAt, PlatformStatusCreatedAt, RequestPayload, StartTime, Status, StatusCreatedAt, **StatusTimeline** (per-stage `{message, status, timestamp}` map), AudioStatus, TranscriptStatus, UserID, caption_file (S3 link for native captions), participant_events, custom_attributes, **and `transcript_id`** (top-level — populated when a post-call provider is set, not enumerated in OpenAPI but returned live). |
 | Screenshots | `GET /bots/{bot_id}/get_screenshots` | |
 | Summary (if generated) | `GET /bots/{bot_id}/summary` | (Path is `/summary`, not `/get_summary`.) |
 
@@ -637,7 +725,7 @@ Manually delete: `DELETE /bots/{bot_id}/delete` — fires the `data_deletion` ca
 7. **Using `audio_required` on `create_bot`** — not in the OpenAPI schema. Audio is captured by default. (It DOES exist for calendar-scheduled `bot_config`.)
 8. **Skipping `bot_name`** — it's required, not optional.
 9. **Assuming `video_required` defaults to false** — it defaults to `true`. Set it to `false` for transcript-only workflows or you'll burn storage.
-10. **Branching on `status_code`** — it's always 200. Branch on `event` and `bot_status`.
+10. **Assuming `status_code` is always 200** — it's 200 for success events, 500 for failure events (e.g. `transcription.failed`, `bot.done` when processing errored). Branch on `event` first.
 11. **Expecting webhook retries** — there are none. Always return 2xx, queue work asynchronously, dedupe by `{bot_id, event, timestamp}`.
 12. **Using `websocket_url` for live transcription** — `live_transcription_required` accepts only `webhook_url` (HTTPS POST). The `websocket_url` field is for `live_audio_required`, `live_video_required`, and `socket_connection_url`.
 13. **Sending WAV blobs over `sendaudio`** — bot expects raw PCM16 LE @ 48000 Hz mono, base64-encoded. No WAV header. Resample if your source isn't 48 kHz.

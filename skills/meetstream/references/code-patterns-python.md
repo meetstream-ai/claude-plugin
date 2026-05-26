@@ -24,18 +24,18 @@ HEADERS = {
     "Content-Type": "application/json"
 }
 
-# transcript_id is in the create_bot response (NOT the webhook payload, NOT /detail).
-# Persist this to Redis/Postgres in production — in-memory only for demo.
-TRANSCRIPT_IDS: dict[str, str] = {}
-TRANSCRIPT_IDS_LOCK = threading.Lock()
-
-# Idempotency dedup
+# Idempotency dedup for webhooks (no automatic retries, but defense in depth)
 SEEN_EVENTS: set[str] = set()
 SEEN_EVENTS_LOCK = threading.Lock()
 
 
-def create_bot(meeting_link: str, callback_url: str) -> tuple[str, str | None]:
-    """Send a bot to a meeting. Returns (bot_id, transcript_id_or_None)."""
+def create_bot(meeting_link: str, callback_url: str) -> str:
+    """Send a bot to a meeting. Returns bot_id.
+
+    Note: BotResponse also includes transcript_id, but we don't need to store it.
+    The canonical fetch flow uses bot_details.transcript_id which gives the same
+    value statelessly when we need it later.
+    """
     resp = requests.post(f"{BASE_URL}/bots/create_bot", headers=HEADERS, json={
         "meeting_link": meeting_link,
         "bot_name": "Recorder",
@@ -49,63 +49,36 @@ def create_bot(meeting_link: str, callback_url: str) -> tuple[str, str | None]:
         },
         "automatic_leave": {
             "waiting_room_timeout": 600,
-            "everyone_left_timeout": 300,
-            "voice_inactivity_timeout": 100,
+            "everyone_left_timeout": 600,
+            "voice_inactivity_timeout": 600,
             "in_call_recording_timeout": 14400,
-            "recording_permission_denied_timeout": 60
+            "recording_permission_denied_timeout": 300
         }
     })
     resp.raise_for_status()
     data = resp.json()
-
-    # BotResponse: {bot_id, transcript_id (None for meeting_captions), meeting_url, status}
-    bot_id = data["bot_id"]
-    transcript_id = data.get("transcript_id")
-    if transcript_id:
-        with TRANSCRIPT_IDS_LOCK:
-            TRANSCRIPT_IDS[bot_id] = transcript_id
-    print(f"Bot created: {bot_id} (transcript_id: {transcript_id or 'null'})")
-    return bot_id, transcript_id
-
-
-def resolve_transcript_id(bot_id: str) -> str:
-    """Get transcript_id from cache, bot_details.transcript_id, or /transcriptions list."""
-    with TRANSCRIPT_IDS_LOCK:
-        if bot_id in TRANSCRIPT_IDS:
-            return TRANSCRIPT_IDS[bot_id]
-
-    # Live-verified fast path: bot_details.transcript_id
-    # (Not in OpenAPI schema but returned by the live API. Single round trip.)
-    try:
-        resp = requests.get(f"{BASE_URL}/bots/{bot_id}/detail", headers=HEADERS, timeout=10)
-        resp.raise_for_status()
-        tid = (resp.json().get("bot_details") or {}).get("transcript_id")
-        if tid:
-            with TRANSCRIPT_IDS_LOCK:
-                TRANSCRIPT_IDS[bot_id] = tid
-            return tid
-    except requests.RequestException:
-        pass
-
-    # Fallback: list every transcription run (useful after /transcribe re-runs)
-    resp = requests.get(f"{BASE_URL}/bots/{bot_id}/transcriptions", headers=HEADERS)
-    resp.raise_for_status()
-    for t in resp.json().get("transcriptions", []):
-        if t.get("status") == "Success":
-            with TRANSCRIPT_IDS_LOCK:
-                TRANSCRIPT_IDS[bot_id] = t["transcript_id"]
-            return t["transcript_id"]
-    raise RuntimeError(f"No completed transcript for bot {bot_id}")
+    print(f"Bot created: {data['bot_id']} (HTTP {resp.status_code}, status={data.get('status')})")
+    return data["bot_id"]
 
 
 def get_transcript(bot_id: str) -> list[dict]:
-    """Fetch full transcript. Call only after transcription.processed fires.
+    """Stateless transcript fetch. Call only after transcription.processed fires.
+
+    Two API calls:
+      1. GET /bots/{bot_id}/detail → bot_details.transcript_id  (canonical, live-verified)
+      2. GET /transcript/{transcript_id}/get_transcript
 
     Returns a list of segment dicts. Per the OpenAPI GetTranscriptionSchema,
     the response is a TOP-LEVEL JSON ARRAY (not an envelope), and the
     per-segment text field is 'transcript' (not 'text').
     """
-    transcript_id = resolve_transcript_id(bot_id)
+    detail_resp = requests.get(f"{BASE_URL}/bots/{bot_id}/detail", headers=HEADERS)
+    detail_resp.raise_for_status()
+    transcript_id = (detail_resp.json().get("bot_details") or {}).get("transcript_id")
+    if not transcript_id:
+        # meeting_captions provider or no transcription configured
+        raise RuntimeError(f"No transcript_id on bot_details for {bot_id} — check provider")
+
     resp = requests.get(f"{BASE_URL}/transcript/{transcript_id}/get_transcript", headers=HEADERS)
     resp.raise_for_status()
     return resp.json()  # list[{speaker, transcript, start_time, end_time, words[]}]
@@ -140,28 +113,54 @@ def webhook():
 
         print(f"Event: {event_type} | Bot: {bot_id} | Status: {bot_status or '-'}")
 
-        if event_type == "bot.inmeeting":
+        # Lifecycle events (in order — all live-verified)
+        if event_type == "bot.joining":
+            print(f"Bot {bot_id} connecting...")
+        elif event_type == "bot.inmeeting":
             print(f"Bot {bot_id} joined the meeting")
-
+        elif event_type == "bot.recording":
+            print(f"Bot {bot_id} started recording")
+        elif event_type == "bot.leaving":
+            print(f"Bot {bot_id} is leaving")
         elif event_type == "bot.stopped":
             if bot_status == "Stopped":
                 print(f"Bot {bot_id} exited normally — waiting for processing events...")
             else:
-                # NotAllowed / Denied / Error are surfaced HERE, not via *.failed events
+                # NotAllowed / Denied / Error surfaced via bot_status here
                 print(f"Bot {bot_id} did not join cleanly: {bot_status} — {event.get('message')}")
 
+        # Post-call processing events
+        elif event_type == "manifest.completed":
+            print(f"Manifest uploaded for bot {bot_id}")
+        elif event_type == "audio.processed":
+            print(f"Audio ready for bot {bot_id}")
+        elif event_type == "video.processed":
+            print(f"Video ready for bot {bot_id}")
         elif event_type == "transcription.processed":
-            # NOTE: transcript_id is NOT in this payload. Resolve from cache or /transcriptions.
+            # transcript_id is NOT in this payload — resolve via bot_details.transcript_id
             segments = get_transcript(bot_id)
             for seg in segments:
                 # Per-segment text field is 'transcript', NOT 'text'
                 print(f"[{seg['speaker']}] {seg['transcript']}")
+        elif event_type == "transcription.failed":
+            # Live-verified failure event with status_code=500
+            print(f"Transcription FAILED for bot {bot_id}: {event.get('message')}")
 
-        elif event_type == "audio.processed":
-            print(f"Audio ready for bot {bot_id}")
+        # Terminal
+        elif event_type == "bot.done":
+            if event.get("status_code") == 200:
+                print(f"Bot {bot_id} done successfully")
+            else:
+                print(f"Bot {bot_id} done with error: {event.get('message')}")
 
         elif event_type == "data_deletion":
             print(f"Bot {bot_id} data deleted ({event.get('deleted_objects', 0)} objects)")
+
+        elif event_type and event_type.startswith("participant_events."):
+            # Different payload shape — bot_id is under data.bot.id
+            inner = event.get("data", {}).get("data", {})
+            p = inner.get("participant", {})
+            print(f"{inner.get('action')}: {p.get('full_name')} ({p.get('platform')})")
 
     except Exception as e:
         # Log but still return 200 — no retries on non-2xx
@@ -224,9 +223,9 @@ def create_realtime_bot(meeting_link: str, webhook_url: str) -> str:
         },
         "automatic_leave": {
             "waiting_room_timeout": 600,
-            "everyone_left_timeout": 300,
+            "everyone_left_timeout": 600,
             "in_call_recording_timeout": 14400,
-            "recording_permission_denied_timeout": 60
+            "recording_permission_denied_timeout": 300
         }
     })
     resp.raise_for_status()
@@ -294,8 +293,8 @@ def create_interactive_bot(meeting_link: str, control_ws_url: str) -> str:
         "socket_connection_url": {"websocket_url": control_ws_url},
         "automatic_leave": {
             "waiting_room_timeout": 600,
-            "everyone_left_timeout": 300,
-            "recording_permission_denied_timeout": 60
+            "everyone_left_timeout": 600,
+            "recording_permission_denied_timeout": 300
         }
     })
     resp.raise_for_status()
@@ -692,8 +691,6 @@ MEETSTREAM_HEADERS = {
 }
 openai_client = OpenAI(api_key=OPENAI_API_KEY)
 
-TRANSCRIPT_IDS: dict[str, str] = {}
-LOCK = threading.Lock()
 SEEN_EVENTS: set[str] = set()
 
 
@@ -724,49 +721,28 @@ def join_meeting(meeting_link: str, callback_url: str) -> str:
         },
         "automatic_leave": {
             "waiting_room_timeout": 600,
-            "everyone_left_timeout": 300,
-            "voice_inactivity_timeout": 100,
+            "everyone_left_timeout": 600,
+            "voice_inactivity_timeout": 600,
             "in_call_recording_timeout": 14400,
-            "recording_permission_denied_timeout": 60
+            "recording_permission_denied_timeout": 300
         }
     })
     resp.raise_for_status()
-    data = resp.json()
-    if data.get("transcript_id"):
-        with LOCK:
-            TRANSCRIPT_IDS[data["bot_id"]] = data["transcript_id"]
-    return data["bot_id"]
+    return resp.json()["bot_id"]
 
 
-def resolve_transcript_id(bot_id: str) -> str:
-    with LOCK:
-        if bot_id in TRANSCRIPT_IDS:
-            return TRANSCRIPT_IDS[bot_id]
-
-    # Live-verified fast path: bot_details.transcript_id
-    try:
-        resp = requests.get(f"{BASE_URL}/bots/{bot_id}/detail", headers=MEETSTREAM_HEADERS, timeout=10)
-        resp.raise_for_status()
-        tid = (resp.json().get("bot_details") or {}).get("transcript_id")
-        if tid:
-            with LOCK:
-                TRANSCRIPT_IDS[bot_id] = tid
-            return tid
-    except requests.RequestException:
-        pass
-
-    resp = requests.get(f"{BASE_URL}/bots/{bot_id}/transcriptions", headers=MEETSTREAM_HEADERS)
+def get_transcript_id(bot_id: str) -> str:
+    """Canonical stateless transcript_id lookup via bot_details."""
+    resp = requests.get(f"{BASE_URL}/bots/{bot_id}/detail", headers=MEETSTREAM_HEADERS)
     resp.raise_for_status()
-    for t in resp.json().get("transcriptions", []):
-        if t.get("status") == "Success":
-            with LOCK:
-                TRANSCRIPT_IDS[bot_id] = t["transcript_id"]
-            return t["transcript_id"]
-    raise RuntimeError(f"No completed transcript for bot {bot_id}")
+    tid = (resp.json().get("bot_details") or {}).get("transcript_id")
+    if not tid:
+        raise RuntimeError(f"No transcript_id on bot_details for {bot_id}")
+    return tid
 
 
 def fetch_and_summarize(bot_id: str) -> str:
-    transcript_id = resolve_transcript_id(bot_id)
+    transcript_id = get_transcript_id(bot_id)
     resp = requests.get(
         f"{BASE_URL}/transcript/{transcript_id}/get_transcript",
         headers=MEETSTREAM_HEADERS

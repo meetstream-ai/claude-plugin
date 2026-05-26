@@ -23,14 +23,13 @@ const headers = {
   'Content-Type': 'application/json'
 }
 
-// transcript_id is returned in the create_bot response — store it.
-// (It is NOT in the webhook payload, and NOT in /bots/{id}/detail.)
-const transcriptIds = new Map<string, string>()
-
 // Idempotency dedup for webhooks (no automatic retries, but defense in depth)
 const seenEvents = new Set<string>()
 
-async function createBot(meetingLink: string, callbackUrl: string): Promise<{ botId: string; transcriptId: string | null }> {
+async function createBot(meetingLink: string, callbackUrl: string): Promise<string> {
+  // We don't need to store transcript_id from the response. The canonical
+  // fetch flow uses bot_details.transcript_id at retrieval time, so the
+  // create call only needs to return the bot_id.
   const { data } = await axios.post(`${BASE_URL}/bots/create_bot`, {
     meeting_link: meetingLink,
     bot_name: 'Recorder',
@@ -44,44 +43,27 @@ async function createBot(meetingLink: string, callbackUrl: string): Promise<{ bo
     },
     automatic_leave: {
       waiting_room_timeout: 600,
-      everyone_left_timeout: 300,
-      voice_inactivity_timeout: 100,
+      everyone_left_timeout: 600,
+      voice_inactivity_timeout: 600,
       in_call_recording_timeout: 14400,
-      recording_permission_denied_timeout: 60
+      recording_permission_denied_timeout: 300
     }
   }, { headers })
 
-  // BotResponse: { bot_id, transcript_id (null for meeting_captions), meeting_url, status }
-  console.log(`Bot created: ${data.bot_id} (transcript_id: ${data.transcript_id ?? 'null'})`)
-  if (data.transcript_id) transcriptIds.set(data.bot_id, data.transcript_id)
-  return { botId: data.bot_id, transcriptId: data.transcript_id ?? null }
-}
-
-async function resolveTranscriptId(botId: string): Promise<string> {
-  const cached = transcriptIds.get(botId)
-  if (cached) return cached
-
-  // Fastest path: bot_details.transcript_id (live-verified — not in OpenAPI schema
-  // but returned by the API. One round trip vs. /transcriptions which lists all runs.)
-  try {
-    const { data: detail } = await axios.get(`${BASE_URL}/bots/${botId}/detail`, { headers })
-    const tid = detail?.bot_details?.transcript_id
-    if (tid) {
-      transcriptIds.set(botId, tid)
-      return tid
-    }
-  } catch { /* fall through to /transcriptions */ }
-
-  // Fallback: list all transcription runs for the bot (useful if you've called /transcribe to re-transcribe)
-  const { data } = await axios.get(`${BASE_URL}/bots/${botId}/transcriptions`, { headers })
-  const successful = (data.transcriptions ?? []).find((t: any) => t.status === 'Success')
-  if (!successful) throw new Error(`No completed transcript for bot ${botId}`)
-  transcriptIds.set(botId, successful.transcript_id)
-  return successful.transcript_id
+  // BotResponse fields: { bot_id, transcript_id, meeting_url, status }
+  console.log(`Bot created: ${data.bot_id} (status=${data.status})`)
+  return data.bot_id
 }
 
 async function getTranscript(botId: string): Promise<any[]> {
-  const transcriptId = await resolveTranscriptId(botId)
+  // Stateless flow — two API calls, no in-memory state:
+  //   1) GET /bots/{bot_id}/detail → bot_details.transcript_id (canonical)
+  //   2) GET /transcript/{transcript_id}/get_transcript
+  const { data: detail } = await axios.get(`${BASE_URL}/bots/${botId}/detail`, { headers })
+  const transcriptId = detail?.bot_details?.transcript_id
+  if (!transcriptId) {
+    throw new Error(`No transcript_id on bot_details for ${botId} — likely meeting_captions provider or no transcription configured`)
+  }
   // Response is a top-level JSON array of segments per the OpenAPI spec.
   const { data } = await axios.get(`${BASE_URL}/transcript/${transcriptId}/get_transcript`, { headers })
   return data  // Array<{speaker, transcript, start_time, end_time, words[]}>
@@ -99,16 +81,56 @@ app.post('/webhook', async (req: Request, res: Response) => {
   console.log(`Event: ${event} | Bot: ${bot_id} | Status: ${bot_status ?? '-'}`)
 
   try {
-    if (event === 'transcription.processed') {
-      const segments = await getTranscript(bot_id)
-      for (const seg of segments) {
-        // Per-segment text field is `transcript`, NOT `text`
-        console.log(`[${seg.speaker}] ${seg.transcript}`)
+    // Lifecycle events (live-verified order):
+    //   bot.joining → bot.inmeeting → bot.recording → bot.leaving → bot.stopped
+    //   → manifest.completed → audio.processed → transcription.processed (or .failed)
+    //   → video.processed → bot.done → data_deletion (after manual /delete)
+    switch (event) {
+      case 'bot.joining':    console.log(`Bot ${bot_id} connecting...`); break
+      case 'bot.inmeeting':  console.log(`Bot ${bot_id} joined the meeting`); break
+      case 'bot.recording':  console.log(`Bot ${bot_id} started recording`); break
+      case 'bot.leaving':    console.log(`Bot ${bot_id} is leaving`); break
+
+      case 'bot.stopped':
+        if (bot_status !== 'Stopped') {
+          // NotAllowed / Denied / Error surfaced via bot_status here
+          console.error(`Bot did not exit cleanly: ${bot_status} — ${req.body.message}`)
+        }
+        break
+
+      case 'manifest.completed': console.log(`Manifest uploaded for ${bot_id}`); break
+      case 'audio.processed':    console.log(`Audio ready for ${bot_id}`); break
+      case 'video.processed':    console.log(`Video ready for ${bot_id}`); break
+
+      case 'transcription.processed': {
+        // transcript_id is NOT in this payload — resolve via bot_details.transcript_id
+        const segments = await getTranscript(bot_id)
+        for (const seg of segments) {
+          console.log(`[${seg.speaker}] ${seg.transcript}`)  // field is `transcript`, not `text`
+        }
+        break
       }
-    } else if (event === 'bot.stopped' && bot_status !== 'Stopped') {
-      // NotAllowed / Denied / Error are surfaced via bot_status here.
-      // There are no separate *.failed events.
-      console.error(`Bot did not exit cleanly: bot_status=${bot_status}, message=${req.body.message}`)
+
+      case 'transcription.failed':
+        // Live-verified failure event — status_code=500
+        console.error(`Transcription FAILED for ${bot_id}: ${req.body.message}`)
+        break
+
+      case 'bot.done':
+        if (req.body.status_code === 200) console.log(`Bot ${bot_id} done successfully`)
+        else console.error(`Bot ${bot_id} done with error: ${req.body.message}`)
+        break
+
+      case 'data_deletion':
+        console.log(`Bot ${bot_id} data deleted (${req.body.deleted_objects} objects)`)
+        break
+
+      default:
+        if (event?.startsWith('participant_events.')) {
+          // Different shape: bot_id under data.bot.id, action under data.data.action
+          const inner = req.body?.data?.data
+          console.log(`${inner?.action}: ${inner?.participant?.full_name} (${inner?.participant?.platform})`)
+        }
     }
   } catch (err) {
     console.error('Handler error (already 200ed):', err)
@@ -204,9 +226,9 @@ async function createRealtimeBot(meetingLink: string, webhookUrl: string): Promi
     },
     automatic_leave: {
       waiting_room_timeout: 600,
-      everyone_left_timeout: 300,
+      everyone_left_timeout: 600,
       in_call_recording_timeout: 14400,
-      recording_permission_denied_timeout: 60
+      recording_permission_denied_timeout: 300
     }
   }, { headers })
 
@@ -387,8 +409,8 @@ async function createInteractiveBot(meetingLink: string, controlWsUrl: string): 
     socket_connection_url: { websocket_url: controlWsUrl },
     automatic_leave: {
       waiting_room_timeout: 600,
-      everyone_left_timeout: 300,
-      recording_permission_denied_timeout: 60
+      everyone_left_timeout: 600,
+      recording_permission_denied_timeout: 300
     }
   }, { headers })
   return data.bot_id
@@ -416,36 +438,19 @@ const meetstreamHeaders = {
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
-// In production, persist this to Redis / Postgres — in-memory only for demo
-const transcriptIdCache = new Map<string, string>()
+// Idempotency dedup — in production, persist to Redis / Postgres
 const seenEvents = new Set<string>()
 
-async function findTranscriptId(botId: string): Promise<string> {
-  const cached = transcriptIdCache.get(botId)
-  if (cached) return cached
-
-  // Live-verified fast path: bot_details.transcript_id
-  try {
-    const { data: detail } = await axios.get(`${BASE_URL}/bots/${botId}/detail`, { headers: meetstreamHeaders })
-    const tid = detail?.bot_details?.transcript_id
-    if (tid) {
-      transcriptIdCache.set(botId, tid)
-      return tid
-    }
-  } catch { /* fall through */ }
-
-  const { data } = await axios.get(
-    `${BASE_URL}/bots/${botId}/transcriptions`,
+async function generateSummary(botId: string): Promise<string> {
+  // Stateless transcript fetch: /detail → bot_details.transcript_id → /transcript
+  const { data: detail } = await axios.get(
+    `${BASE_URL}/bots/${botId}/detail`,
     { headers: meetstreamHeaders }
   )
-  const successful = (data.transcriptions ?? []).find((t: any) => t.status === 'Success')
-  if (!successful) throw new Error(`No completed transcript for bot ${botId}`)
-  transcriptIdCache.set(botId, successful.transcript_id)
-  return successful.transcript_id
-}
-
-async function generateSummary(botId: string): Promise<string> {
-  const transcriptId = await findTranscriptId(botId)
+  const transcriptId = detail?.bot_details?.transcript_id
+  if (!transcriptId) {
+    throw new Error(`No transcript_id on bot_details for ${botId}`)
+  }
 
   // Response is a top-level array of segments. Per-segment text is `transcript`.
   const { data: segments } = await axios.get(
@@ -938,7 +943,8 @@ app.post('/webhook', (req: Request, res: Response) => {
 ## Utility: Poll Bot Status
 
 ```typescript
-async function waitForTranscript(botId: string, transcriptId: string | null, timeoutMs = 600_000): Promise<any[]> {
+async function waitForTranscript(botId: string, timeoutMs = 600_000): Promise<any[]> {
+  // Stateless polling — uses bot_details.transcript_id, no transcript_id arg needed
   const start = Date.now()
   const h = { 'Authorization': `Token ${process.env.MEETSTREAM_API_KEY}` }
 
@@ -950,28 +956,19 @@ async function waitForTranscript(botId: string, transcriptId: string | null, tim
     console.log(`Status: ${statusData.status}`)
 
     if (['Stopped', 'NotAllowed', 'Denied', 'Error'].includes(statusData.status)) {
-      let tid = transcriptId
-      if (!tid) {
-        // Live-verified: bot_details.transcript_id (one round trip)
-        try {
-          const { data: detail } = await axios.get(`https://api.meetstream.ai/api/v1/bots/${botId}/detail`, { headers: h })
-          tid = detail?.bot_details?.transcript_id ?? null
-        } catch { /* fall through */ }
-      }
-      if (!tid) {
-        const { data: list } = await axios.get(
-          `https://api.meetstream.ai/api/v1/bots/${botId}/transcriptions`,
-          { headers: h }
-        )
-        const ok = (list.transcriptions ?? []).find((t: any) => t.status === 'Success')
-        if (ok) tid = ok.transcript_id
-      }
+      const { data: detail } = await axios.get(
+        `https://api.meetstream.ai/api/v1/bots/${botId}/detail`,
+        { headers: h }
+      )
+      const tid = detail?.bot_details?.transcript_id
       if (tid) {
-        const { data: segments } = await axios.get(
-          `https://api.meetstream.ai/api/v1/transcript/${tid}/get_transcript`,
-          { headers: h }
-        )
-        return segments  // top-level array
+        try {
+          const { data: segments } = await axios.get(
+            `https://api.meetstream.ai/api/v1/transcript/${tid}/get_transcript`,
+            { headers: h }
+          )
+          return segments  // top-level array
+        } catch { /* not ready yet, keep polling */ }
       }
     }
 
