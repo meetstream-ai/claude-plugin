@@ -56,17 +56,35 @@ async function createBot(meetingLink: string, callbackUrl: string): Promise<stri
 }
 
 async function getTranscript(botId: string): Promise<any[]> {
-  // Stateless flow — two API calls, no in-memory state:
-  //   1) GET /bots/{bot_id}/detail → bot_details.transcript_id (canonical)
+  // Stateless live-verified safe flow:
+  //   1) GET /bots/{bot_id}/detail → check bot_details.TranscriptStatus (authoritative)
+  //      and read bot_details.transcript_id
   //   2) GET /transcript/{transcript_id}/get_transcript
+  //      - HTTP 200 → top-level array (success)
+  //      - HTTP 202 → dict {message} — back off, retry later
+  //   3) If TranscriptStatus === 'Failed', throw — get_transcript otherwise returns 202 forever
   const { data: detail } = await axios.get(`${BASE_URL}/bots/${botId}/detail`, { headers })
-  const transcriptId = detail?.bot_details?.transcript_id
-  if (!transcriptId) {
-    throw new Error(`No transcript_id on bot_details for ${botId} — likely meeting_captions provider or no transcription configured`)
+  const bd = detail?.bot_details ?? {}
+
+  // Authoritative status check
+  if (bd.TranscriptStatus === 'Failed') {
+    throw new Error(`Transcript failed for ${botId} — check transcription.failed webhook for details`)
   }
-  // Response is a top-level JSON array of segments per the OpenAPI spec.
-  const { data } = await axios.get(`${BASE_URL}/transcript/${transcriptId}/get_transcript`, { headers })
-  return data  // Array<{speaker, transcript, start_time, end_time, words[]}>
+
+  const transcriptId = bd.transcript_id
+  if (!transcriptId) {
+    throw new Error(`No transcript_id for ${botId} — likely meeting_captions or streaming-only provider`)
+  }
+
+  // axios throws on non-2xx by default — disable so we can branch on 202
+  const resp = await axios.get(
+    `${BASE_URL}/transcript/${transcriptId}/get_transcript`,
+    { headers, validateStatus: s => s === 200 || s === 202 }
+  )
+  if (resp.status === 202) {
+    throw new Error(`Transcript not yet ready (HTTP 202): ${resp.data?.message ?? 'processing'}`)
+  }
+  return resp.data  // Array<{speaker, transcript, start_time, end_time, words[]}>
 }
 
 app.post('/webhook', async (req: Request, res: Response) => {

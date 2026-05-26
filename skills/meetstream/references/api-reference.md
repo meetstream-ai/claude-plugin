@@ -894,39 +894,47 @@ All values in seconds. Use these defaults unless you have a specific reason to d
 
 ## Live Transcription Webhook Payload
 
-POST'd to `live_transcription_required.webhook_url`:
+POST'd to `live_transcription_required.webhook_url`. **Live-captured shape** (from a real Google Meet bot with `meetstream_streaming` provider):
 
 ```json
 {
-  "bot_id": "8ceabf49-d392-4c04-8e91-bd9601a0df6e",
-  "speakerName": "Alice",
-  "timestamp": "2026-01-24T17:00:30.354452",
-  "new_text": "hear",
-  "transcript": "hear",
+  "bot_id": "305e708e-d0b5-4081-b982-fb9af84a716b",
+  "speakerName": "Sidhdharth Sivasubramanian",
+  "timestamp": "2026-05-26T10:21:43.681Z",
+  "transcript": "Uh, not in detail",
   "utterance": "",
   "words": [
     {
-      "word": "hear",
-      "start": 2,
-      "end": 2.08,
-      "confidence": 0.999955,
-      "speaker": "Alice",
-      "punctuated_word": "hear",
-      "speech_confidence": 0.999955,
-      "word_is_final": false
+      "word": "Uh",
+      "start": 26.136,
+      "end": 26.416,
+      "confidence": 0,
+      "speaker": "Sidhdharth Sivasubramanian",
+      "punctuated_word": "Uh",
+      "speech_confidence": 0
     }
   ],
+  "is_final": false,
   "end_of_turn": false,
   "turn_is_formatted": false,
-  "transcription_mode": "word_level",
-  "custom_attributes": {}
+  "transcription_mode": "raw",
+  "custom_attributes": { "your_keys": "echoed back" }
 }
 ```
 
-- `new_text` — incremental delta (for streaming UI)
+**Field reference:**
+- `speakerName` — display name of the speaker in the meeting
 - `transcript` — current buffer (may be partial / interim)
-- `word_is_final` — `false` means interim, may change
-- `end_of_turn` — commit phrases on `true`
+- `utterance` — empty in `meetstream_streaming`; populated by some providers
+- `words[]` — per-word breakdown with `start` / `end` (seconds), `confidence`, `speaker`, `punctuated_word`, `speech_confidence`. **Note: `confidence` and `speech_confidence` are 0 from `meetstream_streaming`** — only Deepgram/AssemblyAI populate these meaningfully.
+- `is_final` — top-level boolean: false for interim, true for final committed text. **Live-verified — not previously documented**.
+- `end_of_turn` — true when speaker stops talking; useful for committing UI segments
+- `turn_is_formatted` — true after punctuation/formatting pass applied
+- `transcription_mode` — observed value `"raw"` from `meetstream_streaming` (was previously documented as `"word_level"` which was wrong for this provider)
+- `custom_attributes` — echoed from create_bot payload
+- `timestamp` — ISO-8601 of when this chunk was generated
+
+> Note: word objects do NOT have a `word_is_final` field — that field was previously claimed in the skill but does not appear in live captures. Use top-level `is_final` instead.
 
 ---
 

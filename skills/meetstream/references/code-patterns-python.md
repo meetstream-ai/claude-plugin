@@ -64,22 +64,34 @@ def create_bot(meeting_link: str, callback_url: str) -> str:
 def get_transcript(bot_id: str) -> list[dict]:
     """Stateless transcript fetch. Call only after transcription.processed fires.
 
-    Two API calls:
-      1. GET /bots/{bot_id}/detail → bot_details.transcript_id  (canonical, live-verified)
+    Live-verified safe flow — handles all 3 status disagreements:
+      1. GET /bots/{bot_id}/detail → check bot_details.TranscriptStatus (authoritative)
+         and read bot_details.transcript_id
       2. GET /transcript/{transcript_id}/get_transcript
+         - HTTP 200 → top-level array (success path)
+         - HTTP 202 → dict {"message": "still processing"} — back off
+      3. If TranscriptStatus == 'Failed', raise — get_transcript otherwise returns 202 forever
 
-    Returns a list of segment dicts. Per the OpenAPI GetTranscriptionSchema,
-    the response is a TOP-LEVEL JSON ARRAY (not an envelope), and the
-    per-segment text field is 'transcript' (not 'text').
+    Returns a list of segment dicts. Per-segment text field is 'transcript' (not 'text').
     """
     detail_resp = requests.get(f"{BASE_URL}/bots/{bot_id}/detail", headers=HEADERS)
     detail_resp.raise_for_status()
-    transcript_id = (detail_resp.json().get("bot_details") or {}).get("transcript_id")
+    bd = detail_resp.json().get("bot_details") or {}
+
+    # Authoritative status check — TranscriptStatus is the source of truth
+    ts = bd.get("TranscriptStatus")
+    if ts == "Failed":
+        raise RuntimeError(f"Transcript failed for {bot_id} — check transcription.failed webhook for details")
+
+    transcript_id = bd.get("transcript_id")
     if not transcript_id:
-        # meeting_captions provider or no transcription configured
-        raise RuntimeError(f"No transcript_id on bot_details for {bot_id} — check provider")
+        # meeting_captions or streaming-only provider — no post-call fetch path
+        raise RuntimeError(f"No transcript_id for {bot_id} — likely meeting_captions or streaming-only provider")
 
     resp = requests.get(f"{BASE_URL}/transcript/{transcript_id}/get_transcript", headers=HEADERS)
+    if resp.status_code == 202:
+        # Transcript not ready — caller should retry after delay
+        raise RuntimeError(f"Transcript not yet ready (HTTP 202): {resp.json().get('message')}")
     resp.raise_for_status()
     return resp.json()  # list[{speaker, transcript, start_time, end_time, words[]}]
 

@@ -116,14 +116,49 @@ Returns **HTTP 201 Created** with `BotResponse`:
 2. Call `GET /bots/{bot_id}/detail` → read `bot_details.transcript_id`
 3. Call `GET /transcript/{transcript_id}/get_transcript`
 
-This is **stateless** — no need to store `transcript_id` from `create_bot`. The webhook gives you `bot_id`; you derive the rest. Use this everywhere unless you have a specific reason to track ids manually.
+This is **stateless** — no need to store `transcript_id` from `create_bot`. The webhook gives you `bot_id`; you derive the rest.
 
 ```python
-# The whole flow, after webhook fires:
+# The whole flow, after the transcription.processed webhook fires:
 detail = requests.get(f"{BASE}/bots/{bot_id}/detail", headers=H).json()
 tid = detail["bot_details"]["transcript_id"]
-segments = requests.get(f"{BASE}/transcript/{tid}/get_transcript", headers=H).json()
+resp = requests.get(f"{BASE}/transcript/{tid}/get_transcript", headers=H)
+if resp.status_code == 200:
+    segments = resp.json()        # ← list (top-level array)
+elif resp.status_code == 202:
+    msg = resp.json()             # ← dict: {"message": "Transcript is still being processed. ..."}
+    # transcript not ready yet — back off and retry, or wait for next webhook
 ```
+
+> **Live-verified response shapes from `/transcript/{tid}/get_transcript`:**
+> - **HTTP 200** → top-level JSON **array** of segment objects (success case)
+> - **HTTP 202** → JSON **object** `{"message": "Transcript is still being processed. Current status: <state>"}` — transcript_id exists but isn't ready. Always check status code before iterating.
+> - Even if the `transcription.processed` webhook never fires (e.g. provider auth failure → `transcription.failed`), `bot_details.transcript_id` is still populated, but the fetch will **return 202 indefinitely** — it does NOT switch to an error response. **A blind retry loop hangs forever.**
+>
+> **Three status indicators disagree on failure** (live-verified, treat the first as authoritative):
+> | Source | Value on transcript failure |
+> |---|---|
+> | `bot_details.TranscriptStatus` | `"Failed"` ← **authoritative** |
+> | `/transcriptions[].status` | `"Not started"` (stale) |
+> | `/transcript/{tid}/get_transcript` HTTP | `202` forever |
+>
+> **Always check `bot_details.TranscriptStatus` before retrying, or watch for the `transcription.failed` webhook** to break out of the polling loop:
+>
+> ```python
+> def fetch_transcript_safely(bot_id: str, max_polls: int = 30):
+>     for _ in range(max_polls):
+>         detail = requests.get(f"{BASE}/bots/{bot_id}/detail", headers=H).json()
+>         ts = detail["bot_details"].get("TranscriptStatus")
+>         if ts == "Failed":
+>             raise RuntimeError(f"Transcript failed for {bot_id}")
+>         if ts == "Success":
+>             tid = detail["bot_details"]["transcript_id"]
+>             resp = requests.get(f"{BASE}/transcript/{tid}/get_transcript", headers=H)
+>             if resp.status_code == 200:
+>                 return resp.json()  # top-level array
+>         time.sleep(2)
+>     raise TimeoutError("Transcript not ready")
+> ```
 
 **Where `transcript_id` lives — all four live-verified sources:**
 
@@ -166,6 +201,15 @@ For raw provider output (unformatted), add `?raw=true`.
 
 Live transcription is delivered via **HTTPS webhook** (POST) — not WebSocket.
 
+> **Live-verified prerequisite:** `live_transcription_required.webhook_url` REQUIRES a streaming provider in `recording_config.transcript.provider`. The live API returns `HTTP 400: "live_transcription_required.webhook_url is provided but no streaming provider found. Please provide at least one streaming provider (deepgram_streaming, assemblyai_streaming, jigsawstack_streaming, meetstream_streaming, or meeting_captions)."` if you set the webhook URL without one.
+
+Five known streaming providers (live-verified from server error message):
+- `deepgram_streaming` (requires external Deepgram API key in your MeetStream account)
+- `assemblyai_streaming` (requires external AssemblyAI API key)
+- `jigsawstack_streaming`
+- `meetstream_streaming` — MeetStream in-house, no external key required (works on stock accounts)
+- `meeting_captions` — Google Meet / Teams native captions (free)
+
 ```json
 {
   "live_transcription_required": { "webhook_url": "https://your-server.com/live-transcript" },
@@ -189,6 +233,10 @@ Live transcription is delivered via **HTTPS webhook** (POST) — not WebSocket.
   }
 }
 ```
+
+For accounts without external provider keys, swap in `meetstream_streaming: {}` — empty config is accepted.
+
+**Note:** Streaming-only providers (`meetstream_streaming`, `meeting_captions`, the `_streaming` variants) do NOT produce a post-call transcript via `/transcript/{tid}/get_transcript`. `create_bot` returns `transcript_id: null` (for `meeting_captions`) or a transcript_id that fetch returns HTTP 202 forever (for `meetstream_streaming`). Use the live webhook stream as the canonical record — don't expect a post-call fetch.
 
 Each POST to your `webhook_url`:
 ```json
@@ -571,14 +619,18 @@ Specified under `recording_config.transcript.provider`. Use **exactly one** prov
 
 | Provider key | Mode | Notes |
 |---|---|---|
-| `meetstream` | Post-call | MeetStream's in-house engine. OpenAPI marks `language` and `translate` as required. |
-| `deepgram` | Post-call | `nova-3` is the only model enum. `language` defaults to `"en"` (free string per spec). |
-| `assemblyai` | Post-call | Speaker diarization, redaction, chapters. 9 fields marked required per OpenAPI. |
-| `sarvam` | Post-call | Indic languages, e.g. `model: "saaras:v3"`, `language_code: "en-IN"`. |
-| `jigsawstack` | Post-call | Auto language detect, optional translation. |
-| `meeting_captions` | Live, native | Free; uses Meet / Teams native captions. **No `transcript_id`** — fetch via `bot_details.caption_file` on `/detail`. |
-| `deepgram_streaming` | Live | Real-time. All ~12 fields marked required per OpenAPI. |
-| `assemblyai_streaming` | Live | Real-time English. All ~10 fields marked required per OpenAPI. |
+| `meetstream` | Post-call | **Live test reveals this is backed by JigsawStack** ("JigsawStack transcribe failed: 401" on auth failure). Requires JigsawStack key in your MeetStream account. OpenAPI marks `language` and `translate` as required. |
+| `deepgram` | Post-call | `nova-3` is the only model enum. Requires Deepgram key in account. `language` defaults to `"en"` (free string per spec). |
+| `assemblyai` | Post-call | Speaker diarization, redaction, chapters. Requires AssemblyAI key in account. 9 fields marked required per OpenAPI. |
+| `sarvam` | Post-call | Indic languages, e.g. `model: "saaras:v3"`, `language_code: "en-IN"`. Requires Sarvam key. |
+| `jigsawstack` | Post-call | Auto language detect, optional translation. Requires JigsawStack key. |
+| `meeting_captions` | Live, native | **Free** — uses Meet / Teams native captions. No external key needed. `transcript_id` is **null** — fetch captions via `bot_details.caption_file` on `/detail`. |
+| `meetstream_streaming` | Live | MeetStream in-house streaming — **works without external keys**. Live-verified. Use this for live transcription on stock accounts. Empty config `{}` accepted. No post-call transcript fetch (returns HTTP 202 forever). |
+| `deepgram_streaming` | Live | Real-time. All ~12 fields marked required per OpenAPI. Needs Deepgram key. |
+| `assemblyai_streaming` | Live | Real-time English. All ~10 fields marked required per OpenAPI. Needs AssemblyAI key. |
+| `jigsawstack_streaming` | Live | Live-verified existence (referenced in API error message); schema not yet documented in OpenAPI. |
+
+> **Account configuration matters.** External providers (`deepgram`, `assemblyai`, `sarvam`, `jigsawstack`, `meetstream` itself) all require API keys to be added to your MeetStream account dashboard. If the key is missing or invalid, the `transcription.failed` event fires with `status_code: 500` and `message: "Transcript processing error: <Provider> transcribe failed: 401"`. **Test your account configuration before relying on a post-call provider in production.**
 
 > **Required-vs-default:** the OpenAPI marks many sub-fields as `required` even when they have natural defaults. Pass full provider configs when in doubt — see `references/api-reference.md` for the full schema of each provider.
 
@@ -710,7 +762,38 @@ Default retention is **24 hours**. Override on `create_bot`:
 { "recording_config": { "retention": { "type": "timed", "hours": 168 } } }
 ```
 
-Manually delete: `DELETE /bots/{bot_id}/delete` — fires the `data_deletion` callback when complete.
+### ⚠️ `DELETE /bots/{bot_id}/delete` — DESTRUCTIVE
+
+**Do not call this casually.** It **permanently deletes** the recording data for a bot:
+
+- The audio recording (MP3/WAV)
+- The video recording (MP4)
+- Per-participant audio/video streams
+- The transcript
+- Any associated S3 objects
+
+**There is no recovery.** Once deleted, no API call (including the transcript endpoint) will return the data — every subsequent fetch will 404.
+
+Live test response confirms scope: `{"message": "Successfully deleted 7 objects for bot ...", "bot_id": "...", "deleted_objects": 7}` — that "7 objects" includes audio, video, transcript, and metadata blobs.
+
+**Rules:**
+
+1. **Never call `/delete` automatically in webhook handlers, agents, or polling loops.** If you wire this into automated code, you will eventually wipe a session you needed.
+2. **Never call `/delete` to "clean up" a test bot until you've verified you don't need its outputs.** The cleanup paths in the code patterns below use `/delete` only because they're explicitly test scaffolding.
+3. **Prefer retention-based expiry.** Set `recording_config.retention` to the shortest acceptable window for your use case (default 24 hours) and let MeetStream's scheduler clean up.
+4. **Confirm with the user before running `/delete` interactively.** Treat it like `rm -rf` — if the user didn't explicitly ask to delete, don't.
+5. **The `data_deletion` webhook fires after deletion** — receiving it means data is already gone, not "about to be deleted."
+
+```python
+# DESTRUCTIVE — only with explicit confirmation
+def delete_bot_data(bot_id: str, confirmed: bool = False) -> dict:
+    """Deletes audio, video, transcript permanently. Requires confirmed=True."""
+    if not confirmed:
+        raise ValueError("Refusing destructive delete without explicit confirmed=True flag")
+    resp = requests.delete(f"{BASE_URL}/bots/{bot_id}/delete", headers=HEADERS)
+    resp.raise_for_status()
+    return resp.json()  # {message, bot_id, deleted_objects}
+```
 
 ---
 
