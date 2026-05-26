@@ -16,7 +16,7 @@ mcp_server: https://docs.meetstream.ai/_mcp/server
 
 You are a MeetStream integration expert. Your job is to build **complete, production-ready implementations** — not outlines or pseudocode.
 
-All endpoints and schemas in this skill are verified against `docs.meetstream.ai`. When in doubt, fetch the latest from `https://docs.meetstream.ai/<path>.md` (append `.md` to any docs page URL for clean markdown) or use the MCP server.
+> **Source of truth:** every endpoint, field, and payload in this skill is verified against `docs.meetstream.ai`. If you need something that isn't here, fetch it from `https://docs.meetstream.ai/<path>.md` (append `.md` to any docs page URL for clean markdown) or via the MCP server at `https://docs.meetstream.ai/_mcp/server`. Do not invent endpoints or fields.
 
 ---
 
@@ -36,7 +36,7 @@ All endpoints and schemas in this skill are verified against `docs.meetstream.ai
 
 ---
 
-## Setup: One Line of Config
+## Setup
 
 All MeetStream API calls need this header:
 ```
@@ -45,7 +45,7 @@ Authorization: Token YOUR_API_KEY
 
 API keys are created at https://app.meetstream.ai/api-keys.
 
-Base URL: `https://api.meetstream.ai/api/v1/`
+Base URL: `https://api.meetstream.ai/api/v1` (no trailing slash in canonical examples).
 
 Default language: **Python** unless the user specifies otherwise.
 
@@ -55,9 +55,24 @@ Default language: **Python** unless the user specifies otherwise.
 
 Before planning or building, ask:
 1. **API key** — if not provided, ask. Link: https://app.meetstream.ai/api-keys
-2. **Platform** — Google Meet, Teams, Zoom, or all? (Zoom needs extra setup)
+2. **Platform** — Google Meet, Teams, Zoom, or all? (Zoom needs extra setup; see Platform Notes)
 3. **Language** — Python or Node.js/TypeScript?
-4. **Use case** — see patterns below
+4. **Use case** — match to one of the patterns below
+
+---
+
+## Required Fields on `create_bot`
+
+Per the OpenAPI `CreateBotRequest` schema, only two fields are required:
+
+- `meeting_link` (string) — Zoom, Google Meet, or Teams URL
+- `bot_name` (string) — the display name shown in the meeting
+
+`video_required` defaults to **`true`** (the bot records video unless you opt out). Set `video_required: false` for transcript-only workflows.
+
+There is **no `audio_required` field** on `CreateBotRequest`. Audio is recorded by default. (`audio_separate_streams` is a different feature that enables per-participant audio tracks.)
+
+> **Note:** `audio_required` DOES exist for **calendar-scheduled** bots — inside `bot_config` on `POST /calendar/schedule/{event_id}`, the auto-schedule `default_bot_config`, etc. The "doesn't exist" rule only applies to `create_bot`.
 
 ---
 
@@ -66,7 +81,8 @@ Before planning or building, ask:
 Map the user's request to one of these, then read the relevant code pattern file for the full implementation.
 
 ### Pattern 1: Record + Transcript (most common)
-Bot joins, records, transcript fetched post-meeting.
+
+Bot joins, records audio, transcript fetched post-meeting.
 
 ```json
 POST /bots/create_bot
@@ -84,26 +100,71 @@ POST /bots/create_bot
 }
 ```
 
-Returns `{ "bot_id": "...", "transcript_id": "...", "meeting_url": "...", "status": "..." }` (HTTP 201).
+Returns HTTP 200 with `BotResponse`:
+```json
+{
+  "bot_id": "...",
+  "transcript_id": "..." | null,
+  "meeting_url": "...",
+  "status": "..."
+}
+```
 
-Wait for the `transcription.processed` webhook, then:
+**Important — getting the `transcript_id`:**
+
+- For providers `assemblyai`, `deepgram`, `jigsawstack`, `sarvam`, and `meetstream`: the `transcript_id` is returned in the `create_bot` response above. **Store it** — you'll need it to fetch the transcript later.
+- For provider `meeting_captions`: `transcript_id` is **null**. Instead, fetch the caption file from `bot_details.caption_file` on `GET /bots/{bot_id}/detail` (returns an S3 link, when captions are available).
+- After-the-fact discovery: `GET /bots/{bot_id}/transcriptions` lists every transcription run for a bot with `transcript_id`, `provider`, `status`, `download_urls`.
+
+**`transcript_id` is NOT in the webhook payload.** The webhook (`transcription.processed`) signals **when** the transcript is ready, but contains only `bot_id`, `event`, `transcript_status`, `message`, `status_code`.
+
+Once you receive the `transcription.processed` webhook, fetch:
 ```
 GET /transcript/{transcript_id}/get_transcript
 ```
 
-The `transcript_id` is returned in the create_bot response. You can also discover transcript IDs after the fact via `GET /bots/{bot_id}/transcriptions`, or read `bot_details.transcript_id` from `GET /bots/{bot_id}/detail`.
+The response is a **top-level JSON array** of segment objects:
+```json
+[
+  {
+    "speaker": "Alice",
+    "transcript": "Hello everyone, let's get started.",
+    "start_time": 0.5,
+    "end_time": 3.2,
+    "absolute_start_time": "2026-04-22T10:00:00.500Z",
+    "absolute_end_time": "2026-04-22T10:00:03.200Z",
+    "words": [{ "word": "Hello", "punctuated_word": "Hello,", "start": 0.5, "end": 0.8, "confidence": 0.99, "speaker": 0, "speaker_confidence": 0.95 }]
+  }
+]
+```
 
-> **Alternate path observed in some deployments:** `GET /bots/{bot_id}/get_bot_transcript/{transcript_id}` has been seen to return transcripts as well. If `/transcript/{transcript_id}/get_transcript` 404s in your deployment, try this fallback.
+The per-segment text field is **`transcript`**, not `text`. The response is the array itself, not `{transcript: [...]}`.
+
+For raw provider output (unformatted), add `?raw=true`.
 
 ### Pattern 2: Real-Time Transcription (AI agents, live coaching)
-Live transcription is delivered via **HTTPS webhook** (POST), not WebSocket.
+
+Live transcription is delivered via **HTTPS webhook** (POST) — not WebSocket.
 
 ```json
 {
   "live_transcription_required": { "webhook_url": "https://your-server.com/live-transcript" },
   "recording_config": {
     "transcript": {
-      "provider": { "deepgram_streaming": { "model": "nova-2", "language": "en", "punctuate": true } }
+      "provider": {
+        "deepgram_streaming": {
+          "transcription_mode": "sentence",
+          "model": "nova-2",
+          "language": "en",
+          "punctuate": true,
+          "smart_format": true,
+          "endpointing": 300,
+          "vad_events": true,
+          "utterance_end_ms": 1000,
+          "encoding": "linear16",
+          "channels": 1
+        }
+      }
     }
   }
 }
@@ -123,48 +184,46 @@ Each POST to your `webhook_url`:
 }
 ```
 
-For raw live audio/video bytes, use the WebSocket endpoints:
-```json
-{
-  "live_audio_required":  { "websocket_url": "wss://your-server.com/audio" },
-  "live_video_required":  { "websocket_url": "wss://your-server.com/video" }
-}
-```
+For raw live audio bytes (binary frames over WebSocket), see Pattern 7 below. For raw live video (fMP4 over WebSocket), see Pattern 8.
 
-### Pattern 3: Interactive Bot (chat messages, TTS audio, images)
-Bot opens a WebSocket back to your server for two-way control.
+### Pattern 3: Interactive Bot (chat, TTS audio, dynamic video frame)
+
+Bot opens a WebSocket back to your server for two-way control:
 
 ```json
 { "socket_connection_url": { "websocket_url": "wss://your-server.com/bot-control" } }
 ```
 
-On join, the bot connects to your WSS and sends:
+On join the bot sends a JSON handshake:
 ```json
 { "type": "ready", "bot_id": "...", "message": "Ready to receive messages" }
 ```
 
-You then push commands. The `sendaudio` command requires raw PCM16 LE audio at 48000 Hz mono, base64-encoded (no WAV header):
-```json
-{
-  "command": "sendaudio",
-  "bot_id": "...",
-  "audiochunk": "<base64-encoded raw PCM16 LE bytes>",
-  "sample_rate": 48000,
-  "encoding": "pcm16",
-  "channels": 1,
-  "endianness": "little"
-}
+Then you push **JSON commands** over that WebSocket. There are five documented commands:
+
+| Command | Purpose |
+|---|---|
+| `sendaudio` | Play raw PCM16 LE audio (48 kHz mono, base64-encoded) through the bot's mic |
+| `sendmsg` | Post a chat message (requires BOTH `message` AND `msg` fields with the same value, for cross-platform compat) |
+| `sendchat` | Chat with role tagging + streaming support (`role`, `text`, `is_final`) |
+| `interrupt` | Stop bot audio playback (`{action: "clear_audio_queue"}`) — Google Meet only; Zoom/Teams accept but don't clear |
+| `sendimg` / `sendimg_url` | Set bot's **video frame** to an image (base64 via `img`, or URL via `img_url`) |
+
+For chat / images **into the chat panel only** (not video frame), there are also REST endpoints:
+```
+POST /bots/{bot_id}/send_message    body: { "message": "...", "metadata": { "message_type": "text" } }
+POST /bots/{bot_id}/send_image      body: { "img_url": "https://...", "display_duration": 5, "metadata": {...} }
 ```
 
-For chat messages and images, use the REST endpoints (not the WebSocket):
-```
-POST /bots/{bot_id}/send_message    body: { "message": "...", "metadata": { "message_type": "..." } }
-POST /bots/{bot_id}/send_image      body: { "image_url": "...", "metadata": { "message_type": "..." } }
-```
+> **`send_image` field is `img_url`** (not `image_url`). `display_duration` (integer seconds) is optional.
+
+See `references/code-patterns-python.md` Pattern 3 and `references/code-patterns-node.md` Pattern 3 for full implementations of every command including chunked audio streaming, barge-in, and streaming chat.
 
 ### Pattern 4: Calendar-Automated Bot
-Bot auto-joins every Google Calendar meeting — no per-meeting API calls.
 
+Connect Google Calendar so MeetStream auto-handles event sync, scheduling, recurring events, change detection, and watch channel renewal.
+
+**Connect:**
 ```
 POST /calendar/create_calendar
 {
@@ -174,21 +233,43 @@ POST /calendar/create_calendar
 }
 ```
 
-> Field names use the `google_` prefix. Plain `refresh_token`, `client_id`, `client_secret` will be rejected.
+Field names use the `google_` prefix. All three are required. Plain `refresh_token` / `client_id` / `client_secret` will be rejected by the OpenAPI schema.
 
-List calendars: `GET /calendar`
-List upcoming events: `GET /calendar/events`
-Manually schedule a specific event: `POST /calendar/schedule/{event_id}`
-Reschedule a scheduled bot: `PATCH /calendar/scheduled_bots/{bot_id}`
-Delete a scheduled bot: `DELETE /calendar/scheduled_bots/{bot_id}`
+**Endpoints (full list from docs):**
+
+| Method | Path | Purpose |
+|---|---|---|
+| POST | `/calendar/create_calendar` | Connect a Google Calendar |
+| GET | `/calendar/calendars` | List connected calendars (live from Google) |
+| GET | `/calendar/events` | Sync + list events with pagination + bot info |
+| GET | `/calendar/get_events` | List events from local DB only (faster, no Google call) |
+| POST | `/calendar/schedule/{event_id}` | Schedule a bot for an event (body: `bot_config`, `occurrence_date`, `schedule_all_occurrences`, `occurrence_limit`, `recurring_event`) |
+| DELETE | `/calendar/schedule/{event_id}` | Unschedule an event (body: `cancel_all_occurrences`, `from_date`) |
+| GET | `/calendar/scheduled_bots` | List all upcoming scheduled bots |
+| PATCH | `/calendar/scheduled_bots/{bot_id}` | Update a scheduled bot (`scheduled_join_time`, `bot_username`, `custom_attributes`) |
+| DELETE | `/calendar/scheduled_bots/{bot_id}` | Delete a single scheduled bot |
+| POST | `/calendar/auto-schedule/enable` | Enable auto-scheduling (body: `default_bot_config`) |
+| POST | `/calendar/auto-schedule/disable` | Disable auto-scheduling |
+| GET | `/calendar/auto-schedule/settings` | Read current auto-schedule settings |
+| POST | `/calendar/auto-reschedule` | Trigger reschedule for next recurring occurrence |
+| POST | `/calendar/toggle-recurrence` | Enable/disable auto-rescheduling per event (body: `{event_id, recurring_enabled}`) |
+
+> **Disconnect calendar method mismatch:** the prose docs say `DELETE /calendar/disconnect` but the OpenAPI spec says `POST /calendar/disconnect` (with `CalendarCreateRequest` body). Try `POST` first; if it returns 405, fall back to `DELETE`.
+
+**Auto-scheduling behavior:** job runs every 24h at midnight UTC, schedules bots for the next 24h, joins 1 minute before meeting start. Real-time push notifications from Google Calendar handle reschedules and cancellations. Watch channels auto-renew every ~6 days (a daily background job renews any expiring within 2 days).
+
+**Recurring events / RRULE:** standard iCalendar rules supported (DAILY/WEEKLY/MONTHLY, BYDAY, COUNT, UNTIL). Schedule with `recurring_event: true` to auto-reschedule after each occurrence, or `schedule_all_occurrences: true` (with optional `occurrence_limit`, default 52) to batch-schedule.
+
+**Deduplication:** scheduling the same event twice returns **HTTP 409** with the existing bot's ID. Use `PATCH /calendar/scheduled_bots/{bot_id}` to update.
 
 ### Pattern 5: Note-Taker (full pipeline)
+
 Webhook server + bot creation + transcript fetch + AI summary + delivery (email/Slack/Notion).
 
-Read `references/code-patterns-node.md` Pattern 4 for the complete Next.js implementation.
-Build plan should include: webhook handler, transcript fetch, LLM summary, delivery layer.
+See `references/code-patterns-node.md` Pattern 4 (Next.js) or `references/code-patterns-python.md` Pattern 5 (Flask + OpenAI). Build plan should include: webhook handler (returns 200 fast, idempotent), transcript fetch via `transcript_id`, LLM summary, delivery layer.
 
 ### Pattern 6: Participant Tracking (real-time)
+
 Real-time join/leave events during the meeting:
 
 ```json
@@ -203,6 +284,104 @@ Real-time join/leave events during the meeting:
 }
 ```
 
+### Pattern 7: Live Audio Streaming (binary frames)
+
+Real-time PCM audio with embedded speaker metadata over a WebSocket you host:
+
+```json
+{ "live_audio_required": { "websocket_url": "wss://your-server.com/audio" } }
+```
+
+The bot connects to your WSS, sends a JSON `ready` handshake, then streams **binary frames** with this exact wire format:
+
+```
+┌──────────┬────────────┬────────────┬──────────────┬──────────────┬──────────────────┐
+│ msg_type │ sid_length │ speaker_id │ sname_length │ speaker_name │  pcm_audio_data  │
+│ 1 byte   │ 2 bytes    │ L1 bytes   │ 2 bytes      │ L2 bytes     │  remaining bytes │
+└──────────┴────────────┴────────────┴──────────────┴──────────────┴──────────────────┘
+```
+
+| Offset | Size | Type | Field |
+|---|---|---|---|
+| 0 | 1 | uint8 | `msg_type` — always `0x01` for PCM audio |
+| 1 | 2 | uint16 LE | `sid_length` |
+| 3 | L1 | UTF-8 | `speaker_id` |
+| 3+L1 | 2 | uint16 LE | `sname_length` |
+| 5+L1 | L2 | UTF-8 | `speaker_name` |
+| 5+L1+L2 | remaining | int16 LE | raw PCM audio samples |
+
+Audio properties: **signed 16-bit PCM, little-endian, 48 kHz, mono, no container**. Duration = `len(pcm)/2 / 48000` seconds.
+
+When MeetStream can't attribute audio to a participant, `speaker_name` comes through as `"NoSpeaker"`. Filter or label these in your pipeline.
+
+Full decoders for Python, Node.js, Go, and Java are in `references/code-patterns-python.md` and `references/code-patterns-node.md`.
+
+### Pattern 8: Live Video Streaming (fMP4 over WebSocket)
+
+Supported on **Google Meet and Microsoft Teams only — not Zoom**.
+
+```json
+{
+  "video_required": true,
+  "live_video_required": { "websocket_url": "wss://your-server.com/video" }
+}
+```
+
+Protocol (all messages from MeetStream to you, except where noted):
+
+| Message type | Direction | Description |
+|---|---|---|
+| `video_stream_start` (JSON text) | MS → you | Once on connect. Carries `codec`, `audio_codec`, `container: "fmp4"`, `width`, `height`, `framerate`, `audio_sample_rate`, `audio_bitrate`. |
+| binary frames | MS → you | Raw fMP4 (fragmented MP4) bytes. **Append in order** to build the stream/file. |
+| `video_latency_ping` (JSON text) | MS → you | Periodic. Carries `seq` and `sent_at_ms`. |
+| `video_latency_pong` (JSON text) | **you → MS** | Echo `seq`, `sent_at_ms`, `bot_id`. Add `server_received_at_ms` (your wall-clock ms when you handled the ping). |
+| `video_stream_end` (JSON text) | MS → you | Sent when stream stops. Carries `duration_seconds`. Connection closes after. |
+
+Production tips: terminate TLS in front of your app (expose `wss://`), allow large WS frames, process writes sequentially per stream so chunk order is preserved.
+
+### Pattern 9: MIA — AI Agent in a Meeting
+
+MIA (MeetStream Infrastructure Agents) creates a server-configured AI agent that joins meetings via a hosted bridge. Two modes:
+
+- **`pipeline`**: mix STT + LLM + TTS providers (configurable per layer)
+- **`realtime`**: a single realtime model (OpenAI realtime, xAI, Google Gemini) — lower latency
+
+**Create the agent config first:**
+```
+POST /api/v1/mia
+{
+  "agent_name": "Meeting Assistant",
+  "mode": "pipeline",
+  "model": { "provider": "openai", "model": "gpt-4.1", "system_prompt": "..." },
+  "voice": { "provider": "openai", "voice_id": "nova" },
+  "transcriber": { "provider": "deepgram", "model": "nova-3", "language": "en" },
+  "agent": { "response_type": "voice", "first_message": "Hello!" }
+}
+```
+
+Returns `{ message, agent_config_id, agent_config: {...} }`.
+
+**Then attach to a bot using the hosted MeetStream bridge:**
+```json
+POST /bots/create_bot
+{
+  "meeting_link": "https://meet.google.com/...",
+  "bot_name": "Assistant",
+  "agent_config_id": "<from above>",
+  "socket_connection_url":  { "websocket_url": "wss://agent-meetstream-prd-main.meetstream.ai/bridge" },
+  "live_audio_required":   { "websocket_url": "wss://agent-meetstream-prd-main.meetstream.ai/bridge/audio" }
+}
+```
+
+All three — `agent_config_id`, `socket_connection_url`, `live_audio_required` (pointing at the hosted bridge) — are required together for MIA.
+
+**Other MIA operations:**
+- `GET /api/v1/mia` — list all (no params) or fetch one (`?agent_config_id=...`)
+- `PUT /api/v1/mia` — update; body requires `agent_config_id` + fields to change
+- `DELETE /api/v1/mia?agent_config_id=...` — delete (query param, not path)
+
+Supported providers: see `references/api-reference.md` MIA section.
+
 ---
 
 ## Bot Lifecycle
@@ -213,24 +392,15 @@ create_bot → bot.joining → bot.inmeeting → [streams run]
 ```
 
 Notes:
-- Every bot starts with `bot.joining`. If join succeeds you get `bot.inmeeting`; if it fails you may get `bot.stopped` directly (no `bot.inmeeting`).
+- Every bot starts with `bot.joining`. If join succeeds you get `bot.inmeeting`; if it fails you may get `bot.stopped` directly with no `bot.inmeeting`.
 - `bot.inmeeting` and `bot.stopped` are sent **at most once** each.
+- `bot.joining` may fire up to **3 times** if MeetStream's server-side join retries kick in.
 - Post-call events (`audio.processed`, `transcription.processed`, `video.processed`, `data_deletion`) arrive asynchronously after `bot.stopped`, each at most once.
 - **Never fetch the transcript before `transcription.processed` fires.** Always set `callback_url`.
 
 ---
 
-## Required Fields
-
-`meeting_link` and `bot_name` are **required** on `create_bot`. Omitting `bot_name` returns HTTP 400.
-
-`video_required` defaults to **`true`** (the bot records video unless you opt out). To save storage and bandwidth for transcript-only workflows, set `video_required: false`.
-
-There is **no `audio_required` parameter** — audio is captured by default. (`audio_separate_streams` exists for per-participant audio and is a different feature.)
-
----
-
-## Always Include These Timeouts
+## `automatic_leave` Timeouts
 
 ```json
 {
@@ -244,22 +414,22 @@ There is **no `audio_required` parameter** — audio is captured by default. (`a
 }
 ```
 
-All values in seconds. Defaults shown above:
+All values in seconds. Defaults shown above.
 - `waiting_room_timeout` — wait in waiting room before leaving (default 600 / 10 min)
 - `everyone_left_timeout` — stay after everyone else leaves (default 300 / 5 min)
-- `voice_inactivity_timeout` — wait if no audio is detected (default 100)
+- `voice_inactivity_timeout` — wait if no audio detected (default 100)
 - `in_call_recording_timeout` — max recording duration (default 14400 / 4 hr)
-- `recording_permission_denied_timeout` — wait if recording permission denied (default 60, **Zoom-only**)
+- `recording_permission_denied_timeout` — wait if recording permission denied (default 60, **Zoom-only** per docs comment)
 
-**Live-tested gotcha:** `recording_permission_denied_timeout` has been observed to reject values below 60 with HTTP 400 in practice. Stick with 60 or higher.
+> **Observed behavior (not in OpenAPI spec):** values below 60 for `recording_permission_denied_timeout` have been seen to return HTTP 400 in practice. The OpenAPI doesn't document a minimum, but staying at 60+ is safe.
 
-Without these, a stuck bot can sit in a meeting indefinitely.
+Without these defaults, a stuck bot can sit in a meeting indefinitely.
 
 ---
 
-## Bot Avatar (`bot_image_url`)
+## `bot_image_url`
 
-Custom profile picture must be a **publicly accessible URL** — MeetStream fetches it externally. Base64 / data URIs are not supported, and the image must be reachable without authentication. If you store images in Firestore or another private store, serve them from a public HTTP endpoint first.
+Custom profile picture must be a **publicly accessible URL** — MeetStream fetches it externally. The OpenAPI schema describes it as a URL string. Base64 / data URIs are not supported by the docs guide; the image must be reachable without authentication.
 
 ```json
 { "bot_image_url": "https://your-server.com/avatar.png" }
@@ -267,27 +437,63 @@ Custom profile picture must be a **publicly accessible URL** — MeetStream fetc
 
 ---
 
-## `custom_attributes` Constraint
+## `custom_attributes`
 
-All `custom_attributes` values must be **strings**. Numbers, booleans, and nested objects will be rejected. Stringify before sending:
+The OpenAPI schema allows `additionalProperties: { description: Any type }`. Arbitrary key-value metadata; values are echoed back in webhook payloads.
 
-```json
-{ "custom_attributes": { "deal_id": "12345", "active": "true", "score": "0.87" } }
-```
+> **Observed behavior:** in practice the server has been seen to reject non-string values. The OpenAPI doesn't enforce string-only, but stringifying values defensively is safer:
+> ```json
+> { "custom_attributes": { "deal_id": "12345", "active": "true", "score": "0.87" } }
+> ```
 
 ---
 
-## Platform Notes
+## Platform Notes (per-feature, not just per-bot)
 
-| Platform | Extra Setup |
-|----------|-------------|
-| Google Meet | None |
-| Microsoft Teams | None |
-| Zoom | Register a Zoom app + add credentials to MeetStream dashboard → https://docs.meetstream.ai/guides/zoom/zoom-marketplace-app-setup |
+| Feature | Google Meet | Zoom | Microsoft Teams |
+|---|---|---|---|
+| Basic bot (`create_bot`) | ✓ | ✓ (setup required) | ✓ |
+| Recording + post-call transcript | ✓ | ✓ | ✓ |
+| Live transcription webhook | ✓ | ✓ | ✓ |
+| Live audio (`live_audio_required`) | ✓ | ✓ | ✓ |
+| **Live video (`live_video_required`)** | ✓ | **✗** | ✓ |
+| **Per-participant audio streams** | ✓ | ✓ | **✗** |
+| Per-participant video streams | ✓ | ✓ | ✓ |
+| MIA agents | ✓ | ✓ | ✓ |
+| `interrupt` WS command (clears audio queue) | ✓ | ✗ (accepted, no-op) | ✗ (accepted, no-op) |
+| Native captions (`meeting_captions`) | ✓ | ✗ | ✓ |
 
-**Zoom dev mode** restricts bots to meetings hosted by the app owner's account. For external meetings, submit the Zoom app to production.
+### Zoom setup
+
+Register a Zoom app + add credentials to MeetStream dashboard. Guide: https://docs.meetstream.ai/guides/zoom/zoom-marketplace-app-setup
+
+**Zoom dev mode** restricts bots to meetings hosted by the app owner's account. For external meetings, follow the production submission guide: https://docs.meetstream.ai/guides/zoom/zoom-production-app-submission
 
 For Zoom OBF (On-Behalf-Of), pass `"zoom": { "use_zoom_obf": true }` on `create_bot`.
+
+The Zoom OAuth callback URL to register in your Zoom app is: `https://api.meetstream.ai/api/v1/admin/zoom/oauth/callback`
+
+### Google Signed-In Bots
+
+To have the bot join Google Meet using a Google identity (for paywalled / signed-in-only meetings), configure SSO in your Google Workspace admin and register domain/login certificates via:
+
+- `POST /google-login-domains` — register a Google Workspace domain
+- `GET /google-login-domains` — list domains
+- `GET /google-login-domains/{domain}` — fetch one (path param is the workspace **domain string**)
+- `PUT /google-login-domains/{domain}` / `DELETE /google-login-domains/{domain}` — update / delete
+- `POST /google-logins` / `GET /google-logins` / `PUT/DELETE /google-logins/{id}` — manage logins
+
+Then, on `create_bot`, pass the `google_meet` field (documented in the Google Signed-In Bots guide):
+```json
+{
+  "google_meet": {
+    "login_required": true,
+    "google_login_domain": "your-domain.com"
+  }
+}
+```
+
+> **Note:** `google_meet` is documented in the prose guide but isn't in the OpenAPI `CreateBotRequest` schema. The Google Signed-In Bots guide is the canonical reference: https://docs.meetstream.ai/guides/google-signed-in-bots
 
 ---
 
@@ -295,27 +501,28 @@ For Zoom OBF (On-Behalf-Of), pass `"zoom": { "use_zoom_obf": true }` on `create_
 
 Specified under `recording_config.transcript.provider`. Use **exactly one** provider per bot.
 
-| Provider key | Mode | Best for |
+| Provider key | Mode | Notes |
 |---|---|---|
-| `meetstream` | Post-call | MeetStream's in-house engine — speaker-labeled, low cost |
-| `deepgram` | Post-call | High accuracy, `nova-3` model (requires `language: "en"`) |
-| `assemblyai` | Post-call | Speaker diarization, redaction, chapters |
-| `sarvam` | Post-call | Indic languages (`saaras:v3`) |
-| `jigsawstack` | Post-call | Auto language detect, translation |
-| `meeting_captions` | Live, native | Free; uses Meet / Teams native captions |
-| `deepgram_streaming` | Live | Real-time, `nova-2` model |
-| `assemblyai_streaming` | Live | Real-time English (`universal-streaming-english`) |
+| `meetstream` | Post-call | MeetStream's in-house engine. OpenAPI marks `language` and `translate` as required. |
+| `deepgram` | Post-call | `nova-3` is the only model enum. `language` defaults to `"en"` (free string per spec). |
+| `assemblyai` | Post-call | Speaker diarization, redaction, chapters. 9 fields marked required per OpenAPI. |
+| `sarvam` | Post-call | Indic languages, e.g. `model: "saaras:v3"`, `language_code: "en-IN"`. |
+| `jigsawstack` | Post-call | Auto language detect, optional translation. |
+| `meeting_captions` | Live, native | Free; uses Meet / Teams native captions. **No `transcript_id`** — fetch via `bot_details.caption_file` on `/detail`. |
+| `deepgram_streaming` | Live | Real-time. All ~12 fields marked required per OpenAPI. |
+| `assemblyai_streaming` | Live | Real-time English. All ~10 fields marked required per OpenAPI. |
 
-See `references/code-patterns-python.md` and the docs for each provider's full config schema (model, language, diarize, smart_format, vad_threshold, etc.).
+> **Required-vs-default:** the OpenAPI marks many sub-fields as `required` even when they have natural defaults. Pass full provider configs when in doubt — see `references/api-reference.md` for the full schema of each provider.
 
 ---
 
 ## Webhook Handler Requirements
 
-- Must use HTTPS (use ngrok / cloudflared for local dev: `ngrok http 3000`)
+- Must use **HTTPS** (use ngrok or cloudflared for local dev — see https://docs.meetstream.ai/guides/webhooks/test-webhooks-locally)
 - Must respond `2xx` quickly to acknowledge receipt
 - **No automatic retries.** If your endpoint returns non-2xx, the webhook is **not** retried. Build your handler to never fail (catch errors, queue work, return 200).
-- `bot.joining` may fire up to 3 times if join retries are configured. `bot.inmeeting`, `bot.stopped`, `audio.processed`, `transcription.processed`, `video.processed`, and `data_deletion` are sent **at most once**.
+- `bot.joining` may fire up to 3 times if join retries are configured. `bot.inmeeting`, `bot.stopped`, `audio.processed`, `transcription.processed`, `video.processed`, `data_deletion` are each sent **at most once**.
+- Idempotency: dedupe by `{bot_id, event, timestamp}` per docs recommendation.
 
 ### Webhook payload shape
 
@@ -331,38 +538,40 @@ See `references/code-patterns-python.md` and the docs for each provider's full c
 }
 ```
 
-`status_code` is **always 200** for every event. Don't branch on it — branch on `event` and `bot_status`.
+`status_code` is **always 200** for every event. Branch on `event` and `bot_status`, not `status_code`.
 
 ### Event types
 
-| event | When it fires |
-|---|---|
-| `bot.joining` | Bot is connecting |
-| `bot.inmeeting` | Bot joined and is recording |
-| `bot.stopped` | Bot lifecycle ended (read `bot_status` for reason) |
-| `audio.processed` | Audio ready (`audio_status: "Success"`) |
-| `transcription.processed` | Transcript ready (`transcript_status: "Success"`) |
-| `video.processed` | Video ready (`video_status: "Success"`) |
-| `data_deletion` | Bot data deleted (retention or manual) |
+| event | When it fires | Extra payload fields |
+|---|---|---|
+| `bot.joining` | Bot is connecting | — |
+| `bot.inmeeting` | Bot joined and is recording | — |
+| `bot.stopped` | Bot lifecycle ended (read `bot_status` for reason) | — |
+| `audio.processed` | Audio ready | `audio_status: "Success"` |
+| `transcription.processed` | Transcript ready | `transcript_status: "Success"` |
+| `video.processed` | Video ready | `video_status: "Success"` |
+| `data_deletion` | Bot data deleted (retention or manual) | `status: "success"`, `deleted_objects: <int>`, `timestamp` |
 
-### `bot_status` values on `bot.stopped`
+### `bot_status` values
 
-| bot_status | Meaning |
-|---|---|
-| `Stopped` | Normal exit (meeting ended, removed via API, everyone left, voice timeout, host removed) |
-| `NotAllowed` | Could not join (typically waiting room / lobby timeout) |
-| `Denied` | Host denied join or recording permission |
-| `Error` | Unexpected error during lifecycle |
+| bot_status | Event | Meaning |
+|---|---|---|
+| `Joining` | `bot.joining` | Bot is connecting |
+| `InMeeting` | `bot.inmeeting` | Bot is in the meeting and recording |
+| `Stopped` | `bot.stopped` | Normal exit (meeting ended, removed via API, everyone left, voice timeout, host removed) |
+| `NotAllowed` | `bot.stopped` | Could not join (commonly waiting room / lobby timeout) |
+| `Denied` | `bot.stopped` | Host denied join or recording permission |
+| `Error` | `bot.stopped` | Unexpected error during lifecycle |
 
-Failures are surfaced via `bot_status` on `bot.stopped` — there are no `audio.failed` / `transcription.failed` / `video.failed` events.
+Failures are surfaced via `bot_status` on `bot.stopped` — there are **no** `audio.failed` / `transcription.failed` / `video.failed` events.
 
-### Webhook signature verification (optional but recommended)
+### Webhook signature verification (optional)
 
-If a webhook secret is configured, MeetStream includes:
-- `X-MeetStream-Signature: sha256=<hex_digest>`
+If a webhook secret is configured in the MeetStream dashboard, requests include:
+- `X-MeetStream-Signature: sha256=<hex_digest>` — `HMAC-SHA256(secret, raw_body)`
 - `X-MeetStream-Timestamp: <iso8601>`
 
-Verify: compute `HMAC-SHA256(secret, raw_request_body)`, compare against the signature (strip `sha256=`), optionally check the timestamp is within an acceptable window.
+Verify by computing `HMAC-SHA256(secret, raw_request_body)`, comparing against the signature (strip the `sha256=` prefix), and optionally checking the timestamp is within an acceptable replay window.
 
 ---
 
@@ -370,27 +579,34 @@ Verify: compute `HMAC-SHA256(secret, raw_request_body)`, compare against the sig
 
 After the relevant `*.processed` event fires:
 
-| Data | Endpoint |
-|------|---------|
-| Transcript (full, formatted) | `GET /transcript/{transcript_id}/get_transcript` |
-| List transcripts for a bot | `GET /bots/{bot_id}/transcriptions` |
-| Trigger a new transcription run | `POST /bots/{bot_id}/transcribe` |
-| Speaker timeline | `GET /bots/{bot_id}/get_speaker_timeline` |
-| In-meeting chat | `GET /bots/{bot_id}/get_chats` |
-| Audio file | `GET /bots/{bot_id}/get_audio` (pre-signed S3 URL, 1 hr) |
-| Video file | `GET /bots/{bot_id}/get_video` (pre-signed S3 URL, 10 min) |
-| Per-participant audio streams | `GET /bots/{bot_id}/get_audio_streams` |
-| Per-participant recording streams | `GET /bots/{bot_id}/get_recording_streams` |
-| Participant list | `GET /bots/{bot_id}/get_participants` |
-| Session metadata | `GET /bots/{bot_id}/detail` |
-| Screenshots | `GET /bots/{bot_id}/get_screenshots` |
-| Summary (if generated) | `GET /bots/{bot_id}/get_summary` |
+| Data | Endpoint | Notes |
+|---|---|---|
+| Transcript (formatted) | `GET /transcript/{transcript_id}/get_transcript` | Response is a top-level array of segments |
+| Raw transcript | `GET /transcript/{transcript_id}/get_transcript?raw=true` | Raw provider output |
+| List transcripts for a bot | `GET /bots/{bot_id}/transcriptions` | Returns `{bot_id, transcriptions: [{transcript_id, provider, status, created_at, config, download_urls}]}` |
+| Trigger a new transcription run | `POST /bots/{bot_id}/transcribe` | Body: `{provider: {<key>: {...}}, callback_url?}` |
+| Speaker timeline | `GET /bots/{bot_id}/get_speaker_timeline` | Returns chunks with **byte offsets** into the audio file (not time) |
+| In-meeting chat | `GET /bots/{bot_id}/get_chats` | |
+| Audio file | `GET /bots/{bot_id}/get_audio` | Pre-signed S3 URL, **valid 1 hour** |
+| Video file | `GET /bots/{bot_id}/get_video` | Pre-signed S3 URL, **valid 10 minutes** |
+| Per-participant audio streams | `GET /bots/{bot_id}/get_audio_streams` | Per-segment URLs **valid 10 minutes**; returns 202 while bot is still in meeting |
+| Per-participant recording streams | `GET /bots/{bot_id}/get_recording_streams` | Per-segment URLs **valid 10 minutes**; includes both `participants[]` and `screenshares[]` |
+| Participant list | `GET /bots/{bot_id}/get_participants` | Returns a top-level array of `{deviceId, displayName, fullName, profilePicture, status, humanized_status, streamIds[], lastUpdated, parentDeviceId?}` |
+| Session metadata | `GET /bots/{bot_id}/detail` | Returns `bot_details` with: BotID, BotImageURL, BotMessage, BotProfile, BotUsername, CreatedAt, Duration, EndTime, LastUpdatedAt, ManifestStatus, MeetingLink, NativeSTT, OfferingType, Platform, StartTime, Status, UserID, RequestPayload, StatusTimeline, custom_attributes, **caption_file** (S3 link for native captions). **Does NOT contain `transcript_id`.** |
+| Screenshots | `GET /bots/{bot_id}/get_screenshots` | |
+| Summary (if generated) | `GET /bots/{bot_id}/summary` | (Path is `/summary`, not `/get_summary`.) |
 
 Bot management:
 - Status: `GET /bots/{bot_id}/status`
-- List bots: `GET /bots`
-- Remove from active meeting: `GET /bots/{bot_id}/remove_bot`
+- List bots: `GET /bots` — returns `{bots: [...], hasNextPage: bool, nextCursor: string|null}` (note camelCase pagination keys)
+- Remove from active meeting: `GET /bots/{bot_id}/remove_bot` (it's GET in the OpenAPI; the Quickstart docs page shows `curl -X POST` but that contradicts the spec)
 - Delete data: `DELETE /bots/{bot_id}/delete` → fires `data_deletion` webhook
+
+### Per-participant audio/video — concurrency & platform limits
+
+- **Per-participant audio** captures up to **16 concurrent speaker streams**. Supported on **Google Meet + Zoom only**, NOT Teams. Files: WebM container, Opus codec, 48 kbps, 48 kHz, mono.
+- **Per-participant video** captures up to **6 concurrent webcam streams**. Supported on all 3 platforms. Files: WebM container, VP8 codec, 15 FPS, video-only (audio fetched separately).
+- Both flags (`audio_separate_streams`, `video_separate_streams`) can be set at the top level of `create_bot` OR nested inside `recording_config`.
 
 ---
 
@@ -408,16 +624,23 @@ Manually delete: `DELETE /bots/{bot_id}/delete` — fires the `data_deletion` ca
 
 ## Common Mistakes
 
-1. **Fetching transcript too early** — always wait for `transcription.processed`.
-2. **HTTP callback URL** — must be HTTPS; use ngrok for local dev.
-3. **Wrong calendar field names** — Calendar create requires `google_refresh_token` / `google_client_id` / `google_client_secret` (with the `google_` prefix).
-4. **Using `audio_required`** — this field does not exist. Audio is captured by default.
-5. **Skipping `bot_name`** — it's required, not optional.
-6. **Assuming `video_required` defaults to false** — it defaults to `true`. Set it to `false` for transcript-only workflows or you'll burn storage.
-7. **Branching on `status_code`** — it's always 200. Branch on `event` and `bot_status`.
-8. **Expecting webhook retries** — there are none. Always return 2xx, queue work asynchronously.
-9. **Using `websocket_url` for live transcription** — `live_transcription_required` accepts only `webhook_url` (HTTPS POST). The `websocket_url` field is for `live_audio_required`, `live_video_required`, and `socket_connection_url`.
-10. **Sending WAV blobs over `sendaudio`** — bot expects raw PCM16 LE @ 48000 Hz mono, base64-encoded. No WAV header.
+1. **Looking for `transcript_id` in the webhook** — it's not there. It's in the `create_bot` response (for assemblyai/deepgram/jigsawstack/sarvam/meetstream providers) or via `GET /bots/{bot_id}/transcriptions`. The webhook only signals timing.
+2. **Looking for `transcript_id` on `/bots/{bot_id}/detail`** — `bot_details` does not include `transcript_id`. It does have `caption_file` (for `meeting_captions` provider).
+3. **Iterating `transcript.transcript[]` with `seg.text`** — the response is a top-level array, and the per-segment text field is `transcript`, not `text`.
+4. **`send_image` body using `image_url`** — the field is `img_url`.
+5. **Fetching transcript before `transcription.processed`** — always wait for the webhook.
+6. **HTTP callback URL** — must be HTTPS; use ngrok / cloudflared for local dev.
+7. **Wrong calendar field names** — Calendar create requires `google_refresh_token` / `google_client_id` / `google_client_secret` (with the `google_` prefix).
+8. **Using `audio_required` on `create_bot`** — not in the OpenAPI schema. Audio is captured by default. (It DOES exist for calendar-scheduled `bot_config`.)
+9. **Skipping `bot_name`** — it's required, not optional.
+10. **Assuming `video_required` defaults to false** — it defaults to `true`. Set it to `false` for transcript-only workflows or you'll burn storage.
+11. **Branching on `status_code`** — it's always 200. Branch on `event` and `bot_status`.
+12. **Expecting webhook retries** — there are none. Always return 2xx, queue work asynchronously, dedupe by `{bot_id, event, timestamp}`.
+13. **Using `websocket_url` for live transcription** — `live_transcription_required` accepts only `webhook_url` (HTTPS POST). The `websocket_url` field is for `live_audio_required`, `live_video_required`, and `socket_connection_url`.
+14. **Sending WAV blobs over `sendaudio`** — bot expects raw PCM16 LE @ 48000 Hz mono, base64-encoded. No WAV header. Resample if your source isn't 48 kHz.
+15. **`/calendar/toggle-recurring/{event_id}` path** — actual path is `POST /calendar/toggle-recurrence` with body `{event_id, recurring_enabled}`. No path param.
+16. **MIA endpoint paths** — they are `/api/v1/mia` (singular) for CRUD; DELETE uses `?agent_config_id=...` query param, not a path id.
+17. **Live video on Zoom** — not supported. Google Meet and Teams only.
 
 ---
 
@@ -425,19 +648,17 @@ Manually delete: `DELETE /bots/{bot_id}/delete` — fires the `data_deletion` ca
 
 Read these when building:
 - `references/code-patterns-node.md` — complete Node.js/TypeScript implementations
-- `references/code-patterns-python.md` — complete Python implementations
-- `references/api-reference.md` — full endpoint map with params and return types
+- `references/code-patterns-python.md` — complete Python implementations (including live audio decoder, MIA setup, fMP4 video receiver)
+- `references/api-reference.md` — full endpoint map with params, request bodies, response shapes
 
 ---
 
-## MCP Server
+## When to consult docs directly
 
-For specific endpoint parameters, response schemas, or edge cases not covered above:
-```
-https://docs.meetstream.ai/_mcp/server
-```
+For specific endpoint parameters, response schemas, or edge cases not covered here:
+- MCP server: `https://docs.meetstream.ai/_mcp/server`
+- OpenAPI: `https://docs.meetstream.ai/openapi.json`
+- Any docs page as clean markdown: append `.md` to its URL, e.g. `https://docs.meetstream.ai/api-reference/api-endpoints/bot-endpoints/create-bot.md`
+- Full single-file dump: `https://docs.meetstream.ai/llms-full.txt`
 
-Or fetch any docs page as clean markdown by appending `.md` to its URL:
-```
-https://docs.meetstream.ai/api-reference/api-endpoints/bot-endpoints/create-bot.md
-```
+**Never invent endpoints or fields.** If the docs don't show it, don't put it in code.
