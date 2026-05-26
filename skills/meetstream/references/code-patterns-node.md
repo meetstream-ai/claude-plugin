@@ -1000,3 +1000,66 @@ async function waitForTranscript(botId: string, timeoutMs = 600_000): Promise<an
   throw new Error('Timed out waiting for transcript')
 }
 ```
+
+---
+
+## Pattern 11: Retroactive Post-Call Transcript via `/transcribe`
+
+For bots that used a streaming-only provider (no automatic `transcript_id`), or any time you need to re-transcribe with a different provider after the meeting.
+
+```typescript
+import axios from 'axios'
+
+const MEETSTREAM_API_KEY = process.env.MEETSTREAM_API_KEY!
+const BASE_URL = 'https://api.meetstream.ai/api/v1'
+const headers = {
+  'Authorization': `Token ${MEETSTREAM_API_KEY}`,
+  'Content-Type': 'application/json',
+}
+
+/**
+ * Trigger a new post-call transcript run on the bot's stored audio.
+ *
+ * Live-verified flow:
+ *  1. POST returns immediately with new transcript_id
+ *  2. Server processes in background
+ *  3. Exactly one transcription.processed OR transcription.failed fires on callback_url
+ *  4. bot_details.transcript_id is OVERWRITTEN with this new run's id
+ *  5. NO bot.done event after — fire-and-forget
+ *  6. NO custom_attributes in the webhook payload (unlike original lifecycle events)
+ */
+async function triggerPostCallTranscription(
+  botId: string,
+  callbackUrl: string,
+  provider: Record<string, any> = { deepgram: { model: 'nova-3', language: 'en' } }
+): Promise<string> {
+  const { data } = await axios.post(
+    `${BASE_URL}/bots/${botId}/transcribe`,
+    { provider, callback_url: callbackUrl },
+    { headers }
+  )
+  // data: { bot_id, transcript_id, provider, message }
+  console.log(`Re-transcription started for ${botId} | new transcript_id=${data.transcript_id}`)
+  return data.transcript_id
+}
+
+// Use case: bot ran with meetstream_streaming (live only, no post-call transcript).
+// After bot.stopped, request a post-call transcript with assemblyai.
+async function addPostCallTranscriptToStreamingBot(botId: string, callbackUrl: string) {
+  await triggerPostCallTranscription(botId, callbackUrl, {
+    assemblyai: {
+      speech_models: ['universal-2'],
+      language_code: 'en_us',
+      speaker_labels: true,
+      punctuate: true,
+      format_text: true,
+      filter_profanity: false,
+      redact_pii: false,
+      auto_chapters: false,
+      entity_detection: false,
+    },
+  })
+  // Wait for transcription.processed webhook, then use canonical getTranscript() (Pattern 1) —
+  // bot_details.transcript_id will already point at the new run.
+}
+```

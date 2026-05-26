@@ -86,7 +86,7 @@ Pick **one** of these three patterns based on what the user actually needs. They
 | **Post-call transcript only** (recording, summaries, notes) | Post-call (`deepgram` / `assemblyai` / `sarvam` / `jigsawstack` / `meetstream`) | `bot.done` | `GET /transcript/{tid}/get_transcript` after `transcription.processed` fires |
 | **Both live + post-call** | Start with streaming for live, then call `POST /bots/{bot_id}/transcribe` after `bot.stopped` with a post-call provider | `audio.processed` (live), then `transcription.processed` from the re-transcribe | Live: webhook. Post-call: canonical fetch via `bot_details.transcript_id` (which gets overwritten by the `/transcribe` run) |
 
-**For accounts without external provider keys** (no Deepgram/AssemblyAI/JigsawStack/Sarvam credit): use `meetstream_streaming` for live, and the in-house `meetstream` provider for post-call (note: backed by JigsawStack internally — needs JigsawStack key, so check your dashboard first).
+**For accounts without external provider keys** (no Deepgram / AssemblyAI / Sarvam / JigsawStack credit): use `meetstream_streaming` for live (works on stock accounts, no external key needed), and call `POST /bots/{bot_id}/transcribe` after the meeting with whichever post-call provider your account has keys for, to get a post-call transcript on demand.
 
 ---
 
@@ -508,13 +508,28 @@ create_bot (returns transcript_id: null)
 
 ### Path C: Retroactive post-call via `/transcribe`
 
-If you used streaming-only at meeting time but want a post-call transcript later, call `POST /bots/{bot_id}/transcribe` with a post-call provider. This triggers a Path-A-style post-call run:
-- Returns a new `transcript_id`
-- **Overwrites `bot_details.transcript_id`** with the new one (live-verified)
-- Fires `transcription.processed` or `transcription.failed` on the `callback_url` passed in the `/transcribe` body
-- The canonical fetch flow (`bot_details.transcript_id` → `/transcript/{tid}/get_transcript`) returns the new run's transcript
+If you used a streaming-only provider at meeting time, **a post-call transcript does NOT exist automatically** — `transcript_id` stays `null`, `/transcriptions` is empty, `bot_details.transcript_id` is `None`. The audio recording IS saved (`AudioStatus: Success`), but you must explicitly request transcription.
 
-This is the recommended pattern for accounts that have only `meetstream_streaming` configured but want post-call output too — record live with streaming, then re-transcribe with a paid provider on demand.
+Call `POST /bots/{bot_id}/transcribe` with a post-call provider any time after `bot.stopped` to generate one on demand:
+
+```bash
+POST /bots/{bot_id}/transcribe
+{
+  "provider": { "deepgram": { "model": "nova-3", "language": "en" } },
+  "callback_url": "https://your-server.com/webhook"
+}
+```
+
+Live-verified behavior:
+- Returns immediately with a new `transcript_id` and starts processing in the background
+- **Overwrites `bot_details.transcript_id`** with the new id (canonical fetch always returns the latest run)
+- Adds an entry to `GET /bots/{bot_id}/transcriptions` with `status: "Processing"` → `"Success"` or `"Failed"`
+- Fires **exactly one** `transcription.processed` or `transcription.failed` event on the `callback_url` you pass (single fire-and-forget — NOT a full lifecycle restart)
+- The webhook payload shape is identical to a Path-A bot's transcription event (same `event` name, same `transcript_status`, same `status_code` 200/500)
+- **Does NOT fire `bot.done` after** — `bot.done` is the Path-A terminal event only
+- **Does NOT include `custom_attributes`** in the payload (unlike original lifecycle events). Correlate by `bot_id` instead.
+
+This is the recommended pattern when you need BOTH live and post-call output, or when your account only has streaming-capable providers configured at bot-creation time but you want to add a paid post-call transcript later.
 
 Notes:
 - `bot.joining` may fire up to 3 times if server-side join retries kick in.
@@ -666,7 +681,7 @@ Specified under `recording_config.transcript.provider`. Use **exactly one** prov
 
 | Provider key | Mode | Notes |
 |---|---|---|
-| `meetstream` | Post-call | **Live test reveals this is backed by JigsawStack** ("JigsawStack transcribe failed: 401" on auth failure). Requires JigsawStack key in your MeetStream account. OpenAPI marks `language` and `translate` as required. |
+| `meetstream` | Post-call | MeetStream's in-house post-call engine. OpenAPI marks `language` and `translate` as required. |
 | `deepgram` | Post-call | `nova-3` is the only model enum. Requires Deepgram key in account. `language` defaults to `"en"` (free string per spec). |
 | `assemblyai` | Post-call | Speaker diarization, redaction, chapters. Requires AssemblyAI key in account. 9 fields marked required per OpenAPI. |
 | `sarvam` | Post-call | Indic languages, e.g. `model: "saaras:v3"`, `language_code: "en-IN"`. Requires Sarvam key. |
@@ -677,7 +692,7 @@ Specified under `recording_config.transcript.provider`. Use **exactly one** prov
 | `assemblyai_streaming` | Live | Real-time English. All ~10 fields marked required per OpenAPI. Needs AssemblyAI key. |
 | `jigsawstack_streaming` | Live | Live-verified existence (referenced in API error message); schema not yet documented in OpenAPI. |
 
-> **Account configuration matters.** External providers (`deepgram`, `assemblyai`, `sarvam`, `jigsawstack`, `meetstream` itself) all require API keys to be added to your MeetStream account dashboard. If the key is missing or invalid, the `transcription.failed` event fires with `status_code: 500` and `message: "Transcript processing error: <Provider> transcribe failed: 401"`. **Test your account configuration before relying on a post-call provider in production.**
+> **Account configuration matters.** Provider keys must be added to your MeetStream account dashboard before use. If a key is missing or invalid, the `transcription.failed` event fires with `status_code: 500` and a `message` describing the upstream auth failure (e.g. `"Deepgram API error: 401"` or `"Unauthorized Connection: Insufficient funds"`). **Test your account's provider configuration before relying on a post-call provider in production.**
 
 > **Required-vs-default:** the OpenAPI marks many sub-fields as `required` even when they have natural defaults. Pass full provider configs when in doubt — see `references/api-reference.md` for the full schema of each provider.
 
@@ -864,6 +879,12 @@ def delete_bot_data(bot_id: str, confirmed: bool = False) -> dict:
 16. **Live video on Zoom** — not supported. Google Meet and Teams only.
 17. **`in_call_recording_timeout` under 600** — live API rejects with HTTP 400. Minimum 600 seconds.
 18. **Expecting `create_bot` to return HTTP 200** — it returns **HTTP 201 Created** (live-verified). `status` field is typically `"Active"`.
+19. **Expecting a post-call transcript from a streaming-only provider** — streaming providers (`meetstream_streaming`, `assemblyai_streaming`, `deepgram_streaming`, `jigsawstack_streaming`, `meeting_captions`) return `transcript_id: null` and never populate `bot_details.transcript_id` or `/transcriptions`. The audio is saved but no transcript exists until you manually call `POST /bots/{bot_id}/transcribe`.
+20. **Waiting for `bot.done` on a streaming-only bot** — that event never fires for Path B. The terminal event is `audio.processed`. Handlers that block on `bot.done` will hang.
+21. **Treating `bot.error` as a fatal event** — it's only a streaming-provider warning (upstream auth issue). The bot continues recording; only live transcription is impacted.
+22. **Waiting for `bot.done` after `/transcribe`** — `/transcribe` is fire-and-forget. You get exactly one `transcription.processed`/`transcription.failed`, no `bot.done` follow-up.
+23. **Relying on `custom_attributes` in `/transcribe`-triggered webhooks** — that field is missing from `/transcribe` events (present on original lifecycle events). Correlate by `bot_id` instead.
+24. **Polling `/transcript/{tid}/get_transcript` without a bound** — on failure it returns HTTP 202 forever. Always check `bot_details.TranscriptStatus` (authoritative: `"Success"`/`"Failed"`/`None`) or watch for the `transcription.failed` webhook to break out.
 
 ---
 

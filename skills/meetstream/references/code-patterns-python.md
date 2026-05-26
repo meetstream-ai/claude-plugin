@@ -1260,13 +1260,73 @@ def create_signed_in_bot(meeting_link: str, domain: str) -> str:
             "google_login_domain": domain  # e.g. "your-company.com"
         },
         "automatic_leave": {
-            "waiting_room_timeout": 100,
-            "everyone_left_timeout": 100,
-            "voice_inactivity_timeout": 51,
+            "waiting_room_timeout": 600,
+            "everyone_left_timeout": 600,
+            "voice_inactivity_timeout": 600,
             "in_call_recording_timeout": 14400,
-            "recording_permission_denied_timeout": 60
+            "recording_permission_denied_timeout": 300
         }
     })
     resp.raise_for_status()
     return resp.json()["bot_id"]
 ```
+
+---
+
+## Pattern 11: Retroactive Post-Call Transcript via `/transcribe`
+
+For bots that used a streaming-only provider (no automatic `transcript_id`), or any time you need to re-transcribe with a different provider after the meeting.
+
+```python
+import os
+import requests
+
+KEY = os.environ["MEETSTREAM_API_KEY"]
+BASE_URL = "https://api.meetstream.ai/api/v1"
+HEADERS = {"Authorization": f"Token {KEY}", "Content-Type": "application/json"}
+
+
+def trigger_post_call_transcription(bot_id: str, callback_url: str, provider: dict | None = None) -> str:
+    """Request a new post-call transcript run on the bot's stored audio.
+
+    Live-verified flow:
+      1. POST returns immediately with new transcript_id
+      2. Server processes in background
+      3. Exactly one transcription.processed OR transcription.failed fires on callback_url
+      4. bot_details.transcript_id is OVERWRITTEN with this new run's id
+      5. NO bot.done event after — fire-and-forget
+      6. NO custom_attributes in the webhook payload (unlike original lifecycle events)
+
+    Default provider is deepgram nova-3 if not specified. Pick whichever provider
+    your MeetStream account has API keys for.
+    """
+    payload = {
+        "provider": provider or {"deepgram": {"model": "nova-3", "language": "en"}},
+        "callback_url": callback_url,
+    }
+    resp = requests.post(f"{BASE_URL}/bots/{bot_id}/transcribe", headers=HEADERS, json=payload)
+    resp.raise_for_status()
+    data = resp.json()
+    # data: {bot_id, transcript_id, provider, message}
+    print(f"Re-transcription started for {bot_id} | new transcript_id={data['transcript_id']}")
+    return data["transcript_id"]
+
+
+# Use case: a bot ran with meetstream_streaming (live only, no post-call transcript).
+# After bot.stopped, request a post-call transcript with assemblyai.
+def add_post_call_transcript_to_streaming_bot(bot_id: str, callback_url: str):
+    trigger_post_call_transcription(bot_id, callback_url, provider={
+        "assemblyai": {
+            "speech_models": ["universal-2"],
+            "language_code": "en_us",
+            "speaker_labels": True,
+            "punctuate": True,
+            "format_text": True,
+            "filter_profanity": False,
+            "redact_pii": False,
+            "auto_chapters": False,
+            "entity_detection": False,
+        }
+    })
+    # Wait for transcription.processed webhook, then use the canonical get_transcript()
+    # pattern (Pattern 1) — bot_details.transcript_id will already point at the new run.

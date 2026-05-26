@@ -254,11 +254,14 @@ Response: `{status, bot_id, command}`.
 ### POST `/bots/{bot_id}/transcribe`
 Trigger a new post-call transcription run on the bot's stored audio. **Live-verified behaviors:**
 
-- Works even on bots that originally used a streaming-only provider (`meetstream_streaming` etc.) — lets you retroactively add a post-call transcript
-- Returns a **new** `transcript_id` and starts processing
-- **Overwrites `bot_details.transcript_id`** with the new id (canonical fetch will return the latest run)
-- Adds an entry to `GET /bots/{bot_id}/transcriptions` with `status: "Processing"` (then "Success" or "Failed")
-- Fires `transcription.processed` or `transcription.failed` webhook on the `callback_url` passed in the body
+- Works on any bot with stored audio — including bots that originally used a **streaming-only** provider (which have `transcript_id: null` and empty `/transcriptions`). This is the **only way** to get a post-call transcript from a streaming-only bot.
+- Returns immediately with a new `transcript_id` and starts processing in the background
+- **Overwrites `bot_details.transcript_id`** with the new id (canonical fetch always returns the latest run)
+- Adds an entry to `GET /bots/{bot_id}/transcriptions` with `status: "Processing"` → `"Success"` or `"Failed"`
+- Fires **exactly one** `transcription.processed` or `transcription.failed` event on the `callback_url` passed in the body
+- Payload shape is identical to a Path-A bot's transcription event (same `event` name, `transcript_status`, `status_code` 200/500)
+- **Does NOT fire `bot.done`** — `/transcribe` is single-event fire-and-forget, not a lifecycle restart
+- **Does NOT include `custom_attributes`** in the webhook payload (unlike original lifecycle events). Correlate by `bot_id`.
 
 Body (`TranscribeRequest`):
 
@@ -272,11 +275,11 @@ Body (`TranscribeRequest`):
 ```
 
 - `provider` (object, **required**) — top-level. Pick exactly one sub-key: `deepgram`, `meetstream`, `jigsawstack`, `sarvam`, or `assemblyai`. (Same shape as `recording_config.transcript.provider` but `provider` is the top-level body key.)
-- `callback_url` (string, optional) — where to send the transcription.processed/.failed webhook for this re-run
+- `callback_url` (string, optional) — where to send the transcription.processed/.failed webhook for this run.
 
 Response (`TranscribeResponse`): `{ bot_id, transcript_id, provider, message }`.
 
-> **Recommended pattern (live-tested):** record live with `meetstream_streaming` for real-time, then call `/transcribe` with a paid provider after `bot.stopped` for a high-quality post-call transcript. Get both worlds without needing the original bot to use a paid provider.
+> **Recommended pattern (live-tested):** record live with a streaming provider for real-time UI, then call `/transcribe` with a high-quality post-call provider after `bot.stopped`. Get both live AND post-call output from a single bot session.
 
 ---
 
@@ -427,7 +430,7 @@ Manually schedule a bot for a specific event. `event_id` is the `id` from `/cale
     "bot_message": "Joining to record",
     "callback_url": "https://...",
     "transcription": { "deepgram": { "model": "nova-3", "language": "en" } },
-    "automatic_leave": { "no_one_joined_timeout": 300, "everyone_left_timeout": 60 },
+    "automatic_leave": { "no_one_joined_timeout": 600, "everyone_left_timeout": 600 },
     "recording_config": { "video_recording": false }
   },
   "occurrence_date": "2026-04-14T10:00:00Z",
@@ -504,7 +507,7 @@ Enable hands-free auto-scheduling.
     "video_required": false,
     "callback_url": "https://...",
     "transcription": { "deepgram": { "model": "nova-3", "language": "en" } },
-    "automatic_leave": { "no_one_joined_timeout": 300, "everyone_left_timeout": 60 }
+    "automatic_leave": { "no_one_joined_timeout": 600, "everyone_left_timeout": 600 }
   }
 }
 ```
