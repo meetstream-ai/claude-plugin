@@ -272,14 +272,17 @@ For accounts without external provider keys, swap in `meetstream_streaming: {}` 
 Each POST to your `webhook_url`:
 ```json
 {
-  "bot_id": "8ceabf49-...",
+  "bot_id": "305e708e-...",
   "speakerName": "Alice",
-  "timestamp": "2026-01-24T17:00:30.354452",
-  "new_text": "Can",
+  "timestamp": "2026-05-26T10:21:43.681Z",
   "transcript": "Can you walk me through",
-  "words": [{ "word": "Can", "start": 0.2, "end": 0.5, "confidence": 0.99, "speaker": "Alice", "word_is_final": false }],
+  "utterance": "",
+  "words": [{ "word": "Can", "start": 0.2, "end": 0.5, "confidence": 0.99, "speaker": "Alice", "punctuated_word": "Can", "speech_confidence": 0.99 }],
+  "is_final": false,
   "end_of_turn": false,
-  "transcription_mode": "word_level"
+  "turn_is_formatted": false,
+  "transcription_mode": "raw",
+  "custom_attributes": {}
 }
 ```
 
@@ -579,11 +582,11 @@ Notes:
 | `bot.done` | `Done` | 200 (or 500 if processing failed) | All post-call processing complete — **terminal event, PATH A ONLY** | `timestamp`, `message` (error detail if status_code=500) |
 | `data_deletion` | — | 200 | Data deleted (manual `/delete` or retention) | `status: "success"`, `deleted_objects: <int>`, `timestamp` |
 
-> **Streaming-only bots (Path B) get NONE of the bottom 4 rows** — `transcription.processed`, `transcription.failed`, and `bot.done` simply never fire. Their lifecycle ends at `audio.processed`. `bot.error` is specific to streaming providers when their upstream auth fails. If your handler waits for `bot.done` to mark sessions complete, **it will hang forever** on streaming bots — use `audio.processed` as the terminal signal for Path B.
+> **Streaming-only bots (Path B)** never fire `transcription.processed`, `transcription.failed`, or `bot.done`. Their lifecycle ends at `audio.processed`. `bot.error` is specific to streaming providers when their upstream auth fails. If your handler waits for `bot.done` to mark sessions complete, **it will hang forever** on streaming bots — use `audio.processed` as the terminal signal for Path B.
 
 ### `status_code` is NOT always 200
 
-Previous versions of this skill claimed `status_code` is always 200. **That is wrong.** Failure events (`transcription.failed`, `video.failed`, `bot.done` when processing errored) carry `status_code: 500`. Always branch on `event` first; use `status_code` only as a quick error indicator.
+Failure events carry `status_code: 500`. The only failure event that's been live-observed so far is `transcription.failed`. `bot.done` also carries `status_code: 500` when its preceding processing event errored. Always branch on `event` first; use `status_code` only as a quick error indicator.
 
 ### Lifecycle internal states (visible via `bot_details.StatusTimeline`)
 
@@ -726,7 +729,7 @@ Specified under `recording_config.transcript.provider`. Use **exactly one** prov
 - Must respond `2xx` quickly to acknowledge receipt
 - **No automatic retries.** If your endpoint returns non-2xx, the webhook is **not** retried. Build your handler to never fail (catch errors, queue work, return 200).
 - `bot.joining` may fire up to 3 times if join retries are configured. `bot.inmeeting`, `bot.stopped`, `audio.processed`, `transcription.processed`, `video.processed`, `data_deletion` are each sent **at most once**.
-- Idempotency: dedupe by `{bot_id, event, timestamp}` per docs recommendation.
+- Idempotency: the docs recommend `{bot_id, event, timestamp}` as a dedupe key, but **lifecycle events (`bot.joining`, `bot.inmeeting`, `bot.recording`, `bot.leaving`, `bot.stopped`) do NOT carry a `timestamp` field** (live-verified). For those, fall back to `{bot_id, event, message}` or accept that `bot.joining` may legitimately fire up to 3× and skip dedupe on lifecycle events. Only post-call events (`*.processed`, `*.failed`, `manifest.completed`, `bot.done`, `data_deletion`) have a stable `timestamp` for dedup.
 
 ### Webhook payload shape
 
@@ -791,7 +794,7 @@ elif event_type == "bot.done" and payload.get("status_code") == 500:
     log_error(f"Bot finished with error: {payload.get('message')}")
 ```
 
-Symmetric `audio.failed` and `video.failed` aren't yet observed but should be assumed to exist by the same pattern.
+Symmetric `audio.failed` and `video.failed` events have NOT been observed in live testing. Don't assume they exist — handle failures by checking `bot_details.AudioStatus` and `bot_details.TranscriptStatus`, and by watching for `bot.done` with `status_code: 500` (which carries the upstream error in `message`).
 
 ### Webhook signature verification (optional)
 
@@ -893,14 +896,14 @@ def delete_bot_data(bot_id: str, confirmed: bool = False) -> dict:
 8. **Skipping `bot_name`** — it's required, not optional.
 9. **Assuming `video_required` defaults to false** — it defaults to `true`. Set it to `false` for transcript-only workflows or you'll burn storage.
 10. **Assuming `status_code` is always 200** — it's 200 for success events, 500 for failure events (e.g. `transcription.failed`, `bot.done` when processing errored). Branch on `event` first.
-11. **Expecting webhook retries** — there are none. Always return 2xx, queue work asynchronously, dedupe by `{bot_id, event, timestamp}`.
+11. **Expecting webhook retries** — there are none. Always return 2xx, queue work asynchronously. For dedup, note that lifecycle events lack `timestamp` so the docs-recommended `{bot_id, event, timestamp}` key collapses to `{bot_id, event, undefined}` for those — fall back to `{bot_id, event, message}` or skip dedup on lifecycle events.
 12. **Using `websocket_url` for live transcription** — `live_transcription_required` accepts only `webhook_url` (HTTPS POST). The `websocket_url` field is for `live_audio_required`, `live_video_required`, and `socket_connection_url`.
 13. **Sending WAV blobs over `sendaudio`** — bot expects raw PCM16 LE @ 48000 Hz mono, base64-encoded. No WAV header. Resample if your source isn't 48 kHz.
 14. **`/calendar/toggle-recurring/{event_id}` path** — actual path is `POST /calendar/toggle-recurrence` with body `{event_id, recurring_enabled}`. No path param.
 15. **MIA endpoint paths** — they are `/api/v1/mia` (singular) for CRUD; DELETE uses `?agent_config_id=...` query param, not a path id.
 16. **Live video on Zoom** — not supported. Google Meet and Teams only.
 17. **`in_call_recording_timeout` under 600** — live API rejects with HTTP 400. Minimum 600 seconds.
-18. **Expecting `create_bot` to return HTTP 200** — it returns **HTTP 201 Created** (live-verified). `status` field is typically `"Active"`.
+18. **Expecting `create_bot` to return HTTP 200** — it returns **HTTP 201 Created** (per OpenAPI and live-verified). `status` field is typically `"Active"`.
 19. **Expecting a post-call transcript from a streaming-only provider** — streaming providers (`meetstream_streaming`, `assemblyai_streaming`, `deepgram_streaming`, `jigsawstack_streaming`, `meeting_captions`) return `transcript_id: null` and never populate `bot_details.transcript_id` or `/transcriptions`. The audio is saved but no transcript exists until you manually call `POST /bots/{bot_id}/transcribe`.
 20. **Waiting for `bot.done` on a streaming-only bot** — that event never fires for Path B. The terminal event is `audio.processed`. Handlers that block on `bot.done` will hang.
 21. **Treating `bot.error` as a fatal event** — it's only a streaming-provider warning (upstream auth issue). The bot continues recording; only live transcription is impacted.

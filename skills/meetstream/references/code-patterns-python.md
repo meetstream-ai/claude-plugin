@@ -117,7 +117,8 @@ def webhook():
         timestamp = event.get("timestamp")
 
         # Idempotency dedup
-        dedupe_key = f"{bot_id}:{event_type}:{timestamp}"
+        # Lifecycle events lack timestamp — fall back to message which is unique enough
+        dedupe_key = f"{bot_id}:{event_type}:{timestamp or event.get('message','')}"
         with SEEN_EVENTS_LOCK:
             if dedupe_key in SEEN_EVENTS:
                 return jsonify({"status": "duplicate"}), 200
@@ -257,10 +258,16 @@ def live_transcript():
         speaker = chunk.get("speakerName", "Unknown")
         text = chunk.get("transcript", "")
         ts = chunk.get("timestamp", "")
-        is_final = chunk.get("end_of_turn", False)
-        print(f"[{ts}] {speaker}: {text}" + (" (final)" if is_final else ""))
+        # Live payload has two boolean flags (live-captured):
+        #   - is_final: provider-level — interim chunk vs final committed text
+        #   - end_of_turn: speaker-level — speaker finished their utterance
+        # Use whichever fits your use case. For "commit to UI on turn end", check end_of_turn.
+        is_final = chunk.get("is_final", False)
+        end_of_turn = chunk.get("end_of_turn", False)
+        marker = " (final)" if is_final else (" (turn-end)" if end_of_turn else "")
+        print(f"[{ts}] {speaker}: {text}{marker}")
 
-        if is_final and ("action item" in text.lower() or "follow up" in text.lower()):
+        if end_of_turn and ("action item" in text.lower() or "follow up" in text.lower()):
             print(f"  ACTION ITEM detected from {speaker}")
 
     except Exception as e:
@@ -535,7 +542,13 @@ def connect_calendar(refresh_token: str, client_id: str, client_secret: str):
 
 
 def disconnect_calendar(refresh_token: str, client_id: str, client_secret: str):
-    """Method inconsistency: OpenAPI says POST, prose docs say DELETE. Try both."""
+    """Docs method inconsistency — neither has been live-tested by this skill.
+
+    OpenAPI says: POST /calendar/disconnect with CalendarCreateRequest body
+    Prose docs say: DELETE /calendar/disconnect
+    Try POST first; fall back to DELETE (without body) if rejected. Confirm
+    against your account before relying on this in production.
+    """
     body = {
         "google_refresh_token": refresh_token,
         "google_client_id": client_id,
@@ -543,7 +556,7 @@ def disconnect_calendar(refresh_token: str, client_id: str, client_secret: str):
     }
     resp = requests.post(f"{BASE_URL}/calendar/disconnect", headers=HEADERS, json=body)
     if resp.status_code == 405:
-        resp = requests.delete(f"{BASE_URL}/calendar/disconnect", headers=HEADERS, json=body)
+        resp = requests.delete(f"{BASE_URL}/calendar/disconnect", headers=HEADERS)
     resp.raise_for_status()
     return resp.json()
 
@@ -789,7 +802,8 @@ def webhook():
         event = request.json or {}
         event_type = event.get("event")
         bot_id = event.get("bot_id")
-        dedupe_key = f"{bot_id}:{event_type}:{event.get('timestamp')}"
+        # Lifecycle events lack timestamp — fall back to message
+        dedupe_key = f"{bot_id}:{event_type}:{event.get('timestamp') or event.get('message','')}"
         if dedupe_key in SEEN_EVENTS:
             return jsonify({"status": "duplicate"}), 200
         SEEN_EVENTS.add(dedupe_key)

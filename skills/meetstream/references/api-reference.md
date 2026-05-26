@@ -44,7 +44,7 @@ Creates a bot and sends it to a meeting.
 
 > **Important:** `audio_required` is **not** in the `CreateBotRequest` schema. Audio is captured by default. The field DOES exist in calendar-scheduled `bot_config` (different schema).
 
-**Response — live-verified HTTP 201 Created** (OpenAPI documents 200 but live returns 201) — `BotResponse`:
+**Response — HTTP 201 Created** (per OpenAPI spec and live-verified) — `BotResponse`:
 ```json
 {
   "bot_id": "string",
@@ -61,7 +61,7 @@ Docs: https://docs.meetstream.ai/api-reference/api-endpoints/bot-endpoints/creat
 ---
 
 ### GET `/bots/{bot_id}/status`
-Current bot status. Returns `{ bot_id, status, custom_attributes }`. Status values match webhook `bot_status`: `Joining`, `InMeeting`, `Stopped`, `NotAllowed`, `Denied`, `Error`.
+Current bot status. Returns `{ bot_id, status, custom_attributes }`. Status values match webhook `bot_status`: `Joining`, `InMeeting`, `Recording`, `Leaving`, `Stopped`, `NotAllowed`, `Denied`, `Error`, `Done`.
 
 ---
 
@@ -425,7 +425,7 @@ Same as `/calendar/events` but reads from MeetStream's local DB only (no Google 
 ### POST `/calendar/schedule/{event_id}`
 Manually schedule a bot for a specific event. `event_id` is the `id` from `/calendar/events`.
 
-**Body:**
+**Body** (shape from the docs guide — this skill has not live-tested the calendar `bot_config` schema. Some fields like `transcription`, `no_one_joined_timeout`, `recording_config.video_recording` only appear in calendar examples in the docs and may differ from the `create_bot` `CreateBotRequest` schema. Verify against your account before relying on them.):
 ```json
 {
   "bot_config": {
@@ -503,7 +503,7 @@ Delete a single scheduled bot that hasn't joined yet.
 ### POST `/calendar/auto-schedule/enable`
 Enable hands-free auto-scheduling.
 
-**Body:**
+**Body** (from docs guide; calendar `default_bot_config` schema not live-tested by this skill — see note on `/calendar/schedule/{event_id}` above for caveats):
 ```json
 {
   "default_bot_config": {
@@ -707,7 +707,7 @@ HTTP POST. Your endpoint MUST return 2xx — **webhooks are not retried on non-2
 | 1b | `bot.error` | `InMeeting` | — (omitted) | **Streaming-provider upstream error during meeting** (e.g. AssemblyAI insufficient funds). Bot continues; only live transcription is impacted. Live-verified. | `message` (upstream error). NO `status_code`, NO `custom_attributes`, NO `timestamp`. |
 | 2 | `bot.inmeeting` | `InMeeting` | 200 | Bot joined the meeting | — |
 | 3 | `bot.recording` | `Recording` | 200 | Recording started | — |
-| 4 | `participant_events.join` / `.leave` | — | — | Participants join/leave (requires `recording_config.realtime_endpoints`) | Nested under `data.data.{action,participant,timestamp}` and `data.bot.{id,metadata}`. No top-level `bot_id` or `bot_status`. |
+| 4 | `participant_events.join` / `.leave` | — | — | Participants join/leave (requires `recording_config.realtime_endpoints` with `events: [...]`). `participant_events.leave` was live-captured; `participant_events.join` follows the same shape per docs but wasn't observed in test. | Nested under `data.data.{action,participant,timestamp}` and `data.bot.{id,metadata}`. No top-level `bot_id` or `bot_status`. |
 | 5 | `bot.leaving` | `Leaving` | 200 | Bot is leaving the meeting | — |
 | 6 | `bot.stopped` | `Stopped` / `NotAllowed` / `Denied` / `Error` | 200 | Bot exited (fires once per bot) | — |
 | 7 | `manifest.completed` | — | 200 | Platform manifest uploaded | `status: "success"`, `manifest_status: "Success"`, `timestamp` |
@@ -722,7 +722,11 @@ HTTP POST. Your endpoint MUST return 2xx — **webhooks are not retried on non-2
 
 Each event fires **at most once** per bot, except `bot.joining` which may fire up to 3× if server-side join retries kick in.
 
-> **Common envelope** — every event (except `participant_events.*`) includes `bot_id`, `event`, `message`, `status_code`, `custom_attributes`. **`timestamp` is NOT on every event** — only post-call events (7–12 in the table above). **`status_code` is NOT always 200** — failure events use 500. The previously-claimed "always 200" and "*.failed events do not exist" rules were both wrong.
+> **Common envelope** — most events include `bot_id`, `event`, `message`, `status_code`, `custom_attributes`. Exceptions:
+> - `participant_events.*` has a completely different shape (nested under `data.bot.id`, no top-level `bot_id`)
+> - `bot.error` has NO `status_code`, NO `custom_attributes`, NO `timestamp` — just `bot_id`, `event`, `bot_status`, `message` (live-captured)
+> - **`timestamp` is on post-call events only** (rows 7–12) — lifecycle events (`bot.joining`, `bot.inmeeting`, `bot.recording`, `bot.leaving`, `bot.stopped`) do NOT include it
+> - **`status_code` is 200 for success, 500 for failure** (`transcription.failed`, `bot.done` when processing errored) — NOT always 200
 
 ### `transcript_id` is NOT in the webhook payload
 
@@ -838,7 +842,7 @@ If a webhook secret is configured in the MeetStream dashboard, requests include:
 
 ### Idempotency
 
-Dedupe by `{bot_id, event, timestamp}`.
+The docs recommend dedup by `{bot_id, event, timestamp}`, but **lifecycle events lack `timestamp`** (live-verified). For those, fall back to `{bot_id, event, message}` or skip dedup on lifecycle events. Only post-call events (`*.processed`, `*.failed`, `manifest.completed`, `bot.done`, `data_deletion`) have a stable `timestamp` for dedup.
 
 ---
 

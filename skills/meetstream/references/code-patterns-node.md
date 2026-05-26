@@ -92,7 +92,8 @@ app.post('/webhook', async (req: Request, res: Response) => {
   res.json({ status: 'ok' })
 
   const { bot_id, event, bot_status, timestamp } = req.body
-  const dedupeKey = `${bot_id}:${event}:${timestamp}`
+  // Lifecycle events lack timestamp — fall back to message which is unique enough
+  const dedupeKey = `${bot_id}:${event}:${timestamp ?? req.body.message ?? ''}`
   if (seenEvents.has(dedupeKey)) return
   seenEvents.add(dedupeKey)
 
@@ -186,23 +187,27 @@ const headers = {
   'Content-Type': 'application/json'
 }
 
+// Live-captured shape from meetstream_streaming provider. Other providers
+// may include additional fields (e.g. `new_text` from some providers).
 interface LiveTranscriptChunk {
   bot_id: string
   speakerName?: string
   timestamp: string
-  new_text?: string
   transcript: string
+  utterance?: string
   words: Array<{
     word: string
     start: number
     end: number
-    confidence: number
-    speaker?: string
+    confidence: number       // 0 from meetstream_streaming; populated by Deepgram/AssemblyAI
+    speaker?: string         // may be int or string depending on provider
     punctuated_word?: string
-    word_is_final?: boolean
+    speech_confidence?: number
   }>
+  is_final?: boolean         // top-level — interim vs final committed text
   end_of_turn?: boolean
-  transcription_mode?: string
+  turn_is_formatted?: boolean
+  transcription_mode?: string  // observed "raw" from meetstream_streaming
   custom_attributes?: Record<string, string>
 }
 
@@ -506,7 +511,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   res.json({ status: 'ok' })
 
   const { bot_id, event, timestamp } = req.body
-  const dedupeKey = `${bot_id}:${event}:${timestamp}`
+  // Lifecycle events lack timestamp — fall back to message which is unique enough
+  const dedupeKey = `${bot_id}:${event}:${timestamp ?? req.body.message ?? ''}`
   if (seenEvents.has(dedupeKey)) return
   seenEvents.add(dedupeKey)
 
@@ -572,7 +578,12 @@ async function connectCalendar(refreshToken: string, clientId: string, clientSec
   return data
 }
 
-// ─── Disconnect (method inconsistency: try POST, fall back to DELETE) ───────
+// ─── Disconnect (docs method inconsistency) ─────────────────────────────────
+// OpenAPI documents: POST /calendar/disconnect with CalendarCreateRequest body
+// Prose docs say:    DELETE /calendar/disconnect
+// Neither has been live-tested by this skill. Try OpenAPI's POST first; fall
+// back to DELETE (without body) if the API rejects. Confirm against your
+// account before relying on this in production.
 async function disconnectCalendar(refreshToken: string, clientId: string, clientSecret: string) {
   const body = {
     google_refresh_token: refreshToken,
@@ -583,7 +594,7 @@ async function disconnectCalendar(refreshToken: string, clientId: string, client
     return (await axios.post(`${BASE_URL}/calendar/disconnect`, body, { headers })).data
   } catch (err: any) {
     if (err.response?.status === 405) {
-      return (await axios.delete(`${BASE_URL}/calendar/disconnect`, { headers, data: body })).data
+      return (await axios.delete(`${BASE_URL}/calendar/disconnect`, { headers })).data
     }
     throw err
   }
