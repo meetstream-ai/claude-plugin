@@ -2,6 +2,8 @@
 
 Complete, runnable implementations for common MeetStream use cases.
 
+All endpoint paths and field names are verified against `docs.meetstream.ai`.
+
 ---
 
 ## Pattern 1: Record a Meeting and Get the Transcript
@@ -23,13 +25,15 @@ HEADERS = {
     "Content-Type": "application/json"
 }
 
+# Map bot_id -> transcript_id, captured from create_bot response
+TRANSCRIPT_IDS: dict[str, str] = {}
 
-def create_bot(meeting_link: str, callback_url: str) -> str:
-    """Send a bot to a meeting. Returns bot_id."""
+
+def create_bot(meeting_link: str, callback_url: str) -> tuple[str, str | None]:
+    """Send a bot to a meeting. Returns (bot_id, transcript_id)."""
     resp = requests.post(f"{BASE_URL}/bots/create_bot", headers=HEADERS, json={
         "meeting_link": meeting_link,
         "bot_name": "Recorder",
-        "audio_required": True,
         "video_required": False,
         "callback_url": callback_url,
         "recording_config": {
@@ -39,62 +43,98 @@ def create_bot(meeting_link: str, callback_url: str) -> str:
             "retention": {"type": "timed", "hours": 48}
         },
         "automatic_leave": {
-            "waiting_room_timeout": 300,
-            "everyone_left_timeout": 60,
-            "in_call_recording_timeout": 7200,
-            "recording_permission_denied_timeout": 60  # minimum 60; values under 60 return HTTP 400
+            "waiting_room_timeout": 600,
+            "everyone_left_timeout": 300,
+            "voice_inactivity_timeout": 100,
+            "in_call_recording_timeout": 14400,
+            "recording_permission_denied_timeout": 60
         }
     })
     resp.raise_for_status()
     data = resp.json()
-    print(f"Bot created: {data['bot_id']}")
-    return data["bot_id"]
+    bot_id = data["bot_id"]
+    transcript_id = data.get("transcript_id")
+    if transcript_id:
+        TRANSCRIPT_IDS[bot_id] = transcript_id
+    print(f"Bot created: {bot_id} (transcript_id: {transcript_id or 'pending'})")
+    return bot_id, transcript_id
 
 
-def get_bot_detail(bot_id: str) -> dict:
-    """Fetch bot session metadata including transcript_id."""
+def resolve_transcript_id(bot_id: str) -> str:
+    """Get transcript_id from cache, /transcriptions, or /detail (fallback)."""
+    if bot_id in TRANSCRIPT_IDS:
+        return TRANSCRIPT_IDS[bot_id]
+
+    # Try /transcriptions first
+    try:
+        resp = requests.get(f"{BASE_URL}/bots/{bot_id}/transcriptions", headers=HEADERS)
+        resp.raise_for_status()
+        for t in resp.json().get("transcriptions", []):
+            if t.get("status") == "Success":
+                TRANSCRIPT_IDS[bot_id] = t["transcript_id"]
+                return t["transcript_id"]
+    except requests.HTTPError:
+        pass
+
+    # Fall back to /detail — some deployments expose transcript_id under bot_details
     resp = requests.get(f"{BASE_URL}/bots/{bot_id}/detail", headers=HEADERS)
     resp.raise_for_status()
-    return resp.json()
+    detail = resp.json()
+    transcript_id = (detail.get("bot_details") or {}).get("transcript_id") or detail.get("transcript_id")
+    if not transcript_id:
+        raise RuntimeError(f"No transcript_id found for bot {bot_id}")
+    TRANSCRIPT_IDS[bot_id] = transcript_id
+    return transcript_id
 
 
 def get_transcript(bot_id: str) -> dict:
-    """Fetch full transcript. Call only after transcription.processed fires."""
-    # Step 1: get transcript_id from bot detail
-    detail = get_bot_detail(bot_id)
-    transcript_id = (detail.get("bot_details") or {}).get("transcript_id") or detail.get("transcript_id")
-    if not transcript_id:
-        raise ValueError(f"No transcript_id found for bot {bot_id}")
+    """Fetch full transcript. Call only after transcription.processed fires.
 
-    # Step 2: fetch transcript using the transcript_id
-    resp = requests.get(f"{BASE_URL}/bots/{bot_id}/get_bot_transcript/{transcript_id}", headers=HEADERS)
+    Canonical docs path: /transcript/{transcript_id}/get_transcript
+    Alternate path observed in production (fallback if above 404s):
+        /bots/{bot_id}/get_bot_transcript/{transcript_id}
+    """
+    transcript_id = resolve_transcript_id(bot_id)
+    resp = requests.get(f"{BASE_URL}/transcript/{transcript_id}/get_transcript", headers=HEADERS)
     resp.raise_for_status()
     return resp.json()
 
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
-    """Handle MeetStream lifecycle callbacks."""
-    event = request.json
-    bot_id = event.get("bot_id")
-    event_type = event.get("event")
-    print(f"Event: {event_type} | Bot: {bot_id}")
+    """Handle MeetStream lifecycle callbacks. ALWAYS return 2xx — webhooks are NOT retried."""
+    try:
+        event = request.json or {}
+        bot_id = event.get("bot_id")
+        event_type = event.get("event")
+        bot_status = event.get("bot_status")
+        print(f"Event: {event_type} | Bot: {bot_id} | Status: {bot_status or '-'}")
 
-    if event_type == "bot.inmeeting":
-        print(f"Bot {bot_id} joined the meeting")
+        if event_type == "bot.inmeeting":
+            print(f"Bot {bot_id} joined the meeting")
 
-    elif event_type == "bot.stopped":
-        print(f"Bot {bot_id} left the meeting — waiting for transcript...")
+        elif event_type == "bot.stopped":
+            if bot_status == "Stopped":
+                print(f"Bot {bot_id} exited normally — waiting for transcript...")
+            else:
+                # NotAllowed / Denied / Error are surfaced here, not as *.failed events
+                print(f"Bot {bot_id} did not join cleanly: {bot_status} — {event.get('message')}")
 
-    elif event_type == "transcription.processed":
-        print(f"Transcript ready for bot {bot_id}")
-        transcript = get_transcript(bot_id)
-        # Process transcript here
-        for segment in transcript.get("transcript", []):
-            print(f"[{segment['speaker']}] {segment['text']}")
+        elif event_type == "transcription.processed":
+            print(f"Transcript ready for bot {bot_id}")
+            transcript = get_transcript(bot_id)
+            for segment in transcript.get("transcript", []):
+                print(f"[{segment['speaker']}] {segment['text']}")
 
-    elif event_type == "transcription.failed":
-        print(f"Transcription failed for bot {bot_id}: {event.get('message')}")
+        elif event_type == "audio.processed":
+            print(f"Audio ready for bot {bot_id}")
+
+        elif event_type == "data_deletion":
+            print(f"Bot {bot_id} data deleted ({event.get('deleted_objects', 0)} objects)")
+
+    except Exception as e:
+        # Log but still return 200 — no retries on non-2xx
+        print(f"Webhook handler error: {e}")
 
     return jsonify({"status": "ok"}), 200
 
@@ -106,18 +146,14 @@ if __name__ == "__main__":
 
 ---
 
-## Pattern 2: Real-Time Transcription (WebSocket)
+## Pattern 2: Real-Time Transcription (HTTPS Webhook)
 
-Streams transcript chunks as words are spoken. Good for AI coaching, live note-taking.
+Live transcription is delivered as HTTPS POSTs to your `webhook_url`, **not** over WebSocket.
 
 ```python
-# pip install websockets flask requests asyncio
-import asyncio
-import json
+# pip install flask requests
 import os
 import requests
-import threading
-import websockets
 from flask import Flask, request, jsonify
 
 app = Flask(__name__)
@@ -129,73 +165,85 @@ HEADERS = {
     "Content-Type": "application/json"
 }
 
-# Store connected WebSocket clients
-transcript_clients = set()
 
-
-def create_realtime_bot(meeting_link: str) -> str:
-    """Create a bot with live transcription via WebSocket."""
+def create_realtime_bot(meeting_link: str, webhook_url: str) -> str:
+    """Create a bot with live transcription delivered via HTTPS webhook."""
     resp = requests.post(f"{BASE_URL}/bots/create_bot", headers=HEADERS, json={
         "meeting_link": meeting_link,
         "bot_name": "AI Assistant",
-        "audio_required": True,
         "video_required": False,
         "live_transcription_required": {
-            "websocket_url": "wss://your-server.com/transcripts"
+            "webhook_url": webhook_url  # HTTPS POST endpoint, NOT a WebSocket
+        },
+        "recording_config": {
+            "transcript": {
+                "provider": {
+                    "deepgram_streaming": {
+                        "model": "nova-2",
+                        "language": "en",
+                        "punctuate": True,
+                        "smart_format": True,
+                        "endpointing": 300,
+                        "utterance_end_ms": 1000,
+                        "encoding": "linear16",
+                        "channels": 1
+                    }
+                }
+            }
         },
         "automatic_leave": {
-            "waiting_room_timeout": 300,
-            "everyone_left_timeout": 60,
-            "in_call_recording_timeout": 7200,
-            "recording_permission_denied_timeout": 60  # minimum 60; values under 60 return HTTP 400
+            "waiting_room_timeout": 600,
+            "everyone_left_timeout": 300,
+            "in_call_recording_timeout": 14400,
+            "recording_permission_denied_timeout": 60
         }
     })
     resp.raise_for_status()
     return resp.json()["bot_id"]
 
 
-async def transcript_handler(websocket):
-    """Handle incoming transcript chunks from MeetStream."""
-    transcript_clients.add(websocket)
+@app.route("/live-transcript", methods=["POST"])
+def live_transcript():
+    """Receive streaming transcript chunks. Return 2xx fast."""
     try:
-        async for message in websocket:
-            chunk = json.loads(message)
-            speaker = chunk.get("speakerName", "Unknown")
-            text = chunk.get("transcript", "")
-            timestamp = chunk.get("timestamp", "")
-            print(f"[{timestamp}] {speaker}: {text}")
+        chunk = request.json or {}
+        bot_id = chunk.get("bot_id")
+        speaker = chunk.get("speakerName", "Unknown")
+        text = chunk.get("transcript", "")
+        ts = chunk.get("timestamp", "")
+        is_final = chunk.get("end_of_turn", False)
+        print(f"[{ts}] {speaker}: {text}" + (" (final)" if is_final else ""))
 
-            # Add your AI processing here:
-            # - Detect questions/objections
-            # - Trigger coaching cues
-            # - Build live summary
-    except websockets.exceptions.ConnectionClosed:
-        pass
-    finally:
-        transcript_clients.discard(websocket)
+        # Hook in your AI processing here:
+        # - Detect questions/objections
+        # - Trigger coaching cues
+        # - Build live summary
+        if "action item" in text.lower() or "follow up" in text.lower():
+            print(f"  ↳ ACTION ITEM detected")
 
+    except Exception as e:
+        print(f"Live transcript handler error: {e}")
 
-async def main():
-    async with websockets.serve(transcript_handler, "0.0.0.0", 8765):
-        print("WebSocket server running on ws://localhost:8765")
-        await asyncio.Future()  # run forever
+    return jsonify({"status": "ok"}), 200
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    app.run(port=3000)
 ```
 
 ---
 
-## Pattern 3: Interactive Bot (Send Messages to the Meeting)
+## Pattern 3: Interactive Bot (Control via WebSocket)
 
-Bot joins and responds to transcript keywords by posting chat messages.
+The bot **dials into** your WebSocket server when it joins the meeting. Chat messages and images go over REST (`send_message`, `send_image`). The `sendaudio` WebSocket command is for TTS / pre-recorded audio.
 
 ```python
-# pip install websockets asyncio
+# pip install websockets requests
 import asyncio
+import base64
 import json
 import os
+import wave
 import requests
 import websockets
 
@@ -206,65 +254,102 @@ HEADERS = {
     "Content-Type": "application/json"
 }
 
+# Track active bot sockets
+BOT_SOCKETS: dict[str, websockets.WebSocketServerProtocol] = {}
 
-def create_interactive_bot(meeting_link: str) -> str:
+
+def create_interactive_bot(meeting_link: str, control_ws_url: str) -> str:
+    """Create a bot that connects back to your WebSocket for control commands."""
     resp = requests.post(f"{BASE_URL}/bots/create_bot", headers=HEADERS, json={
         "meeting_link": meeting_link,
         "bot_name": "Meeting Assistant",
-        "audio_required": True,
         "video_required": False,
-        "socket_connection_url": {"url": "wss://your-server.com/bot-control"},
-        "live_transcription_required": {
-            "websocket_url": "wss://your-server.com/transcripts"
-        },
+        "socket_connection_url": {"websocket_url": control_ws_url},  # field is websocket_url, not url
         "automatic_leave": {
-            "everyone_left_timeout": 60,
-            "recording_permission_denied_timeout": 60  # minimum 60; values under 60 return HTTP 400
+            "waiting_room_timeout": 600,
+            "everyone_left_timeout": 300,
+            "recording_permission_denied_timeout": 60
         }
     })
     resp.raise_for_status()
     return resp.json()["bot_id"]
 
 
+def send_chat_message(bot_id: str, message: str) -> None:
+    """Send a chat message in the meeting via REST (not the WebSocket)."""
+    resp = requests.post(
+        f"{BASE_URL}/bots/{bot_id}/send_message",
+        headers=HEADERS,
+        json={"message": message, "metadata": {"message_type": "text"}}
+    )
+    resp.raise_for_status()
+
+
+def send_image(bot_id: str, image_url: str) -> None:
+    """Send an image (incl. animated GIF) in the meeting via REST."""
+    resp = requests.post(
+        f"{BASE_URL}/bots/{bot_id}/send_image",
+        headers=HEADERS,
+        json={"image_url": image_url, "metadata": {"message_type": "image"}}
+    )
+    resp.raise_for_status()
+
+
+async def send_audio_chunk(bot_id: str, pcm16_le_bytes: bytes) -> None:
+    """
+    Play raw PCM16 LE audio through the bot's virtual mic.
+    Audio MUST be: signed 16-bit, little-endian, 48000 Hz, mono. No WAV header.
+    """
+    ws = BOT_SOCKETS.get(bot_id)
+    if not ws:
+        raise RuntimeError(f"No active socket for bot {bot_id}")
+
+    await ws.send(json.dumps({
+        "command": "sendaudio",
+        "bot_id": bot_id,
+        "audiochunk": base64.b64encode(pcm16_le_bytes).decode("utf-8"),
+        "sample_rate": 48000,
+        "encoding": "pcm16",
+        "channels": 1,
+        "endianness": "little"
+    }))
+
+
+async def send_wav_file(bot_id: str, wav_path: str) -> None:
+    """Read a 16-bit mono WAV at 48kHz and stream it through the bot."""
+    with wave.open(wav_path, "rb") as wf:
+        assert wf.getsampwidth() == 2, "WAV must be 16-bit"
+        assert wf.getnchannels() == 1, "WAV must be mono"
+        assert wf.getframerate() == 48000, "WAV must be 48000 Hz (resample first if needed)"
+        pcm_bytes = wf.readframes(wf.getnframes())
+    await send_audio_chunk(bot_id, pcm_bytes)
+
+
 async def bot_control_handler(websocket):
     """Handle the bot control WebSocket connection."""
-    async for message in websocket:
-        data = json.loads(message)
+    bot_id = None
+    try:
+        async for message in websocket:
+            data = json.loads(message)
 
-        if data.get("type") == "ready":
-            bot_id = data["bot_id"]
-            print(f"Bot {bot_id} connected and ready")
+            if data.get("type") == "ready":
+                bot_id = data["bot_id"]
+                BOT_SOCKETS[bot_id] = websocket
+                print(f"Bot {bot_id} connected: {data.get('message', '')}")
 
-            # Send a welcome message to the meeting
-            await websocket.send(json.dumps({
-                "command": "sendmsg",
-                "message": "Hi everyone! I'm your meeting assistant. I'll be taking notes today.",
-                "bot_id": bot_id
-            }))
-
-
-async def transcript_handler(websocket):
-    """Process live transcript and react to keywords."""
-    bot_ws = None  # In a real app, maintain a reference to bot_control_handler ws
-
-    async for message in websocket:
-        chunk = json.loads(message)
-        text = chunk.get("transcript", "").lower()
-        speaker = chunk.get("speakerName", "")
-
-        # React to keywords
-        if "action item" in text or "follow up" in text:
-            print(f"Action item detected from {speaker}: {chunk['transcript']}")
-            # Could trigger a message back to the meeting or save to Notion/Jira
+                # Greet the meeting via REST (chat goes via REST, not the WS)
+                send_chat_message(
+                    bot_id,
+                    "Hi everyone! I'm your meeting assistant. I'll be taking notes today."
+                )
+    finally:
+        if bot_id:
+            BOT_SOCKETS.pop(bot_id, None)
 
 
 async def main():
-    control_server = websockets.serve(bot_control_handler, "0.0.0.0", 8766)
-    transcript_server = websockets.serve(transcript_handler, "0.0.0.0", 8765)
-
-    async with control_server, transcript_server:
+    async with websockets.serve(bot_control_handler, "0.0.0.0", 8766):
         print("Bot control: ws://localhost:8766")
-        print("Transcripts: ws://localhost:8765")
         await asyncio.Future()
 
 
@@ -291,7 +376,6 @@ HEADERS = {
     "Content-Type": "application/json"
 }
 
-# Google OAuth scopes needed
 SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
 
 
@@ -302,48 +386,73 @@ def get_google_refresh_token(client_secrets_file: str) -> str:
     return creds.refresh_token
 
 
-def connect_calendar(refresh_token: str, client_id: str, client_secret: str):
-    """Connect Google Calendar to MeetStream."""
-    resp = requests.post(f"{BASE_URL}/calendar/create-calendar", headers=HEADERS, json={
-        "refresh_token": refresh_token,
-        "client_id": client_id,
-        "client_secret": client_secret
+def connect_calendar(google_refresh_token: str, google_client_id: str, google_client_secret: str):
+    """Connect Google Calendar to MeetStream. Field names MUST use google_ prefix."""
+    resp = requests.post(f"{BASE_URL}/calendar/create_calendar", headers=HEADERS, json={
+        "google_refresh_token": google_refresh_token,
+        "google_client_id": google_client_id,
+        "google_client_secret": google_client_secret
     })
     resp.raise_for_status()
-    print("Calendar connected! Bots will auto-join all upcoming meetings.")
+    data = resp.json()
+    print(f"Calendar connected for {data.get('user_email')}")
+    return data
+
+
+def list_calendars():
+    """List all connected calendars."""
+    resp = requests.get(f"{BASE_URL}/calendar", headers=HEADERS)
+    resp.raise_for_status()
     return resp.json()
 
 
 def list_upcoming_events():
-    """List upcoming calendar events with their scheduled bot status."""
+    """List upcoming calendar events."""
     resp = requests.get(f"{BASE_URL}/calendar/events", headers=HEADERS)
     resp.raise_for_status()
-    events = resp.json()
-    for event in events.get("events", []):
-        print(f"{event['start']} — {event['title']} ({event['meeting_platform']})")
-    return events
+    data = resp.json()
+    for ev in data.get("results", []):
+        print(f"{ev['start_time']} — {ev.get('meeting_platform')} — {ev.get('meeting_url')}")
+    return data
 
 
-def list_scheduled_bots():
-    """View all bots scheduled from calendar."""
-    resp = requests.get(f"{BASE_URL}/calendar/scheduled", headers=HEADERS)
+def schedule_bot_for_event(event_id: str):
+    """Manually schedule a bot for a specific event from /calendar/events."""
+    resp = requests.post(f"{BASE_URL}/calendar/schedule/{event_id}", headers=HEADERS)
+    resp.raise_for_status()
+    data = resp.json()
+    print(f"Scheduled bot {data['bot_id']} at {data['scheduled_time']}")
+    return data
+
+
+def reschedule_bot(bot_id: str, new_join_time_iso: str):
+    """Reschedule a future bot to a different join time."""
+    resp = requests.patch(
+        f"{BASE_URL}/calendar/scheduled_bots/{bot_id}",
+        headers=HEADERS,
+        json={"scheduled_join_time": new_join_time_iso}
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+
+def delete_scheduled_bot(bot_id: str):
+    """Cancel a scheduled bot that hasn't joined yet."""
+    resp = requests.delete(
+        f"{BASE_URL}/calendar/scheduled_bots/{bot_id}",
+        headers=HEADERS
+    )
     resp.raise_for_status()
     return resp.json()
 
 
 if __name__ == "__main__":
-    # Step 1: Get refresh token (run once)
-    # token = get_google_refresh_token("client_secrets.json")
-    # print(f"Refresh token: {token}")
-
-    # Step 2: Connect calendar
+    # Step 1 (run once): token = get_google_refresh_token("client_secrets.json")
     connect_calendar(
-        refresh_token=os.environ["GOOGLE_REFRESH_TOKEN"],
-        client_id=os.environ["GOOGLE_CLIENT_ID"],
-        client_secret=os.environ["GOOGLE_CLIENT_SECRET"]
+        google_refresh_token=os.environ["GOOGLE_REFRESH_TOKEN"],
+        google_client_id=os.environ["GOOGLE_CLIENT_ID"],
+        google_client_secret=os.environ["GOOGLE_CLIENT_SECRET"]
     )
-
-    # Step 3: View upcoming events
     list_upcoming_events()
 ```
 
@@ -351,7 +460,7 @@ if __name__ == "__main__":
 
 ## Pattern 5: Full Note-Taking Agent (Transcript + AI Summary)
 
-Complete server: bot joins, transcribes, generates AI summary after meeting ends.
+Complete server: bot joins, transcribes, generates AI summary after the meeting ends.
 
 ```python
 # pip install flask requests openai
@@ -371,55 +480,70 @@ MEETSTREAM_HEADERS = {
 }
 openai_client = OpenAI(api_key=OPENAI_API_KEY)
 
+TRANSCRIPT_IDS: dict[str, str] = {}
 
-def join_meeting(meeting_link: str) -> str:
+
+def join_meeting(meeting_link: str, callback_url: str) -> str:
     resp = requests.post(f"{BASE_URL}/bots/create_bot", headers=MEETSTREAM_HEADERS, json={
         "meeting_link": meeting_link,
         "bot_name": "Note Taker",
-        "audio_required": True,
         "video_required": False,
-        "callback_url": "https://your-server.com/webhook",
+        "callback_url": callback_url,
         "recording_config": {
             "transcript": {
-                "provider": {"assemblyai": {"language": "en", "model": "universal"}}
+                "provider": {
+                    "assemblyai": {
+                        "speech_models": ["universal-2"],
+                        "language_code": "en_us",
+                        "speaker_labels": True,
+                        "punctuate": True,
+                        "format_text": True
+                    }
+                }
             },
             "retention": {"type": "timed", "hours": 72}
         },
         "automatic_leave": {
-            "waiting_room_timeout": 300,
-            "everyone_left_timeout": 60,
-            "in_call_recording_timeout": 7200,
-            "recording_permission_denied_timeout": 60  # minimum 60; values under 60 return HTTP 400
+            "waiting_room_timeout": 600,
+            "everyone_left_timeout": 300,
+            "voice_inactivity_timeout": 100,
+            "in_call_recording_timeout": 14400,
+            "recording_permission_denied_timeout": 60
         }
     })
     resp.raise_for_status()
-    return resp.json()["bot_id"]
+    data = resp.json()
+    if data.get("transcript_id"):
+        TRANSCRIPT_IDS[data["bot_id"]] = data["transcript_id"]
+    return data["bot_id"]
+
+
+def resolve_transcript_id(bot_id: str) -> str:
+    if bot_id in TRANSCRIPT_IDS:
+        return TRANSCRIPT_IDS[bot_id]
+    resp = requests.get(f"{BASE_URL}/bots/{bot_id}/transcriptions", headers=MEETSTREAM_HEADERS)
+    resp.raise_for_status()
+    for t in resp.json().get("transcriptions", []):
+        if t.get("status") == "Success":
+            TRANSCRIPT_IDS[bot_id] = t["transcript_id"]
+            return t["transcript_id"]
+    raise RuntimeError(f"No completed transcript for bot {bot_id}")
 
 
 def fetch_and_summarize(bot_id: str):
-    # Step 1: get transcript_id from bot detail
-    detail_resp = requests.get(f"{BASE_URL}/bots/{bot_id}/detail", headers=MEETSTREAM_HEADERS)
-    detail_resp.raise_for_status()
-    detail = detail_resp.json()
-    transcript_id = (detail.get("bot_details") or {}).get("transcript_id") or detail.get("transcript_id")
-    if not transcript_id:
-        raise ValueError(f"No transcript_id found for bot {bot_id}")
-
-    # Step 2: fetch transcript using the transcript_id
+    transcript_id = resolve_transcript_id(bot_id)
     resp = requests.get(
-        f"{BASE_URL}/bots/{bot_id}/get_bot_transcript/{transcript_id}",
+        f"{BASE_URL}/transcript/{transcript_id}/get_transcript",
         headers=MEETSTREAM_HEADERS
     )
     resp.raise_for_status()
     transcript_data = resp.json()
 
-    # Format for LLM
     formatted = "\n".join(
         f"{seg['speaker']}: {seg['text']}"
         for seg in transcript_data.get("transcript", [])
     )
 
-    # Generate summary
     response = openai_client.chat.completions.create(
         model="gpt-4o",
         messages=[
@@ -432,7 +556,6 @@ def fetch_and_summarize(bot_id: str):
     print(f"\n=== Meeting Summary (Bot {bot_id}) ===")
     print(summary)
 
-    # Save to file or send to Notion/Slack/email
     with open(f"summary_{bot_id}.txt", "w") as f:
         f.write(summary)
 
@@ -441,17 +564,59 @@ def fetch_and_summarize(bot_id: str):
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
-    event = request.json
-    event_type = event.get("event")
-    bot_id = event.get("bot_id")
+    """ALWAYS return 2xx — webhooks are NOT retried."""
+    try:
+        event = request.json or {}
+        event_type = event.get("event")
+        bot_id = event.get("bot_id")
 
-    if event_type == "transcription.processed":
-        print(f"Generating summary for bot {bot_id}...")
-        fetch_and_summarize(bot_id)
+        if event_type == "transcription.processed":
+            print(f"Generating summary for bot {bot_id}...")
+            fetch_and_summarize(bot_id)
+        elif event_type == "bot.stopped" and event.get("bot_status") != "Stopped":
+            print(f"Bot {bot_id} failed: {event.get('bot_status')} — {event.get('message')}")
+
+    except Exception as e:
+        print(f"Webhook error: {e}")
 
     return jsonify({"status": "ok"}), 200
 
 
 if __name__ == "__main__":
     app.run(port=3000)
+```
+
+---
+
+## Pattern 6: Webhook Signature Verification (optional, recommended)
+
+If you've configured a webhook secret in the MeetStream dashboard, verify each incoming webhook:
+
+```python
+import hashlib
+import hmac
+from flask import Flask, request, jsonify
+
+app = Flask(__name__)
+WEBHOOK_SECRET = os.environ["MEETSTREAM_WEBHOOK_SECRET"].encode()
+
+
+def verify_signature(raw_body: bytes, signature_header: str) -> bool:
+    """signature_header looks like 'sha256=<hex_digest>'"""
+    if not signature_header or not signature_header.startswith("sha256="):
+        return False
+    received = signature_header.split("=", 1)[1]
+    expected = hmac.new(WEBHOOK_SECRET, raw_body, hashlib.sha256).hexdigest()
+    return hmac.compare_digest(received, expected)
+
+
+@app.route("/webhook", methods=["POST"])
+def webhook():
+    if not verify_signature(request.get_data(), request.headers.get("X-MeetStream-Signature", "")):
+        return jsonify({"error": "invalid signature"}), 401
+
+    # ts = request.headers.get("X-MeetStream-Timestamp")  # check replay window if you want
+    event = request.json or {}
+    print(f"Verified: {event.get('event')} for bot {event.get('bot_id')}")
+    return jsonify({"status": "ok"}), 200
 ```
