@@ -279,7 +279,12 @@ Body (`TranscribeRequest`):
 
 Response (`TranscribeResponse`): `{ bot_id, transcript_id, provider, message }`.
 
-> **Recommended pattern (live-tested):** record live with a streaming provider for real-time UI, then call `/transcribe` with a high-quality post-call provider after `bot.stopped`. Get both live AND post-call output from a single bot session.
+> **When to use `/transcribe` (it's a fallback, not the default):**
+> - The bot used a streaming-only provider and you also want a post-call transcript
+> - The original `create_bot` provider failed (out of credit, wrong config) and you want to retry with a different provider
+> - You want to re-transcribe with a higher-quality / different-language provider
+>
+> For standard post-call transcripts, configure the provider on `create_bot` up front and use the canonical fetch flow — no `/transcribe` call needed.
 
 ---
 

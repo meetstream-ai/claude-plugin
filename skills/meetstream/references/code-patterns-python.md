@@ -1273,9 +1273,12 @@ def create_signed_in_bot(meeting_link: str, domain: str) -> str:
 
 ---
 
-## Pattern 11: Retroactive Post-Call Transcript via `/transcribe`
+## Pattern 11: `/transcribe` (Backup / Fallback Path)
 
-For bots that used a streaming-only provider (no automatic `transcript_id`), or any time you need to re-transcribe with a different provider after the meeting.
+> This is a **fallback** pattern — not the primary post-call workflow. For standard post-call notetaking, configure the post-call provider on `create_bot` up front (Pattern 1 / Pattern 5). Use `/transcribe` only when:
+> - The bot used a streaming-only provider and you now need a post-call transcript too
+> - The original provider failed (out of credit, wrong config) and you want to retry with a different provider
+> - You want to re-transcribe with a higher-quality / different-language provider after the fact
 
 ```python
 import os

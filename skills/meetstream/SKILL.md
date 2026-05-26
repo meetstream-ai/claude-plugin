@@ -78,15 +78,32 @@ There is **no `audio_required` field** on `CreateBotRequest`. Audio is recorded 
 
 ## Recommended Implementation Strategy
 
-Pick **one** of these three patterns based on what the user actually needs. They are not mixable in a single bot — each requires a different `recording_config.transcript.provider`.
+Pick the pattern that matches what the user actually needs. The first two are the **primary** workflows; the third is a fallback for specific cases.
 
-| Need | Provider | Lifecycle terminal event | Where transcript lives |
+### Primary patterns
+
+| Need | What to configure | Lifecycle terminal event | Where the transcript lives |
 |---|---|---|---|
-| **Live transcript chunks during the meeting** (AI coaching, real-time UI) | Streaming (`meetstream_streaming` is free; `*_streaming` for external) + `live_transcription_required.webhook_url` | `audio.processed` | Each chunk posted to your webhook in real time; no post-call fetch |
-| **Post-call transcript only** (recording, summaries, notes) | Post-call (`deepgram` / `assemblyai` / `sarvam` / `jigsawstack` / `meetstream`) | `bot.done` | `GET /transcript/{tid}/get_transcript` after `transcription.processed` fires |
-| **Both live + post-call** | Start with streaming for live, then call `POST /bots/{bot_id}/transcribe` after `bot.stopped` with a post-call provider | `audio.processed` (live), then `transcription.processed` from the re-transcribe | Live: webhook. Post-call: canonical fetch via `bot_details.transcript_id` (which gets overwritten by the `/transcribe` run) |
+| **Post-call transcript** (notetaker, recordings, summaries) — the most common use case | `recording_config.transcript.provider` set to a post-call provider (`deepgram` / `assemblyai` / `sarvam` / `jigsawstack` / `meetstream`) + a `callback_url` for webhooks | `bot.done` | `GET /transcript/{tid}/get_transcript` after `transcription.processed` fires — fetched via the canonical `bot_details.transcript_id` flow |
+| **Live transcript chunks during the meeting** (AI coaching, live captions, real-time agents) | `live_transcription_required.webhook_url` + a streaming provider in `recording_config.transcript.provider` (`meetstream_streaming` works free on stock accounts; `*_streaming` for external providers) | `audio.processed` (no `bot.done` for streaming-only bots) | Each chunk POSTed to your webhook in real time; nothing is saved server-side for post-call fetch |
 
-**For accounts without external provider keys** (no Deepgram / AssemblyAI / Sarvam / JigsawStack credit): use `meetstream_streaming` for live (works on stock accounts, no external key needed), and call `POST /bots/{bot_id}/transcribe` after the meeting with whichever post-call provider your account has keys for, to get a post-call transcript on demand.
+**For the standard post-call notetaker workflow (95% of integrations):**
+1. `create_bot` with `recording_config.transcript.provider: {deepgram: {...}}` (or assemblyai, etc.) and `callback_url`
+2. Wait for the `transcription.processed` webhook
+3. `GET /bots/{bot_id}/detail` → read `bot_details.transcript_id`
+4. `GET /transcript/{transcript_id}/get_transcript` → top-level array of segments
+
+No `/transcribe` call needed. The bot was configured with a post-call provider up front, so the transcript is generated automatically.
+
+### Backup / fallback pattern (`POST /bots/{bot_id}/transcribe`)
+
+`/transcribe` is **not the primary path** — it's a backup option for these specific cases:
+
+- **You used a streaming-only provider at meeting time** (live transcription) but now want a post-call transcript too. Audio is saved, so you can transcribe on demand.
+- **The original post-call provider failed** (e.g. `transcription.failed` because credits ran out). Retry with a different provider that does have credit, without re-running the meeting.
+- **You want to re-transcribe with a higher-quality / different-language provider** after the fact.
+
+In all other cases, configure the right provider on `create_bot` up front. `/transcribe` is a recovery tool, not a default.
 
 ---
 
@@ -506,11 +523,16 @@ create_bot (returns transcript_id: null)
 
 **Key difference (live-verified):** Streaming providers terminate the lifecycle at `audio.processed`. There is **no `bot.done`, no `transcription.processed`, no `transcription.failed` event** for streaming-only bots. If your webhook handler waits for `bot.done` to mark the session complete, it will wait forever on a streaming bot.
 
-### Path C: Retroactive post-call via `/transcribe`
+### Path C: Backup / fallback — `/transcribe`
 
-If you used a streaming-only provider at meeting time, **a post-call transcript does NOT exist automatically** — `transcript_id` stays `null`, `/transcriptions` is empty, `bot_details.transcript_id` is `None`. The audio recording IS saved (`AudioStatus: Success`), but you must explicitly request transcription.
+> Use Path C only as a recovery / fallback. The primary post-call workflow is Path A (configure the post-call provider on `create_bot` up front). Reach for Path C when:
+> - You used a streaming-only provider at meeting time and now want a post-call transcript too
+> - The original `create_bot` provider failed (e.g. `transcription.failed`) and you want to retry with a different provider that has credit
+> - You want to re-transcribe with a higher-quality / different-language provider
 
-Call `POST /bots/{bot_id}/transcribe` with a post-call provider any time after `bot.stopped` to generate one on demand:
+If you used a streaming-only provider at meeting time, **a post-call transcript does NOT exist automatically** — `transcript_id` stays `null`, `/transcriptions` is empty, `bot_details.transcript_id` is `None`. The audio recording IS saved (`AudioStatus: Success`), so you can request transcription whenever you want.
+
+Call `POST /bots/{bot_id}/transcribe` with a post-call provider any time after `bot.stopped`:
 
 ```bash
 POST /bots/{bot_id}/transcribe
