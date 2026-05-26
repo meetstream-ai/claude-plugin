@@ -76,6 +76,20 @@ There is **no `audio_required` field** on `CreateBotRequest`. Audio is recorded 
 
 ---
 
+## Recommended Implementation Strategy
+
+Pick **one** of these three patterns based on what the user actually needs. They are not mixable in a single bot — each requires a different `recording_config.transcript.provider`.
+
+| Need | Provider | Lifecycle terminal event | Where transcript lives |
+|---|---|---|---|
+| **Live transcript chunks during the meeting** (AI coaching, real-time UI) | Streaming (`meetstream_streaming` is free; `*_streaming` for external) + `live_transcription_required.webhook_url` | `audio.processed` | Each chunk posted to your webhook in real time; no post-call fetch |
+| **Post-call transcript only** (recording, summaries, notes) | Post-call (`deepgram` / `assemblyai` / `sarvam` / `jigsawstack` / `meetstream`) | `bot.done` | `GET /transcript/{tid}/get_transcript` after `transcription.processed` fires |
+| **Both live + post-call** | Start with streaming for live, then call `POST /bots/{bot_id}/transcribe` after `bot.stopped` with a post-call provider | `audio.processed` (live), then `transcription.processed` from the re-transcribe | Live: webhook. Post-call: canonical fetch via `bot_details.transcript_id` (which gets overwritten by the `/transcribe` run) |
+
+**For accounts without external provider keys** (no Deepgram/AssemblyAI/JigsawStack/Sarvam credit): use `meetstream_streaming` for live, and the in-house `meetstream` provider for post-call (note: backed by JigsawStack internally — needs JigsawStack key, so check your dashboard first).
+
+---
+
 ## Use Case Patterns
 
 Map the user's request to one of these, then read the relevant code pattern file for the full implementation.
@@ -452,25 +466,55 @@ Supported providers: see `references/api-reference.md` MIA section.
 
 ---
 
-## Bot Lifecycle — Live-Verified
+## Bot Lifecycle — Live-Verified, Two Distinct Paths
 
-Captured end-to-end from a real Google Meet bot run against `webhook.site`. The skill previously documented 7 events; **the live API actually emits 11+ events** in a richer sequence.
+**Lifecycle depends on whether you configured a post-call provider or a streaming-only provider.** This is the most important architectural distinction in the entire API — and it's not in the official docs.
+
+### Path A: Post-call provider (`deepgram`, `assemblyai`, `sarvam`, `jigsawstack`, `meetstream`)
 
 ```
-create_bot
+create_bot (returns transcript_id)
   → bot.joining          (Joining, 200)
   → bot.inmeeting        (InMeeting, 200)
-  → bot.recording        (Recording, 200)        ← skill missed this
-  → participant_events.* (if realtime_endpoints configured; different payload shape)
-  → bot.leaving          (Leaving, 200)          ← skill missed this
+  → bot.recording        (Recording, 200)
+  → participant_events.* (if realtime_endpoints configured)
+  → bot.leaving          (Leaving, 200)
   → bot.stopped          (Stopped|NotAllowed|Denied|Error, 200)
-  → manifest.completed   (200; manifest_status=Success)   ← skill missed this
+  → manifest.completed   (200; manifest_status=Success)
   → audio.processed      (200; audio_status=Success)
-  → transcription.processed  OR  transcription.failed  ← skill said *.failed didn't exist; it DOES
-  → video.processed      OR  video.failed (presumed by symmetry)
-  → bot.done             (Done, 200|500)        ← skill missed this — TRUE terminal event
+  → transcription.processed  OR  transcription.failed   ← only path A gets these
+  → video.processed      (if video_required: true)
+  → bot.done             (Done, 200|500)                ← only path A gets this
   → data_deletion        (200) — only after DELETE /bots/{id}/delete or retention expiry
 ```
+
+### Path B: Streaming-only provider (`meetstream_streaming`, `assemblyai_streaming`, `deepgram_streaming`, `jigsawstack_streaming`, `meeting_captions`)
+
+```
+create_bot (returns transcript_id: null)
+  → bot.joining          (Joining, 200)
+  → [bot.error           (InMeeting, sc=-)]    ← if streaming provider has auth issue
+  → bot.inmeeting        (InMeeting, 200)
+  → bot.recording        (Recording, 200)
+  → [live chunks stream to live_transcription_required.webhook_url]
+  → bot.leaving          (Leaving, 200)
+  → bot.stopped          (Stopped|NotAllowed|Denied|Error, 200)
+  → manifest.completed   (200)
+  → audio.processed      (200)
+  → [END]   ← no transcription.processed, no transcription.failed, no bot.done
+```
+
+**Key difference (live-verified):** Streaming providers terminate the lifecycle at `audio.processed`. There is **no `bot.done`, no `transcription.processed`, no `transcription.failed` event** for streaming-only bots. If your webhook handler waits for `bot.done` to mark the session complete, it will wait forever on a streaming bot.
+
+### Path C: Retroactive post-call via `/transcribe`
+
+If you used streaming-only at meeting time but want a post-call transcript later, call `POST /bots/{bot_id}/transcribe` with a post-call provider. This triggers a Path-A-style post-call run:
+- Returns a new `transcript_id`
+- **Overwrites `bot_details.transcript_id`** with the new one (live-verified)
+- Fires `transcription.processed` or `transcription.failed` on the `callback_url` passed in the `/transcribe` body
+- The canonical fetch flow (`bot_details.transcript_id` → `/transcript/{tid}/get_transcript`) returns the new run's transcript
+
+This is the recommended pattern for accounts that have only `meetstream_streaming` configured but want post-call output too — record live with streaming, then re-transcribe with a paid provider on demand.
 
 Notes:
 - `bot.joining` may fire up to 3 times if server-side join retries kick in.
@@ -484,6 +528,7 @@ Notes:
 | event | bot_status | status_code | When | Extra payload fields |
 |---|---|---|---|---|
 | `bot.joining` | `Joining` | 200 | Bot is connecting | — |
+| `bot.error` | `InMeeting` | — (omitted) | **Streaming-provider upstream error during meeting** (e.g. AssemblyAI "Insufficient funds"). Does NOT abort — bot continues, just no live transcription. **Live-verified, no `status_code`, no `custom_attributes`, no `timestamp`.** | `message` (upstream error) |
 | `bot.inmeeting` | `InMeeting` | 200 | Bot joined the meeting | — |
 | `bot.recording` | `Recording` | 200 | Recording started | — |
 | `participant_events.join` / `.leave` | — | — | Participants join/leave (requires `recording_config.realtime_endpoints`) | Nested: `data.data.action`, `data.data.participant.{id,name,full_name,platform}`, `data.data.timestamp.{relative,absolute}`, `data.bot.{id,metadata}`. No top-level `bot_id` or `bot_status`. |
@@ -491,11 +536,13 @@ Notes:
 | `bot.stopped` | `Stopped` / `NotAllowed` / `Denied` / `Error` | 200 | Bot exited the meeting | — |
 | `manifest.completed` | — | 200 | Platform manifest uploaded | `status: "success"`, `manifest_status: "Success"`, `timestamp` |
 | `audio.processed` | — | 200 | Audio ready to fetch | `status: "success"`, `audio_status: "Success"`, `timestamp` |
-| `transcription.processed` | — | 200 | Transcript ready (post-call providers) | `transcript_status: "Success"`, `timestamp` |
-| `transcription.failed` | — | **500** | Transcript failed (e.g. provider auth error) | `status: "error"`, `transcript_status: "Failed"`, `message` (error detail), `timestamp` |
+| `transcription.processed` | — | 200 | Transcript ready — **POST-CALL PROVIDERS ONLY** | `transcript_status: "Success"`, `timestamp` |
+| `transcription.failed` | — | **500** | Transcript failed — **POST-CALL PROVIDERS ONLY** | `status: "error"`, `transcript_status: "Failed"`, `message` (error detail), `timestamp` |
 | `video.processed` | — | 200 | Video ready to fetch (`video_required: true`) | `video_status: "Success"`, `timestamp` |
-| `bot.done` | `Done` | 200 (or 500 if processing failed) | All processing complete — **terminal event** | `timestamp`, `message` (error detail if status_code=500) |
+| `bot.done` | `Done` | 200 (or 500 if processing failed) | All post-call processing complete — **terminal event, PATH A ONLY** | `timestamp`, `message` (error detail if status_code=500) |
 | `data_deletion` | — | 200 | Data deleted (manual `/delete` or retention) | `status: "success"`, `deleted_objects: <int>`, `timestamp` |
+
+> **Streaming-only bots (Path B) get NONE of the bottom 4 rows** — `transcription.processed`, `transcription.failed`, and `bot.done` simply never fire. Their lifecycle ends at `audio.processed`. `bot.error` is specific to streaming providers when their upstream auth fails. If your handler waits for `bot.done` to mark sessions complete, **it will hang forever** on streaming bots — use `audio.processed` as the terminal signal for Path B.
 
 ### `status_code` is NOT always 200
 

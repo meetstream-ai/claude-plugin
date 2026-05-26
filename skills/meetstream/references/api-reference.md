@@ -252,7 +252,15 @@ Response: `{status, bot_id, command}`.
 ---
 
 ### POST `/bots/{bot_id}/transcribe`
-Trigger a new transcription run on the bot's audio. Body (`TranscribeRequest`):
+Trigger a new post-call transcription run on the bot's stored audio. **Live-verified behaviors:**
+
+- Works even on bots that originally used a streaming-only provider (`meetstream_streaming` etc.) — lets you retroactively add a post-call transcript
+- Returns a **new** `transcript_id` and starts processing
+- **Overwrites `bot_details.transcript_id`** with the new id (canonical fetch will return the latest run)
+- Adds an entry to `GET /bots/{bot_id}/transcriptions` with `status: "Processing"` (then "Success" or "Failed")
+- Fires `transcription.processed` or `transcription.failed` webhook on the `callback_url` passed in the body
+
+Body (`TranscribeRequest`):
 
 ```json
 {
@@ -263,10 +271,12 @@ Trigger a new transcription run on the bot's audio. Body (`TranscribeRequest`):
 }
 ```
 
-- `provider` (object, **required**) — top-level. Pick exactly one sub-key: `deepgram`, `meetstream`, `jigsawstack`, `sarvam`, or `assemblyai`. (Same shape as in `recording_config.transcript.provider` but here `provider` is the top-level key.)
-- `callback_url` (string, optional).
+- `provider` (object, **required**) — top-level. Pick exactly one sub-key: `deepgram`, `meetstream`, `jigsawstack`, `sarvam`, or `assemblyai`. (Same shape as `recording_config.transcript.provider` but `provider` is the top-level body key.)
+- `callback_url` (string, optional) — where to send the transcription.processed/.failed webhook for this re-run
 
 Response (`TranscribeResponse`): `{ bot_id, transcript_id, provider, message }`.
+
+> **Recommended pattern (live-tested):** record live with `meetstream_streaming` for real-time, then call `/transcribe` with a paid provider after `bot.stopped` for a high-quality post-call transcript. Get both worlds without needing the original bot to use a paid provider.
 
 ---
 
@@ -686,6 +696,7 @@ HTTP POST. Your endpoint MUST return 2xx — **webhooks are not retried on non-2
 | # | event | bot_status | status_code | When | Extra payload fields |
 |---|---|---|---|---|---|
 | 1 | `bot.joining` | `Joining` | 200 | Bot is connecting | — |
+| 1b | `bot.error` | `InMeeting` | — (omitted) | **Streaming-provider upstream error during meeting** (e.g. AssemblyAI insufficient funds). Bot continues; only live transcription is impacted. Live-verified. | `message` (upstream error). NO `status_code`, NO `custom_attributes`, NO `timestamp`. |
 | 2 | `bot.inmeeting` | `InMeeting` | 200 | Bot joined the meeting | — |
 | 3 | `bot.recording` | `Recording` | 200 | Recording started | — |
 | 4 | `participant_events.join` / `.leave` | — | — | Participants join/leave (requires `recording_config.realtime_endpoints`) | Nested under `data.data.{action,participant,timestamp}` and `data.bot.{id,metadata}`. No top-level `bot_id` or `bot_status`. |
@@ -693,11 +704,13 @@ HTTP POST. Your endpoint MUST return 2xx — **webhooks are not retried on non-2
 | 6 | `bot.stopped` | `Stopped` / `NotAllowed` / `Denied` / `Error` | 200 | Bot exited (fires once per bot) | — |
 | 7 | `manifest.completed` | — | 200 | Platform manifest uploaded | `status: "success"`, `manifest_status: "Success"`, `timestamp` |
 | 8 | `audio.processed` | — | 200 | Audio ready to fetch | `status: "success"`, `audio_status: "Success"`, `timestamp` |
-| 9 | `transcription.processed` | — | 200 | Transcript ready | `transcript_status: "Success"`, `timestamp` |
-| 9b | `transcription.failed` | — | **500** | Transcript run failed | `status: "error"`, `transcript_status: "Failed"`, `message` (error detail), `timestamp` |
+| 9 | `transcription.processed` | — | 200 | Transcript ready — **post-call providers only** | `transcript_status: "Success"`, `timestamp` |
+| 9b | `transcription.failed` | — | **500** | Transcript run failed — **post-call providers only** | `status: "error"`, `transcript_status: "Failed"`, `message` (error detail), `timestamp` |
 | 10 | `video.processed` | — | 200 | Video ready (only when `video_required: true`) | `video_status: "Success"`, `timestamp` |
-| 11 | `bot.done` | `Done` | 200 or 500 | All processing complete — **terminal** | `timestamp`, `message` |
+| 11 | `bot.done` | `Done` | 200 or 500 | All processing complete — **terminal — POST-CALL PROVIDERS ONLY** | `timestamp`, `message` |
 | 12 | `data_deletion` | — | 200 | Data deleted (manual `/delete` or retention expiry) | `status: "success"`, `deleted_objects: <int>`, `timestamp` |
+
+> **Streaming-only providers (`meetstream_streaming`, `assemblyai_streaming`, `deepgram_streaming`, `jigsawstack_streaming`, `meeting_captions`) DO NOT fire events 9, 9b, or 11.** Their lifecycle terminal event is #8 `audio.processed`. Don't wait for `bot.done` on a streaming-only bot or your handler hangs forever.
 
 Each event fires **at most once** per bot, except `bot.joining` which may fire up to 3× if server-side join retries kick in.
 

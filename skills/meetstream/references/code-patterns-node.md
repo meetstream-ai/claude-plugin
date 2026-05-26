@@ -105,6 +105,11 @@ app.post('/webhook', async (req: Request, res: Response) => {
     //   → video.processed → bot.done → data_deletion (after manual /delete)
     switch (event) {
       case 'bot.joining':    console.log(`Bot ${bot_id} connecting...`); break
+      case 'bot.error':
+        // Live-verified: streaming-provider upstream error (e.g. "AssemblyAI Insufficient funds").
+        // The bot CONTINUES — only live transcription is impacted. Don't treat this as fatal.
+        console.warn(`Bot ${bot_id} streaming-provider error: ${req.body.message}`)
+        break
       case 'bot.inmeeting':  console.log(`Bot ${bot_id} joined the meeting`); break
       case 'bot.recording':  console.log(`Bot ${bot_id} started recording`); break
       case 'bot.leaving':    console.log(`Bot ${bot_id} is leaving`); break

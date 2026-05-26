@@ -128,6 +128,10 @@ def webhook():
         # Lifecycle events (in order — all live-verified)
         if event_type == "bot.joining":
             print(f"Bot {bot_id} connecting...")
+        elif event_type == "bot.error":
+            # Live-verified: streaming-provider upstream error (e.g. AssemblyAI insufficient funds).
+            # The bot continues; only live transcription is impacted.
+            print(f"Bot {bot_id} streaming-provider error: {event.get('message')}")
         elif event_type == "bot.inmeeting":
             print(f"Bot {bot_id} joined the meeting")
         elif event_type == "bot.recording":
