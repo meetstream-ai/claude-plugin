@@ -2,14 +2,14 @@
 name: notetaker
 description: >
   Build a complete MeetStream-powered AI meeting notetaker — bot joins,
-  records, transcribes, generates an AI summary, and delivers to email /
-  Slack / Notion / CRM. Use when the user says "build a notetaker", "AI
-  meeting notetaker", "meeting recorder with AI summaries", "auto-summarize
-  my meetings", "meeting recap to Slack", "send meeting notes to my CRM",
-  "AI meeting summarizer", "meeting action items extractor", or any variant
-  of a meeting-summary product. Walks through tech stack choice, scaffolds
-  webhook handler, transcript fetch, LLM summary, and delivery layer
-  end-to-end.
+  records, transcribes, generates an AI summary, and emails it to the
+  meeting attendees (you choose the email provider: Resend / SendGrid /
+  SMTP). Use when the user says "build a notetaker", "AI meeting
+  notetaker", "meeting recorder with AI summaries", "auto-summarize my
+  meetings", "AI meeting summarizer", "meeting action items extractor",
+  "meeting recap email", or any variant of a meeting-summary product.
+  Walks through tech stack choice, scaffolds webhook handler, transcript
+  fetch, LLM summary, and email delivery end-to-end.
 ---
 
 # Notetaker Scaffold
@@ -51,17 +51,17 @@ I'll build you a complete meeting notetaker. Quick config:
 1. STACK?  Python (Flask/FastAPI) or Node.js (Express/Next.js)? [default: Python + FastAPI]
 
 2. TRIGGER?  How do meetings start the bot?
-   a) Manual API call (you POST /meetings/start with a link)
+   a) Manual API call (your app POSTs /meetings/start with a link)
    b) Calendar auto-schedule (MeetStream watches Google Calendar)
-   c) Slack slash command (/note <meeting-link>)
+   c) From a CLI script you run on-demand
    [default: manual API call]
 
 3. SUMMARY DELIVERY?  Where should the summary go?
-   a) Email (SMTP / Resend / SendGrid)
-   b) Slack DM or channel
-   c) Notion page
-   d) HubSpot / Salesforce CRM activity
-   e) Webhook (you handle delivery yourself)
+   (MeetStream gives you the transcript — delivery is your app's job. Pick
+   whichever channel you'll wire up yourself using that channel's own SDK.)
+   a) Email (Resend / SendGrid / SMTP — easiest, no extra setup)
+   b) Generic outbound webhook to your own server (you forward from there)
+   c) Save to a database (Postgres / Supabase / Firestore) for an in-app feed
    [default: email via Resend]
 
 4. PROVIDERS?  Which post-call transcription provider does your MeetStream account have keys for?
@@ -88,7 +88,7 @@ notetaker/
 │   ├── meetstream.py     # MeetStream client wrapper
 │   ├── webhook.py        # Webhook handler (returns 2xx fast, queues work)
 │   ├── summary.py        # LLM summary generation
-│   ├── delivery.py       # Send to email/Slack/Notion/CRM
+│   ├── delivery.py       # Email the summary (Resend / SendGrid / SMTP)
 │   └── queue.py          # Idempotency + async queue (use Redis or in-memory)
 └── scripts/
     ├── start_bot.py      # CLI to send a bot to a meeting link
@@ -241,7 +241,7 @@ def generate_summary(segments: list[dict], meeting_link: str | None = None) -> s
     return resp.choices[0].message.content
 ```
 
-`app/delivery.py` (Resend email; swap for Slack/Notion/HubSpot as needed):
+`app/delivery.py` (Resend email — swap for SendGrid / SMTP / your own SDK as needed; MeetStream is delivery-agnostic):
 ```python
 import os, resend
 

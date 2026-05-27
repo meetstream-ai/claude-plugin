@@ -520,7 +520,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
       const summary = await generateSummary(bot_id)
       console.log('Meeting summary:', summary)
-      // await sendToSlack(summary); await saveToNotion(summary);
+      // Deliver however your app needs — email, your own webhook, DB write, etc.
+      // await sendEmail(summary); await saveToDb(summary);
     } catch (err) {
       console.error('Summary generation failed:', err)
     }

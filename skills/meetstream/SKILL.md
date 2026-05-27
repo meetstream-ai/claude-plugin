@@ -573,7 +573,7 @@ When in doubt, walk the user through every step above before sending `create_bot
 
 When a user asks for any of these common products, treat the prompt as a complete spec and scaffold the entire app — webhook server, MeetStream integration, AI processing, delivery layer, error handling — in one pass. Hand off to the relevant use-case skill (`notetaker`, `sales-coach`, `calendar-automation`, etc.) for the actual scaffolding, but recognize these patterns as "build the whole thing now" signals:
 
-1. **Slack notetaker** — `/note <link>` → join → summarize → DM + thread reply (use `notetaker` skill + Slack SDK)
+1. **API-triggered notetaker** — POST `/meetings/start` → join → summarize → email all attendees + trigger user via Resend (use `notetaker` skill)
 2. **Real-time sales coach** — meeting link → live transcription → LLM detection → WebSocket push to browser (use `sales-coach` skill)
 3. **Calendar auto-recording** — Google Calendar OAuth → auto-schedule → summary delivery (use `calendar-automation` + `notetaker` skills)
 4. **CRM auto-enricher (HubSpot/Salesforce)** — post-call → extract action items + signals → upsert CRM activity (use `notetaker` skill + CRM SDK)
@@ -849,7 +849,7 @@ Field names use the `google_` prefix. All three are required. Plain `refresh_tok
 
 ### Pattern 5: Note-Taker (full pipeline)
 
-Webhook server + bot creation + transcript fetch + AI summary + delivery (email/Slack/Notion).
+Webhook server + bot creation + transcript fetch + AI summary + email delivery.
 
 See `references/code-patterns-node.md` Pattern 4 (Next.js) or `references/code-patterns-python.md` Pattern 5 (Flask + OpenAI). Build plan should include: webhook handler (returns 200 fast, idempotent), transcript fetch via `transcript_id`, LLM summary, delivery layer.
 

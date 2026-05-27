@@ -39,9 +39,11 @@ I'll build you a real-time sales coach. Quick config:
    [default: a, b, c]
 
 3. DELIVERY?  How does the seller see the coach cards?
-   a) Browser tab the seller keeps open during the call
-   b) Slack DM in real-time
-   c) Push notification (mobile)
+   (The plugin scaffolds the browser-tab path end-to-end. Other channels
+   are your own integration with that channel's own SDK.)
+   a) Browser tab the seller keeps open during the call (scaffolded — uses WebSocket)
+   b) Mobile push (you wire up FCM / APNS / your own push provider)
+   c) Generic outbound webhook (you forward to whatever channel you want)
    [default: browser tab via WebSocket]
 
 4. LLM?  For real-time inference:

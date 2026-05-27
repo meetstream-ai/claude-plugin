@@ -41,7 +41,7 @@ The fastest path from idea to production for every meeting-intelligence use case
 
 | Use case | Try in Claude | What you get |
 |---|---|---|
-| 🎙️ **AI Meeting Notetaker** | *"build me an AI notetaker"* | Full webhook server + transcript fetch + GPT-4 summary + email/Slack/Notion delivery |
+| 🎙️ **AI Meeting Notetaker** | *"build me an AI notetaker"* | Full webhook server + transcript fetch + GPT-4 summary + email delivery (Resend / SendGrid / SMTP) |
 | 🎯 **Real-Time AI Sales Coach** | *"build a real-time AI sales coach"* | Live transcription + objection detection + WebSocket push to seller's browser |
 | 📊 **Conversation Intelligence Platform** | *"build a conversation intelligence tool"* | Live + post-call transcripts + speaker analytics + searchable archive |
 | 📅 **Google Calendar Auto-Recording** | *"auto-record every meeting on my Google Calendar"* | OAuth setup + `/calendar/create_calendar` + auto-schedule + recurring event handling + post-meeting delivery |
@@ -59,9 +59,9 @@ The fastest path from idea to production for every meeting-intelligence use case
 
 Each of these is a complete, production-quality prompt. Paste any one into Claude Code and you'll get a working, end-to-end app — webhook server, MeetStream integration, AI processing, delivery layer, error handling, all wired up.
 
-### 1️⃣ Slack-integrated AI notetaker (one prompt)
+### 1️⃣ API-triggered AI notetaker with email delivery (one prompt)
 
-> Build me a Slack-integrated AI meeting notetaker in **Python + FastAPI**. Flow: user runs `/note <meeting-link>` in Slack → bot joins via MeetStream → meeting ends → fetch transcript via `bot_details.transcript_id` → generate a structured summary with GPT-4o (key decisions, action items with owners, open questions) → DM the user who triggered it AND post a thread reply in the original channel with the summary. Use **deepgram** as the transcription provider. Include: idempotent webhook handler (dedupe with timestamp || message fallback), Redis-backed dedup, graceful handling of `transcription.failed` (retry with a different provider via `/transcribe`), `.env` config with `.gitignore`, README with `ngrok` setup, and a `requirements.txt`. Tag every bot with the Slack user_id in `custom_attributes`. Use the recommended `automatic_leave` defaults (600/600/600/14400/300).
+> Build me an API-triggered AI meeting notetaker in **Python + FastAPI**. Flow: my app POSTs `{meeting_link, attendee_emails, triggered_by}` to `/meetings/start` → MeetStream bot joins → meeting ends → fetch transcript via the canonical `bot_details.transcript_id` flow → generate a structured summary with GPT-4o (executive summary, key decisions, action items with owners, open questions) → email the summary to all attendees + the trigger user via Resend with the transcript attached as `transcript.txt`. Use **deepgram** as the transcription provider. Include: idempotent webhook handler (dedupe with `{bot_id, event, timestamp || message}` fallback for lifecycle events), Redis-backed dedup, graceful handling of `transcription.failed` (retry with a different provider via `POST /bots/{id}/transcribe`), `.env` config with `.gitignore`, README with `ngrok` setup, a `requirements.txt`, and a `seed.py` test script that triggers a sample meeting. Tag every bot with `triggered_by` in `custom_attributes` for correlation. Use the recommended `automatic_leave` defaults (600/600/600/14400/300).
 
 ### 2️⃣ Real-time AI sales coach with browser dashboard (one prompt)
 

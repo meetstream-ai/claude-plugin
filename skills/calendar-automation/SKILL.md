@@ -51,10 +51,10 @@ I'll set up Google Calendar auto-recording with MeetStream. Quick config:
    - Welcome message in chat? [default: none]
 
 4. POST-MEETING WORKFLOW?
-   a) AI summary to email (uses the notetaker scaffold)
-   b) Slack notification with action items
-   c) CRM activity log (HubSpot/Salesforce)
-   d) Just store the transcript in Postgres
+   (MeetStream gives you the transcript via webhook. Delivery is your app.)
+   a) AI summary emailed to attendees (uses the notetaker scaffold)
+   b) Just store the transcript in Postgres / Supabase / Firestore
+   c) Generic outbound webhook to your own server (you handle from there)
    [default: a]
 ```
 
