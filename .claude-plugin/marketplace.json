@@ -1,7 +1,7 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "meetstream-ai",
-  "description": "MeetStream plugins for Claude Code — meeting bots, transcription, recording, and intelligence",
+  "description": "MeetStream plugins for Claude Code — AI notetakers, sales coaches, real-time transcription, Google Calendar auto-recording, and meeting intelligence",
   "owner": {
     "name": "MeetStream",
     "email": "hello@meetstream.ai",
@@ -10,27 +10,35 @@
   "plugins": [
     {
       "name": "meetstream",
-      "description": "Build meeting bots, transcription, and recording with MeetStream. Scaffolds notetakers, real-time sales coaches, CRM auto-updaters, and Recall.ai migrations. Works with Zoom, Google Meet, Teams. Every endpoint live-tested against api.meetstream.ai — no hallucinations.",
+      "description": "Build meeting intelligence with MeetStream — AI notetakers, real-time sales coaches, conversation intelligence, Google Calendar auto-recording, and AI meeting agents. Scaffolds complete apps in one prompt. Works with Zoom, Google Meet, Teams. Every endpoint live-tested — no hallucinations.",
       "source": {
         "source": "url",
         "url": "https://github.com/meetstream-ai/claude-plugin.git",
-        "sha": "6040c5a6a482de8d8cef32df980253dd41d342c5"
+        "sha": "665fc556ff5c3d30bf3490c595c67c00348d742a"
       },
       "homepage": "https://meetstream.ai",
       "category": "developer-tools",
       "keywords": [
-        "meeting-bot",
-        "notetaker",
-        "transcription",
+        "meeting-intelligence",
+        "ai-notetaker",
+        "ai-meeting-assistant",
+        "ai-sales-coach",
+        "conversation-intelligence",
+        "meeting-transcription",
         "real-time-transcription",
-        "sales-coach",
+        "speaker-diarization",
+        "meeting-recorder",
+        "meeting-bot-api",
+        "live-captions",
+        "ai-meeting-agent",
+        "google-calendar-integration",
+        "google-calendar-bot",
+        "calendar-automation",
+        "calendar-notetaker",
+        "scheduled-meeting-bot",
         "zoom",
         "google-meet",
-        "teams",
-        "recall-alternative",
-        "ai-agent",
-        "live-captions",
-        "webhook",
+        "microsoft-teams",
         "meetstream"
       ]
     }
