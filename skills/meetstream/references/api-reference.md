@@ -550,10 +550,27 @@ Enable/disable auto-rescheduling per event.
 
 ---
 
-### `/calendar/disconnect`
-> **Method inconsistency in docs:** the OpenAPI spec says **`POST /calendar/disconnect`** with `CalendarCreateRequest` body. The prose docs (FAQ + API quick reference) say **`DELETE /calendar/disconnect`**. Try POST first; if 405, fall back to DELETE.
+### DELETE `/calendar/disconnect`
+Disconnects the calendar — irreversible. Stops Google Calendar watch channels, cancels pending bot schedules, deletes all synced event data, and removes stored Google OAuth credentials.
 
-Disconnects the calendar. Per the prose docs, this stops watch channels, cancels pending bot schedules, deletes synced event data, and removes Google OAuth credentials (irreversible).
+```bash
+curl -X DELETE "https://api.meetstream.ai/api/v1/calendar/disconnect" \
+  -H "Authorization: Token <YOUR_API_KEY>"
+```
+
+**Response:**
+```json
+{
+  "disconnected": true,
+  "user_id": "usr_abc123",
+  "watch_channel_stopped": true,
+  "events_deleted": 42,
+  "schedules_cancelled": 5,
+  "message": "Calendar disconnected successfully. All events and scheduled bots have been removed."
+}
+```
+
+> The OpenAPI spec shows this as `POST` with a `CalendarCreateRequest` body — that's a quirk in the spec. The docs guide, cURL example, and response example all use `DELETE` with no body. Follow the docs guide.
 
 ---
 

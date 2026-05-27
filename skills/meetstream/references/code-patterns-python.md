@@ -541,24 +541,16 @@ def connect_calendar(refresh_token: str, client_id: str, client_secret: str):
     return resp.json()
 
 
-def disconnect_calendar(refresh_token: str, client_id: str, client_secret: str):
-    """Docs method inconsistency — neither has been live-tested by this skill.
+def disconnect_calendar():
+    """Per docs guide + cURL example: DELETE, no body.
 
-    OpenAPI says: POST /calendar/disconnect with CalendarCreateRequest body
-    Prose docs say: DELETE /calendar/disconnect
-    Try POST first; fall back to DELETE (without body) if rejected. Confirm
-    against your account before relying on this in production.
+    Irreversible — stops watch channels, cancels pending schedules,
+    deletes synced events, removes Google OAuth credentials.
+    (OpenAPI shows POST as a quirk; the docs guide is authoritative.)
     """
-    body = {
-        "google_refresh_token": refresh_token,
-        "google_client_id": client_id,
-        "google_client_secret": client_secret
-    }
-    resp = requests.post(f"{BASE_URL}/calendar/disconnect", headers=HEADERS, json=body)
-    if resp.status_code == 405:
-        resp = requests.delete(f"{BASE_URL}/calendar/disconnect", headers=HEADERS)
+    resp = requests.delete(f"{BASE_URL}/calendar/disconnect", headers=HEADERS)
     resp.raise_for_status()
-    return resp.json()
+    return resp.json()  # {disconnected, user_id, watch_channel_stopped, events_deleted, schedules_cancelled, message}
 
 
 # ─── List calendars / events ───────────────────────────────────────────────

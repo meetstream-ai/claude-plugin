@@ -806,7 +806,7 @@ Field names use the `google_` prefix. All three are required. Plain `refresh_tok
 | POST | `/calendar/auto-reschedule` | Trigger reschedule for next recurring occurrence |
 | POST | `/calendar/toggle-recurrence` | Enable/disable auto-rescheduling per event (body: `{event_id, recurring_enabled}`) |
 
-> **Disconnect calendar method mismatch:** the prose docs say `DELETE /calendar/disconnect` but the OpenAPI spec says `POST /calendar/disconnect` (with `CalendarCreateRequest` body). Try `POST` first; if it returns 405, fall back to `DELETE`.
+> **Disconnect:** use `DELETE /calendar/disconnect` — that's what the docs guide, cURL example, and response example all show. Returns `{disconnected, user_id, watch_channel_stopped, events_deleted, schedules_cancelled, message}`. Irreversible — stops watch channels, cancels pending schedules, deletes synced events, removes Google OAuth credentials. (The OpenAPI spec shows POST as a quirk; disregard.)
 
 **Auto-scheduling behavior:** job runs every 24h at midnight UTC, schedules bots for the next 24h, joins 1 minute before meeting start. Real-time push notifications from Google Calendar handle reschedules and cancellations. Watch channels auto-renew every ~6 days (a daily background job renews any expiring within 2 days).
 

@@ -1,13 +1,15 @@
 ---
 name: notetaker
 description: >
-  Build a complete MeetStream-powered meeting notetaker — bot joins, records,
-  transcribes, generates an AI summary, and delivers to email/Slack/Notion/CRM.
-  Use when the user says "build a notetaker", "meeting recorder with summaries",
-  "auto-summarize my meetings", "Otter.ai alternative", "Fireflies clone",
-  "Granola-style notetaker", "meeting recap to Slack", or any variant of a
-  meeting-summary product. Walks through tech stack choice, scaffolds webhook
-  handler, transcript fetch, LLM summary, and delivery layer end-to-end.
+  Build a complete MeetStream-powered AI meeting notetaker — bot joins,
+  records, transcribes, generates an AI summary, and delivers to email /
+  Slack / Notion / CRM. Use when the user says "build a notetaker", "AI
+  meeting notetaker", "meeting recorder with AI summaries", "auto-summarize
+  my meetings", "meeting recap to Slack", "send meeting notes to my CRM",
+  "AI meeting summarizer", "meeting action items extractor", or any variant
+  of a meeting-summary product. Walks through tech stack choice, scaffolds
+  webhook handler, transcript fetch, LLM summary, and delivery layer
+  end-to-end.
 ---
 
 # Notetaker Scaffold

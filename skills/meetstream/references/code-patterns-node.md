@@ -578,26 +578,14 @@ async function connectCalendar(refreshToken: string, clientId: string, clientSec
   return data
 }
 
-// ─── Disconnect (docs method inconsistency) ─────────────────────────────────
-// OpenAPI documents: POST /calendar/disconnect with CalendarCreateRequest body
-// Prose docs say:    DELETE /calendar/disconnect
-// Neither has been live-tested by this skill. Try OpenAPI's POST first; fall
-// back to DELETE (without body) if the API rejects. Confirm against your
-// account before relying on this in production.
-async function disconnectCalendar(refreshToken: string, clientId: string, clientSecret: string) {
-  const body = {
-    google_refresh_token: refreshToken,
-    google_client_id: clientId,
-    google_client_secret: clientSecret
-  }
-  try {
-    return (await axios.post(`${BASE_URL}/calendar/disconnect`, body, { headers })).data
-  } catch (err: any) {
-    if (err.response?.status === 405) {
-      return (await axios.delete(`${BASE_URL}/calendar/disconnect`, { headers })).data
-    }
-    throw err
-  }
+// ─── Disconnect ──────────────────────────────────────────────────────────────
+// Per docs guide + cURL example: DELETE, no body. Irreversible — stops watch
+// channels, cancels pending schedules, deletes events, removes OAuth creds.
+// (OpenAPI shows POST as a quirk; the docs guide is authoritative.)
+async function disconnectCalendar() {
+  const { data } = await axios.delete(`${BASE_URL}/calendar/disconnect`, { headers })
+  // data: {disconnected, user_id, watch_channel_stopped, events_deleted, schedules_cancelled, message}
+  return data
 }
 
 // ─── List calendars / events ────────────────────────────────────────────────

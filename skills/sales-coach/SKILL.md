@@ -4,10 +4,11 @@ description: >
   Build a real-time AI sales coaching tool on MeetStream — live transcription
   streams to a server that detects objections, talk-time imbalance, missed
   questions, etc., and surfaces coach cards to the seller during the call.
-  Use when the user says "real-time sales coach", "AI cue cards during calls",
-  "live objection detection", "Gong alternative for live", "Chorus live", "AI
-  copilot for sales calls", "live meeting assistant", or "real-time meeting
-  intelligence". Scaffolds streaming-provider bot + webhook server + WebSocket
+  Use when the user says "real-time AI sales coach", "AI cue cards during
+  calls", "live objection detection", "AI copilot for sales calls", "live
+  conversation intelligence", "live meeting assistant", "real-time meeting
+  intelligence", "live sales call analyzer", or "real-time AI call
+  coaching". Scaffolds streaming-provider bot + webhook server + WebSocket
   push to the seller's browser tab.
 ---
 
