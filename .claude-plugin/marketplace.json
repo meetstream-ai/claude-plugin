@@ -1,22 +1,38 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "meetstream-ai",
-  "description": "MeetStream plugins for building meeting bot integrations",
+  "description": "MeetStream plugins for Claude Code — meeting bots, transcription, recording, and intelligence",
   "owner": {
-    "name": "MeetStream.ai",
-    "email": "hello@meetstream.ai"
+    "name": "MeetStream",
+    "email": "hello@meetstream.ai",
+    "url": "https://meetstream.ai"
   },
   "plugins": [
     {
       "name": "meetstream",
-      "description": "Build meeting intelligence with MeetStream's bot API. Join, record, transcribe, and stream meetings on Zoom, Google Meet, and Microsoft Teams. Configure your API key once and Claude handles all implementation.",
+      "description": "Build meeting bots, transcription, and recording with MeetStream. Scaffolds notetakers, real-time sales coaches, CRM auto-updaters, and Recall.ai migrations. Works with Zoom, Google Meet, Teams. Every endpoint live-tested against api.meetstream.ai — no hallucinations.",
       "source": {
         "source": "url",
         "url": "https://github.com/meetstream-ai/claude-plugin.git",
-        "sha": "6479e7beb38c4a0bddd6ac44fee3f31b49a03a27"
+        "sha": "6040c5a6a482de8d8cef32df980253dd41d342c5"
       },
       "homepage": "https://meetstream.ai",
-      "category": "developer-tools"
+      "category": "developer-tools",
+      "keywords": [
+        "meeting-bot",
+        "notetaker",
+        "transcription",
+        "real-time-transcription",
+        "sales-coach",
+        "zoom",
+        "google-meet",
+        "teams",
+        "recall-alternative",
+        "ai-agent",
+        "live-captions",
+        "webhook",
+        "meetstream"
+      ]
     }
   ]
 }
