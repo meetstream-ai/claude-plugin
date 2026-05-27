@@ -53,11 +53,27 @@ Default language: **Python** unless the user specifies otherwise.
 
 ## Gathering Requirements
 
-Before planning or building, ask:
+Before planning or building, **walk the user through the [Bot Configuration Decision Tree](#bot-configuration-decision-tree) section below in order**. Don't just ask the 4 top-level questions and guess defaults for everything else — the decision tree covers every field that affects behavior and cost.
+
+Quick top-level questions to start with:
 1. **API key** — if not provided, ask. Link: https://app.meetstream.ai/api-keys
 2. **Platform** — Google Meet, Teams, Zoom, or all? (Zoom needs extra setup; see Platform Notes)
 3. **Language** — Python or Node.js/TypeScript?
 4. **Use case** — match to one of the patterns below
+
+Then **walk Steps 1–8 of the decision tree** to fill in:
+- Bot identity (name, avatar, message, video/audio config) — Step 1
+- Platform-specific setup (Google signed-in, Zoom OBF) — Step 2
+- Transcription strategy (none / live / post-call / both) — Step 3
+- Live transcription provider + webhooks — Step 4A
+- Post-call transcription provider — Step 4B
+- Hybrid (live + post-call via `/transcribe`) — Step 4C
+- Participant events, interactive bot, MIA — Step 5
+- Scheduling (now / future / calendar auto) — Step 6
+- Custom metadata for routing/billing — Step 7
+- Timeouts — Step 8
+
+Each step's branch produces one or more fields in the final `create_bot` payload. Don't guess defaults — ask.
 
 ---
 
@@ -104,6 +120,440 @@ No `/transcribe` call needed. The bot was configured with a post-call provider u
 - **You want to re-transcribe with a higher-quality / different-language provider** after the fact.
 
 In all other cases, configure the right provider on `create_bot` up front. `/transcribe` is a recovery tool, not a default.
+
+---
+
+## Bot Configuration Decision Tree
+
+Walk the user through these questions in order. Each answer pins down one field in the final `create_bot` payload. At the end, you'll have a complete, correct request body tailored to their use case.
+
+> When the user is vague ("I want a meeting bot"), DO NOT guess defaults — actually walk them through this tree. The defaults are not always what they want (e.g. `video_required` defaults to `true` which burns storage for transcript-only use cases).
+
+---
+
+### STEP 1 — Bot identity (who is this bot in the meeting?)
+
+```
+Q1.1: What should the bot be called inside the meeting? [REQUIRED]
+      └─→ "bot_name": "Acme Notetaker"     (visible to all participants)
+
+Q1.2: Should it post a welcome message in the meeting chat on join?
+      ├─ Yes → "bot_message": "Hi! I'm an AI notetaker recording this call."
+      └─ No  → omit bot_message
+
+Q1.3: Custom avatar / profile picture?
+      ├─ Yes → "bot_image_url": "https://your-cdn.com/avatar.png"
+      │        • MUST be publicly accessible URL (no auth, no signed URLs)
+      │        • Base64 / data URIs NOT supported
+      │        • Host it on S3 / Cloudflare R2 / public CDN
+      └─ No  → omit bot_image_url
+
+Q1.4: Will you ever need the meeting video file later (archive, playback)?
+      ├─ Yes → "video_required": true   (DEFAULT — bot records video)
+      └─ No  → "video_required": false  (saves storage + bandwidth; audio still captured)
+
+Q1.5: Want per-participant audio tracks (one file per speaker)?
+      ├─ Yes → "audio_separate_streams": true
+      │        • Google Meet + Zoom only (NOT Teams)
+      │        • Up to 16 concurrent speakers
+      │        • Each track: WebM/Opus, 48kbps, 48kHz mono
+      └─ No  → omit (default false; you get one mixed audio file)
+
+Q1.6: Want per-participant video tracks (one webcam stream per person)?
+      ├─ Yes → "video_separate_streams": true
+      │        • All 3 platforms
+      │        • Up to 6 concurrent webcams
+      │        • WebM/VP8, 15 FPS, video-only
+      └─ No  → omit (you get one composite video)
+```
+
+> ❌ Do NOT add `"audio_required": true` — that field doesn't exist on `create_bot` (audio is always captured). It DOES exist in calendar-scheduled `bot_config`, which is a different schema.
+
+---
+
+### STEP 2 — Meeting platform
+
+```
+Q2.1: Which platform is the meeting on?
+      ├─ Google Meet → "meeting_link": "https://meet.google.com/abc-defg-hij"
+      │                continue Q2.2 (signed-in?)
+      ├─ Microsoft Teams → "meeting_link": "https://teams.microsoft.com/l/meetup-join/..."
+      │                    (no extra config needed)
+      └─ Zoom → "meeting_link": "https://zoom.us/j/123456789?pwd=..."
+                continue Q2.3 (Zoom setup)
+
+Q2.2: (Google Meet) Does the meeting require a signed-in Google identity?
+      ├─ Yes → "google_meet": {
+      │           "login_required": true,
+      │           "google_login_domain": "your-company.com"
+      │        }
+      │        ⚠ Prerequisite: SSO + login cert registration via
+      │        /google-login-domains and /google-logins. See Google Signed-In
+      │        Bots section. Without this setup the bot will fail to join.
+      └─ No  → omit google_meet (works for public Meet rooms)
+
+Q2.3: (Zoom) Have you registered a Zoom app for production use?
+      ├─ Yes, with OBF (On-Behalf-Of) flow
+      │  → "zoom": { "use_zoom_obf": true }
+      │     Prerequisite: Zoom dashboard setup at
+      │     https://docs.meetstream.ai/guides/zoom/zoom-marketplace-app-setup
+      ├─ Yes, standard production
+      │  → omit zoom field (default flow)
+      └─ Dev mode (no submission yet)
+         → omit zoom field
+         ⚠ Dev mode restricts the bot to meetings hosted by the app owner.
+         For external customer meetings, submit the Zoom app to production.
+```
+
+---
+
+### STEP 3 — Do you need a transcript? (this is the biggest decision)
+
+```
+Q3.1: Will any part of the system consume a transcript?
+      ├─ No (audio-only, e.g. recording for human listening later)
+      │  → Skip Steps 4 & 5 entirely. You can still call /transcribe later
+      │    if you change your mind (audio is saved either way).
+      └─ Yes → continue Q3.2
+
+Q3.2: WHEN do you need the transcript?
+      ├─ During the meeting (live captions, real-time AI coach, live dashboard)
+      │  → STEP 4A (LIVE)
+      ├─ After the meeting (summaries, CRM updates, archives)
+      │  → STEP 4B (POST-CALL)
+      └─ Both (live captions in the UI + complete transcript post-call)
+         → STEP 4C (HYBRID — use streaming live + /transcribe after)
+```
+
+---
+
+### STEP 4A — Live transcription path
+
+```
+Q4A.1: Where should live chunks be POSTed?
+       → "live_transcription_required": { "webhook_url": "https://you/live" }
+         (HTTPS, NOT a WebSocket; bot POSTs JSON chunks here every ~250ms)
+
+Q4A.2: Which streaming provider?
+       ├─ "I don't have any provider API keys" (most accounts)
+       │  → "recording_config": {
+       │       "transcript": { "provider": { "meetstream_streaming": {} } }
+       │     }
+       │     ✅ Free, no external key needed, works out of the box
+       │     ✅ Returns speaker names from the meeting
+       │     ❌ confidence/speech_confidence values are 0 (no per-word ML scores)
+       │
+       ├─ "I have a Deepgram account" (best for accuracy)
+       │  → provider: {
+       │       "deepgram_streaming": {
+       │         "transcription_mode": "sentence",
+       │         "model": "nova-2",
+       │         "language": "en",
+       │         "punctuate": true,
+       │         "smart_format": true,
+       │         "endpointing": 300,
+       │         "vad_events": true,
+       │         "utterance_end_ms": 1000,
+       │         "encoding": "linear16",
+       │         "channels": 1
+       │       }
+       │     }
+       │     ⚠ ALL fields required per OpenAPI. Account needs Deepgram key.
+       │
+       ├─ "I have an AssemblyAI account"
+       │  → provider: {
+       │       "assemblyai_streaming": {
+       │         "transcription_mode": "raw",
+       │         "sample_rate": 48000,
+       │         "speech_model": "universal-streaming-english",
+       │         "format_turns": false,
+       │         "encoding": "pcm_s16le",
+       │         "vad_threshold": "0.4",
+       │         "end_of_turn_confidence_threshold": "0.4",
+       │         "inactivity_timeout": 300,
+       │         "min_end_of_turn_silence_when_confident": "400",
+       │         "max_turn_silence": "1280"
+       │       }
+       │     }
+       │     ⚠ English-only. Account needs AssemblyAI key.
+       │
+       ├─ "I have a JigsawStack account"
+       │  → provider: { "jigsawstack_streaming": {} }
+       │     Account needs JigsawStack key.
+       │
+       └─ "Just use the meeting's built-in captions" (Google Meet / Teams only)
+          → provider: { "meeting_captions": {} }
+            ✅ Free, no provider needed at all
+            ❌ Quality depends on the meeting platform's own captions
+            ❌ Doesn't work on Zoom
+
+Q4A.3: Need to also stream raw audio bytes (for your own ML model)?
+       ├─ Yes → "live_audio_required": { "websocket_url": "wss://you/audio" }
+       │        See Pattern 7 — binary frames over WebSocket, raw PCM16
+       │        LE @ 48kHz mono with embedded speaker metadata.
+       └─ No  → omit live_audio_required
+
+Q4A.4: Need to also stream live video (fMP4)?
+       ├─ Yes → "live_video_required": { "websocket_url": "wss://you/video" }
+       │        ⚠ Google Meet + Teams only (NOT Zoom)
+       │        See Pattern 8 — fMP4 over WebSocket with ping/pong contract.
+       └─ No  → omit live_video_required
+
+⚠ KEY LIMITATION OF STREAMING: No automatic post-call transcript.
+   transcript_id will be null in the create_bot response.
+   bot_details.transcript_id stays null.
+   /transcriptions list is empty.
+   You MUST manually call POST /bots/{bot_id}/transcribe after the meeting
+   if you also want a post-call transcript (that's Step 4C).
+```
+
+---
+
+### STEP 4B — Post-call transcription path
+
+```
+Q4B.1: Where should webhooks be delivered? [STRONGLY RECOMMENDED]
+       → "callback_url": "https://you/webhook"
+         You'll receive bot.joining → bot.inmeeting → bot.recording → bot.leaving
+         → bot.stopped → manifest.completed → audio.processed →
+         transcription.processed → bot.done (full Path A lifecycle).
+         Without callback_url you'd have to poll /bots/{id}/status repeatedly.
+
+Q4B.2: Which post-call provider?
+       ├─ "I don't have external keys, want lowest setup"
+       │  → "recording_config": {
+       │       "transcript": {
+       │         "provider": {
+       │           "meetstream": { "language": "en", "translate": false }
+       │         }
+       │       }
+       │     }
+       │     MeetStream in-house post-call. May require provider key in account.
+       │
+       ├─ "I want highest accuracy English" (most popular choice)
+       │  → provider: { "deepgram": { "model": "nova-3", "language": "en" } }
+       │     ⚠ Account needs Deepgram key. nova-3 is the only model enum.
+       │
+       ├─ "I want speaker diarization + PII redaction"
+       │  → provider: {
+       │       "assemblyai": {
+       │         "speech_models": ["universal-2"],
+       │         "language_code": "en_us",
+       │         "speaker_labels": true,
+       │         "punctuate": true,
+       │         "format_text": true,
+       │         "filter_profanity": false,
+       │         "redact_pii": false,
+       │         "auto_chapters": false,
+       │         "entity_detection": false
+       │       }
+       │     }
+       │     ⚠ 9 fields marked required per OpenAPI. Account needs AssemblyAI key.
+       │
+       ├─ "Indic languages (Hindi/Tamil/Telugu/etc.)"
+       │  → provider: {
+       │       "sarvam": {
+       │         "model": "saaras:v3",
+       │         "language_code": "en-IN",
+       │         "mode": "transcribe",
+       │         "with_diarization": true
+       │       }
+       │     }
+       │     Account needs Sarvam key.
+       │
+       └─ "Auto-detect language + translate to English"
+          → provider: {
+              "jigsawstack": {
+                "language": "auto",
+                "translate": false,
+                "by_speaker": true
+              }
+            }
+            Account needs JigsawStack key.
+
+Q4B.3: How long should MeetStream keep the audio/transcript?
+       ├─ 24 hours (default if you omit retention)
+       ├─ Custom window → "retention": { "type": "timed", "hours": 168 }  (7 days)
+       └─ Per compliance policy → set the smallest window that meets your needs.
+                                  After that, data is auto-deleted and
+                                  data_deletion webhook fires.
+
+✅ The transcript will be auto-fetched-able via the canonical flow:
+   1. Wait for transcription.processed webhook
+   2. GET /bots/{bot_id}/detail → bot_details.transcript_id
+   3. GET /transcript/{transcript_id}/get_transcript
+   No /transcribe call needed (Path A, the standard workflow).
+```
+
+---
+
+### STEP 4C — Hybrid (live + post-call)
+
+```
+Configure the bot for LIVE only at create time (Step 4A), then:
+
+After you receive bot.stopped, call:
+  POST /bots/{bot_id}/transcribe
+  {
+    "provider": {"deepgram": {...}},        # any post-call provider
+    "callback_url": "https://you/webhook"   # gets transcription.processed/.failed
+  }
+
+This:
+  - Returns a new transcript_id
+  - Overwrites bot_details.transcript_id (canonical fetch returns this one)
+  - Fires exactly ONE transcription.processed or .failed (no bot.done follow-up)
+  - Does NOT include custom_attributes in the /transcribe webhook
+```
+
+---
+
+### STEP 5 — Other webhooks (beyond transcription)
+
+```
+Q5.1: Need to know when participants join/leave the meeting?
+      ├─ Yes → add to recording_config:
+      │   "realtime_endpoints": [{
+      │     "type": "webhook",
+      │     "url": "https://you/participants",
+      │     "events": ["participant_events.join", "participant_events.leave"]
+      │   }]
+      │   ⚠ These webhooks have a DIFFERENT shape — nested under
+      │   data.data.action / data.bot.id, no top-level bot_id or bot_status.
+      └─ No → omit realtime_endpoints
+
+Q5.2: Want your bot to interact in the meeting (send chat, play TTS audio,
+      change its video frame)?
+      ├─ Yes → "socket_connection_url": { "websocket_url": "wss://you/control" }
+      │        See Pattern 3 — bot opens a WS to your server; you send the
+      │        5 documented commands (sendaudio, sendmsg, sendchat, interrupt,
+      │        sendimg/sendimg_url) over it.
+      └─ No → omit socket_connection_url
+
+Q5.3: Want to attach a MeetStream Infrastructure Agent (MIA) to the bot?
+      ├─ Yes → First create the agent: POST /api/v1/mia (see Pattern 9)
+      │        Then on create_bot, include the trio:
+      │          "agent_config_id": "<from above>"
+      │          "socket_connection_url": {"websocket_url": "wss://agent-meetstream-prd-main.meetstream.ai/bridge"}
+      │          "live_audio_required":  {"websocket_url": "wss://agent-meetstream-prd-main.meetstream.ai/bridge/audio"}
+      └─ No → omit agent_config_id
+```
+
+---
+
+### STEP 6 — Scheduling
+
+```
+Q6.1: When does the bot join?
+      ├─ Right now → omit join_at; bot joins as soon as create_bot returns
+      ├─ At a specific time → "join_at": "2026-04-22T15:00:00Z"  (ISO-8601)
+      └─ Automatically for all calendar meetings →
+         Skip create_bot. Use the Calendar API instead:
+         POST /calendar/create_calendar (connect)
+         POST /calendar/auto-schedule/enable (with default_bot_config)
+         See "Pattern 6: Calendar Auto-Scheduling".
+```
+
+---
+
+### STEP 7 — Metadata for routing/billing
+
+```
+Q7.1: Need to correlate webhooks back to your internal records (tenant ID,
+      deal ID, user ID)?
+      ├─ Yes → "custom_attributes": {
+      │           "tenant_id": "acme-123",
+      │           "deal_id": "hubspot-456",
+      │           "internal_user_id": "u_789"
+      │        }
+      │        ⚠ Stringify all values defensively (live API has been observed
+      │        to reject non-string values even though OpenAPI allows any).
+      │        ⚠ custom_attributes is echoed on lifecycle events BUT NOT on
+      │        /transcribe-triggered webhooks. Correlate by bot_id there.
+      └─ No → omit custom_attributes (recommended only for trivial use cases)
+```
+
+---
+
+### STEP 8 — Timeouts (use these defaults unless you have a reason not to)
+
+```
+"automatic_leave": {
+  "waiting_room_timeout": 600,        // 10 min — long meetings start late
+  "everyone_left_timeout": 600,       // 10 min — handle bio breaks
+  "voice_inactivity_timeout": 600,    // 10 min — silent presentations
+  "in_call_recording_timeout": 14400, // 4 hr — handle long workshops
+  "recording_permission_denied_timeout": 300  // 5 min — Zoom-only, MAX is 300
+}
+```
+
+Live-verified constraints:
+- `in_call_recording_timeout` minimum 600s (API HTTP 400 below)
+- `recording_permission_denied_timeout` range 60–300s (API HTTP 400 outside)
+
+---
+
+### Final assembly — your complete `create_bot` payload
+
+Combine every answer above. A realistic post-call notetaker for Google Meet might look like:
+
+```json
+POST https://api.meetstream.ai/api/v1/bots/create_bot
+Authorization: Token YOUR_API_KEY
+
+{
+  "meeting_link": "https://meet.google.com/abc-defg-hij",
+  "bot_name": "Acme Notetaker",
+  "bot_message": "Hi! I'm an AI notetaker for Acme. Transcript will be emailed after.",
+  "bot_image_url": "https://acme-cdn.com/bot-avatar.png",
+  "video_required": false,
+  "callback_url": "https://api.acme.com/webhooks/meetstream",
+  "custom_attributes": {
+    "tenant_id": "acme-prod-tenant-42",
+    "user_id": "u_12345"
+  },
+  "recording_config": {
+    "transcript": {
+      "provider": { "deepgram": { "model": "nova-3", "language": "en" } }
+    },
+    "retention": { "type": "timed", "hours": 168 }
+  },
+  "automatic_leave": {
+    "waiting_room_timeout": 600,
+    "everyone_left_timeout": 600,
+    "voice_inactivity_timeout": 600,
+    "in_call_recording_timeout": 14400,
+    "recording_permission_denied_timeout": 300
+  }
+}
+```
+
+A live AI-coach bot for the same meeting might look like:
+
+```json
+{
+  "meeting_link": "https://meet.google.com/abc-defg-hij",
+  "bot_name": "Sales Coach",
+  "video_required": false,
+  "callback_url": "https://api.acme.com/webhooks/meetstream",
+  "live_transcription_required": {
+    "webhook_url": "https://api.acme.com/live/transcript"
+  },
+  "recording_config": {
+    "transcript": { "provider": { "meetstream_streaming": {} } },
+    "retention": { "type": "timed", "hours": 24 }
+  },
+  "automatic_leave": {
+    "waiting_room_timeout": 600,
+    "everyone_left_timeout": 600,
+    "voice_inactivity_timeout": 600,
+    "in_call_recording_timeout": 14400,
+    "recording_permission_denied_timeout": 300
+  }
+}
+```
+
+When in doubt, walk the user through every step above before sending `create_bot`. It's better to ask 3 extra questions than to ship a bot configured wrong for their use case.
 
 ---
 
