@@ -1,194 +1,211 @@
 <div align="center">
 
-<img src="https://framerusercontent.com/images/qADooqa4mVlS7haEXkSI2cgaE.png" alt="MeetStream Logo" width="80" />
+<img src="https://framerusercontent.com/images/qADooqa4mVlS7haEXkSI2cgaE.png" alt="MeetStream" width="80" />
 
-# MeetStream × Claude
+# MeetStream for Claude Code
 
-**The fastest way to build meeting intelligence.**  
-Drop in your API key. Tell Claude what you're building. Ship in minutes.
+**Build production-grade meeting bots in minutes, not weeks.**
+Scaffold notetakers, real-time sales coaches, calendar automation, and CRM auto-updaters with one prompt.
 
-[![Install Plugin](https://img.shields.io/badge/Claude%20Code-Install%20Plugin-5C4EFF?style=for-the-badge&logo=anthropic&logoColor=white)](https://claude.ai)
-[![MeetStream Docs](https://img.shields.io/badge/Docs-docs.meetstream.ai-0EA5E9?style=for-the-badge)](https://docs.meetstream.ai)
-[![Get API Key](https://img.shields.io/badge/Get%20API%20Key-app.meetstream.ai-10B981?style=for-the-badge)](https://app.meetstream.ai/api-keys)
+[![Plugin Version](https://img.shields.io/badge/plugin-v2.0.0-5C4EFF?style=for-the-badge)](https://github.com/meetstream-ai/claude-plugin)
+[![Live-Tested](https://img.shields.io/badge/endpoints-live--tested-10B981?style=for-the-badge)](https://github.com/meetstream-ai/claude-plugin/commits/main)
+[![MIT License](https://img.shields.io/badge/license-MIT-yellow?style=for-the-badge)](LICENSE)
+[![Get API Key](https://img.shields.io/badge/get%20api%20key-app.meetstream.ai-0EA5E9?style=for-the-badge)](https://app.meetstream.ai/api-keys)
 
 </div>
 
 ---
 
-> **MeetStream** is a meeting bot API that lets developers programmatically join, record, transcribe, and stream Zoom, Google Meet, and Microsoft Teams meetings. This Claude plugin gives Claude full knowledge of the MeetStream API so it can generate complete, production-ready integrations — note-takers, AI coaching tools, CRM auto-updaters, calendar bots, and more.
+## 60-second quickstart
 
----
+```bash
+# 1. Install the plugin
+claude plugin install meetstream-ai/meetstream
 
-## ✨ What you can build
+# 2. Set your API key (one-time)
+export MEETSTREAM_API_KEY=ms_xxxxx
 
-| | Use Case |
-|--|---------|
-| 🎙️ | **AI meeting notetaker** — bot joins, records, emails summary to attendees |
-| 📝 | **Real-time transcription** with per-speaker attribution |
-| 🔊 | **Live audio/video streaming** over WebSocket to your own models |
-| 🤖 | **Interactive meeting bots** that send messages or play audio |
-| 📅 | **Calendar-automated bots** that join every meeting on a schedule |
-| 🧠 | **Sales coaching tools** — live objection detection, talk-time tracking |
-| 📊 | **CRM auto-update pipelines** — extract action items, sync to HubSpot/Salesforce |
-| 🗓️ | **Post-call follow-up agents** — transcript → summary → email in one pipeline |
+# 3. Verify your account is configured
+claude "verify my meetstream account"
 
----
-
-## 🚀 Quick Start
-
-**1.** Get your API key → [app.meetstream.ai/api-keys](https://app.meetstream.ai/api-keys)
-
-**2.** Install the plugin (see your tool below)
-
-**3.** Tell Claude what you're building:
-
-```
-"Build a Python webhook server that records my Zoom calls and emails me a transcript when it's done."
-
-"Create a real-time transcription pipeline that streams speaker-attributed text to my WebSocket server."
-
-"Write a Next.js API route that joins a meeting, waits for it to end, and generates an AI summary with action items."
-
-"Set up calendar automation so a MeetStream bot joins every Google Meet on my calendar."
-
-"Build a sales coaching bot that detects competitor mentions and objections in real time."
+# 4. Build something
+claude "build me a notetaker that emails meeting summaries via Resend"
 ```
 
+That's it. Claude scaffolds a working FastAPI/Express app with the webhook handler, transcript fetch, LLM summary, and delivery layer wired up.
+
 ---
 
-## 📦 Installation
+## What you can build
+
+| Use case | Try in Claude | What you get |
+|---|---|---|
+| 🎙️ **AI Notetaker** | *"build me a meeting notetaker"* | Full webhook server + transcript fetch + GPT-4 summary + email/Slack delivery |
+| 🎯 **Real-Time Sales Coach** | *"build a real-time sales coach"* | Live transcription pipeline + objection detection + WebSocket push to seller's browser |
+| 📅 **Calendar Auto-Recorder** | *"auto-record all my Google Meet calls"* | Calendar OAuth + auto-schedule + post-meeting delivery |
+| 📊 **CRM Auto-Updater** | *"after each sales call, write action items to HubSpot"* | Transcript → LLM extraction → CRM API integration |
+| 🔄 **Recall.ai → MeetStream** | *"migrate my Recall.ai code to MeetStream"* | Scan → endpoint mapping → auto-rewrite → diff for review |
+| 🤖 **AI Meeting Agent (MIA)** | *"build an AI agent that joins meetings"* | MIA agent config + bridge bot + hosted realtime/pipeline |
+| 🎬 **Compliance Recorder** | *"record meetings with 90-day retention for compliance"* | Long-retention bot + per-participant audio + audit trail |
+| 🌍 **Multilingual Transcriber** | *"transcribe Hindi meetings with Sarvam"* | Sarvam provider + Indic language config |
+
+---
+
+## Why this plugin
+
+| | Most API plugins | This plugin |
+|---|---|---|
+| Endpoint correctness | ❌ Common hallucinations (wrong paths, wrong fields) | ✅ Every endpoint live-tested against `api.meetstream.ai` |
+| Webhook lifecycle | ❌ Generic claims ("you'll get an event") | ✅ All 12 events documented with full payloads, status codes, two-path semantics |
+| Provider failure modes | ❌ Vague "configure your API key" | ✅ Live-captured error messages + exact fix for each |
+| Use cases | ❌ Read the docs, write your own glue | ✅ Verb-named skills scaffold the whole app (`notetaker`, `sales-coach`, etc.) |
+| Migration from competitor | ❌ DIY | ✅ One skill auto-migrates Recall.ai code (~30% cost savings) |
+| Account health check | ❌ None | ✅ `verify-account` skill probes every provider before you start |
+| Subagent for failures | ❌ None | ✅ `meetstream-debugger` triages bot failures without flooding main context |
+
+---
+
+## What's inside
+
+```
+skills/
+├── meetstream/              ← Core skill: API reference, lifecycle, decision tree
+├── notetaker/               ← Scaffold a complete meeting notetaker
+├── sales-coach/             ← Scaffold a real-time sales coach with browser UI
+├── verify-account/          ← Probe which providers are configured in your account
+├── test-bot/                ← Send a test bot + watch webhooks live
+└── migrate-from-recall/     ← Auto-migrate Recall.ai code → MeetStream
+
+agents/
+└── meetstream-debugger.md   ← Subagent for diagnosing bot failures
+```
+
+## Live-tested correctness
+
+Every endpoint, field name, response shape, and webhook event in this plugin has been verified by sending real bots to a real Google Meet and capturing real API responses. No hallucinations.
+
+Specifically verified live:
+- ✅ `create_bot` returns HTTP **201** (not 200)
+- ✅ `bot_details.transcript_id` is the canonical stateless fetch path
+- ✅ Streaming providers (`meetstream_streaming` et al.) produce **no post-call** `transcription.processed` event — lifecycle ends at `audio.processed`
+- ✅ `bot.error` fires mid-meeting for streaming-provider auth issues (bot keeps recording)
+- ✅ `recording_permission_denied_timeout` range is **60–300** seconds (API returns HTTP 400 outside)
+- ✅ `in_call_recording_timeout` minimum is **600** seconds
+- ✅ `POST /bots/{id}/transcribe` overwrites `bot_details.transcript_id` and fires exactly one webhook (no `bot.done` follow-up)
+
+---
+
+## Installation
 
 ### Claude Code (CLI)
 
 ```bash
+# Add the marketplace + install
 /plugin marketplace add meetstream-ai/claude-plugin
 /plugin install meetstream@meetstream-ai
-/reload-plugins
 ```
 
-### Cursor
+Then in any project:
+```
+"verify my meetstream account"
+"build me a meeting notetaker"
+"migrate my recall.ai code to meetstream"
+```
 
-1. Open **Settings** → **Claude** → **Plugins**
-2. Click **Add Marketplace** → enter `meetstream-ai/claude-plugin`
-3. Find **MeetStream** in the plugin list → click **Install**
-4. `Cmd+Shift+P` → **Reload Window**
+### Cursor / Windsurf / VS Code (Claude extension)
 
-### VS Code (Claude extension)
+Settings → Plugins → Add marketplace `meetstream-ai/claude-plugin` → Install **meetstream** → Reload.
 
-1. Open the **Claude** panel → click **⚙ Settings** → **Plugins**
-2. Click **Add from GitHub** → enter `meetstream-ai/claude-plugin`
-3. Click **Install** → reload VS Code
-
-### Windsurf
-
-1. Open **Settings** (`Cmd+,`) → **AI** → **Plugins**
-2. Click **Add Plugin Repository** → enter `meetstream-ai/claude-plugin`
-3. Install **meetstream** → restart Windsurf
-
-### Manual / Config-based
+### Update to the latest version
 
 ```bash
-git clone https://github.com/meetstream-ai/claude-plugin.git ~/.claude-plugins/meetstream
+claude plugin update meetstream-ai/meetstream
 ```
 
 ---
 
-## 🌐 Supported Platforms
+## Configuration
 
-| Platform | Setup |
-|----------|-------|
-| ✅ Google Meet | Works immediately — no setup |
-| ✅ Microsoft Teams | Works immediately — no setup |
-| ⚙️ Zoom | Requires a Zoom Marketplace app → [setup guide](https://docs.meetstream.ai/guides/zoom/zoom-marketplace-app-setup) |
-
----
-
-## 🏗️ How It Works
-
-```
-Your code  →  POST /bots/create_bot  →  Bot joins meeting
-                                              ↓
-                                    Meeting ends
-                                              ↓
-                              Webhook fires: transcription.processed
-                                              ↓
-                              GET /bots/{id}/get_bot_transcript
-                                              ↓
-                              Claude generates summary / action items
-                                              ↓
-                              Deliver to email / Slack / Notion / CRM
-```
-
-MeetStream handles the hard parts: platform compatibility, bot admission, audio capture, speaker diarization, and post-processing. You write business logic.
-
----
-
-## 💡 Example Integrations
-
-**Note-taker with email delivery (Node.js)**
-```typescript
-// Bot joins → meeting ends → Claude summarizes → email sent
-await createBot({ meetingLink, callbackUrl: '/webhook' })
-// On transcription.processed webhook:
-const transcript = await getTranscript(botId)
-const summary = await claude.summarize(transcript)
-await sendEmail(attendees, summary)
-```
-
-**Live sales coaching (Python)**
-```python
-# Transcript chunks stream to your WebSocket in real time
-async def on_chunk(chunk):
-    if "competitor" in chunk["transcript"].lower():
-        alert_sales_rep(f"Competitor mention: {chunk['transcript']}")
-```
-
-**Calendar automation (one-time setup)**
+Set once in your shell:
 ```bash
-# Connect Google Calendar → bots auto-join every meeting
-POST /calendar/create-calendar
-{ "refresh_token": "...", "client_id": "...", "client_secret": "..." }
+export MEETSTREAM_API_KEY=ms_xxxxx   # get one at https://app.meetstream.ai/api-keys
+```
+
+Optional for local webhook development:
+```bash
+export PUBLIC_URL=https://your-ngrok-url.ngrok-free.app
 ```
 
 ---
 
-## 🗂️ What's Included
+## Supported meeting platforms
 
-```
-.claude-plugin/
-├── plugin.json             ← Plugin manifest
-└── marketplace.json        ← Marketplace registry
-
-skills/meetstream/
-├── SKILL.md                ← Core skill: patterns, lifecycle, platform notes
-└── references/
-    ├── api-reference.md          ← Full endpoint map with params + return types
-    ├── code-patterns-python.md   ← Complete Python implementations
-    └── code-patterns-node.md     ← Complete Node.js / TypeScript implementations
-```
-
-Claude also queries the [MeetStream MCP server](https://docs.meetstream.ai/_mcp/server) directly for live parameter schemas and edge cases.
+| Platform | Setup | Live video | Per-participant audio |
+|----------|-------|------------|----------------------|
+| Google Meet | None | ✅ | ✅ |
+| Microsoft Teams | None | ✅ | ❌ |
+| Zoom | [Zoom app required](https://docs.meetstream.ai/guides/zoom/zoom-marketplace-app-setup) | ❌ | ✅ |
 
 ---
 
-## 🔗 Links
+## The canonical post-call transcript flow
 
-- 🌐 Website: [meetstream.ai](https://meetstream.ai)
-- 📖 Docs: [docs.meetstream.ai](https://docs.meetstream.ai)
-- 🎛️ Dashboard: [app.meetstream.ai](https://app.meetstream.ai)
-- 🐙 GitHub: [github.com/meetstream-ai/claude-plugin](https://github.com/meetstream-ai/claude-plugin)
-- 💬 Support: [hello@meetstream.ai](mailto:hello@meetstream.ai)
+```
+create_bot (with post-call provider + callback_url)
+  ↓
+bot.joining → bot.inmeeting → bot.recording
+  ↓
+[meeting runs]
+  ↓
+bot.leaving → bot.stopped → manifest.completed → audio.processed
+  ↓
+transcription.processed ← webhook fires when transcript is ready
+  ↓
+GET /bots/{bot_id}/detail → read bot_details.transcript_id
+  ↓
+GET /transcript/{transcript_id}/get_transcript → top-level array of segments
+  ↓
+bot.done ← terminal event
+```
+
+The plugin's skills walk you through every variant of this flow (live, post-call, hybrid, MIA agent, calendar auto-scheduled) with complete code.
 
 ---
 
-<!-- GitHub SEO keywords -->
-<!-- meeting bot API, AI notetaker, meeting transcription, Zoom bot, Google Meet bot, Teams bot, 
-     Claude plugin, meeting intelligence, real-time transcription, meeting recording API,
-     meeting SDK, developer tools, speech-to-text, speaker diarization, calendar automation,
-     webhook, note-taking agent, sales coaching, CRM integration, AI meeting assistant -->
+## Why MeetStream (vs Recall.ai)
+
+| | Recall.ai | MeetStream |
+|---|---|---|
+| Per-meeting cost | $0.50/hr | **$0.35/hr** ($0.25 at volume) |
+| Free streaming provider | ❌ | ✅ `meetstream_streaming` |
+| Live in-house transcription | ❌ | ✅ Free on stock accounts |
+| Per-participant audio | ✅ (all 3) | ✅ Google Meet + Zoom |
+| Per-participant video | ✅ | ✅ (all 3) |
+| MIA agents (pipeline + realtime) | partial | ✅ |
+
+Run the `migrate-from-recall` skill to switch in minutes.
+
+---
+
+## Links
+
+- 🌐 [meetstream.ai](https://meetstream.ai) — product
+- 📖 [docs.meetstream.ai](https://docs.meetstream.ai) — full API reference
+- 🎛️ [app.meetstream.ai](https://app.meetstream.ai) — dashboard + API keys
+- 🐙 [github.com/meetstream-ai/claude-plugin](https://github.com/meetstream-ai/claude-plugin) — this repo
+- 💬 [hello@meetstream.ai](mailto:hello@meetstream.ai) — support
+
+---
+
+<!-- SEO keywords -->
+<!-- meeting bot API, AI notetaker, Otter alternative, Fireflies alternative, Granola alternative,
+     Recall.ai alternative, Recall.ai migration, meeting transcription, real-time transcription,
+     Zoom bot, Google Meet bot, Microsoft Teams bot, meeting intelligence, speaker diarization,
+     live captions, sales coaching, AI sales coach, calendar automation, webhook, MCP server,
+     Claude Code plugin, Claude plugin, Anthropic plugin, MIA agent, meeting AI -->
 
 <div align="center">
 
-Built with ❤️ by [MeetStream.ai](https://meetstream.ai) &nbsp;·&nbsp; Powered by <img src="https://upload.wikimedia.org/wikipedia/commons/7/78/Anthropic_logo.svg" alt="Anthropic" width="14" style="vertical-align:middle"/> [Claude](https://claude.ai)
+Built by [MeetStream](https://meetstream.ai) · Made for [Claude Code](https://claude.ai/code)
 
 </div>

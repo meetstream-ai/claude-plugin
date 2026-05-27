@@ -1,12 +1,34 @@
 {
   "name": "meetstream",
-  "description": "Build meeting intelligence with MeetStream's bot API. Join, record, transcribe, and stream meetings on Zoom, Google Meet, and Microsoft Teams. Configure your API key once and Claude handles all implementation.",
-  "version": "1.0.0",
+  "description": "Build meeting bots, transcription, and recording with the MeetStream API. Scaffolds notetakers, real-time sales coaches, CRM auto-updaters, and Recall.ai migrations. Works with Zoom, Google Meet, and Microsoft Teams. Live-tested against api.meetstream.ai — no hallucinated endpoints.",
+  "version": "2.0.0",
   "author": {
-    "name": "MeetStream.ai",
-    "email": "hello@meetstream.ai"
+    "name": "MeetStream",
+    "email": "hello@meetstream.ai",
+    "url": "https://meetstream.ai"
   },
-  "homepage": "https://meetstream.ai",
+  "homepage": "https://meetstream.ai/claude",
   "repository": "https://github.com/meetstream-ai/claude-plugin",
-  "license": "MIT"
+  "license": "MIT",
+  "keywords": [
+    "meeting-bot",
+    "meeting-recorder",
+    "notetaker",
+    "transcription",
+    "real-time-transcription",
+    "sales-coach",
+    "meeting-intelligence",
+    "zoom",
+    "google-meet",
+    "microsoft-teams",
+    "webhook",
+    "api",
+    "recall-alternative",
+    "recall-migration",
+    "meetstream",
+    "ai-agent",
+    "live-captions",
+    "deepgram",
+    "assemblyai"
+  ]
 }
