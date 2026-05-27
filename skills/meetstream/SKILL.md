@@ -1,14 +1,23 @@
 ---
 name: meetstream
 description: >
-  Build meeting intelligence with MeetStream's bot API. Use this skill whenever a developer
-  wants to: join a meeting with a bot, record or transcribe meetings, stream live audio/video,
-  build AI coaching tools, note-taking agents, CRM auto-update pipelines, calendar automation,
-  or anything that processes meeting data programmatically. Supports Zoom, Google Meet, and
-  Microsoft Teams. Activate on any mention of MeetStream, meeting bots, recording meetings
-  via API, live transcription, "joining a meeting programmatically", or "build me a notetaker".
-  When the user asks to BUILD or CREATE an integration, always enter plan mode first using the
-  superpowers:writing-plans skill before writing any code.
+  Core MeetStream API reference, lifecycle, decision tree, and live-verified
+  endpoint catalog. Auto-activate on any mention of MeetStream, meeting bots,
+  meeting recording API, meeting transcription API, real-time transcription,
+  live captions, speaker diarization, AI meeting summarizer, conversation
+  intelligence, AI meeting agent, or any of these intents: "build me a
+  notetaker", "build a meeting bot", "record a Zoom meeting", "transcribe
+  Google Meet", "join a meeting programmatically", "Microsoft Teams bot",
+  "AI sales coach", "live meeting captions", "meeting webhook", "meeting
+  recap email", "meeting action items extractor", "send a bot to a meeting",
+  "Google Calendar auto-record". Also activate when the user references
+  meeting bot API errors, MeetStream webhook events (bot.joining,
+  bot.recording, bot.stopped, transcription.processed, etc.), or asks how
+  to integrate with api.meetstream.ai. For specific scaffolds (notetaker,
+  sales coach, calendar automation) prefer the dedicated use-case skills
+  which chain back to this one. When the user asks to BUILD or CREATE,
+  always enter plan mode first using the superpowers:writing-plans skill
+  before writing any code.
 mcp_server: https://docs.meetstream.ai/_mcp/server
 ---
 

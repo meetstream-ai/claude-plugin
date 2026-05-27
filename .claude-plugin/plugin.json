@@ -1,7 +1,7 @@
 {
   "name": "meetstream",
   "description": "Build meeting intelligence with the MeetStream API — AI notetakers, real-time sales coaches, conversation intelligence, Google Calendar auto-recording, and AI meeting agents. Scaffolds complete apps in one prompt. Works with Zoom, Google Meet, and Microsoft Teams. Every endpoint live-tested — no hallucinations.",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "author": {
     "name": "MeetStream",
     "email": "hello@meetstream.ai",
