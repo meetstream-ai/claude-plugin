@@ -14,6 +14,10 @@ allowed-tools: Bash, Read, Write
 
 Run a comprehensive health check on the user's MeetStream account before scaffolding anything. Catches the most common cause of build failures: missing or misconfigured provider keys.
 
+## Step 0: Make sure there's an API key to verify
+
+If `MEETSTREAM_API_KEY` is unset, **invoke the `getting-started` skill first** — without an account + key, there's nothing to verify. Signup is at https://app.meetstream.ai.
+
 ## What to do
 
 1. **Get the API key.** Ask the user, or read it from `MEETSTREAM_API_KEY` env var. Never log it.

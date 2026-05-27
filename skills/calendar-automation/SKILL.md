@@ -17,6 +17,10 @@ description: >
 
 Build a hands-free meeting bot that auto-joins every Google Calendar meeting. Connect once, then forget — MeetStream watches the calendar, schedules bots 1 minute before each meeting, and runs your post-meeting pipeline.
 
+## Step 0: Auth check (DO THIS FIRST)
+
+If `MEETSTREAM_API_KEY` is missing or invalid, **invoke the `getting-started` skill first.** Walks the user through signup at https://app.meetstream.ai → API key → env var. Resume calendar setup once validated.
+
 ## What this scaffolds
 
 - Google Cloud OAuth client setup (one-time)

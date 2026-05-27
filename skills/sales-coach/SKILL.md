@@ -16,6 +16,10 @@ description: >
 
 Build a real-time AI sales coaching tool on MeetStream. Live transcript chunks stream to your server, you run intent/signal detection, and you push coaching cards to the seller's browser via WebSocket.
 
+## Step 0: Auth check (DO THIS FIRST)
+
+If `MEETSTREAM_API_KEY` is missing or invalid (`curl -H "Authorization: Token $MEETSTREAM_API_KEY" https://api.meetstream.ai/api/v1/bots` returns non-200), **invoke the `getting-started` skill first.** It walks the user through signup at https://app.meetstream.ai → API key → env var. Resume this skill once the key validates.
+
 ## Step 1: Requirements
 
 Ask in one message:

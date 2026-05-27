@@ -13,6 +13,10 @@ allowed-tools: Bash, Read, Write
 
 End-to-end smoke test for a MeetStream integration: send a bot to a real meeting, capture every webhook event the bot fires (via webhook.site or the user's own callback URL), and pretty-print them as they arrive.
 
+## Step 0: Auth check (DO THIS FIRST)
+
+If `MEETSTREAM_API_KEY` is missing or invalid, **invoke the `getting-started` skill first.** Walks the user through signup at https://app.meetstream.ai → API key → env var.
+
 ## What to do
 
 1. **Ask the user:**

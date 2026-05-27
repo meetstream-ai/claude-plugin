@@ -45,6 +45,18 @@ Authorization: Token YOUR_API_KEY
 
 API keys are created at https://app.meetstream.ai/api-keys.
 
+### First-time users — invoke `getting-started` skill BEFORE anything else
+
+If `MEETSTREAM_API_KEY` is missing from the user's environment, OR if a quick `curl -H "Authorization: Token $MEETSTREAM_API_KEY" https://api.meetstream.ai/api/v1/bots` returns non-200, **do not attempt to scaffold or call any endpoint**. Invoke the `getting-started` skill — it walks the user through:
+
+1. Signup at **https://app.meetstream.ai** (free tier, no credit card)
+2. API key creation at https://app.meetstream.ai/api-keys
+3. Environment variable setup (`export MEETSTREAM_API_KEY=ms_xxxxx` + `.zshrc`/`.bashrc`/`.env`)
+4. Validation ping
+5. Optional handoff to `verify-account` to confirm transcription providers are configured
+
+Then resume the original request. Skip this only if the user explicitly says "I already have my key set."
+
 Base URL: `https://api.meetstream.ai/api/v1` (no trailing slash in canonical examples).
 
 Default language: **Python** unless the user specifies otherwise.
@@ -554,6 +566,27 @@ A live AI-coach bot for the same meeting might look like:
 ```
 
 When in doubt, walk the user through every step above before sending `create_bot`. It's better to ask 3 extra questions than to ship a bot configured wrong for their use case.
+
+---
+
+## Power Prompts (one-shot scaffolds)
+
+When a user asks for any of these common products, treat the prompt as a complete spec and scaffold the entire app — webhook server, MeetStream integration, AI processing, delivery layer, error handling — in one pass. Hand off to the relevant use-case skill (`notetaker`, `sales-coach`, `calendar-automation`, etc.) for the actual scaffolding, but recognize these patterns as "build the whole thing now" signals:
+
+1. **Slack notetaker** — `/note <link>` → join → summarize → DM + thread reply (use `notetaker` skill + Slack SDK)
+2. **Real-time sales coach** — meeting link → live transcription → LLM detection → WebSocket push to browser (use `sales-coach` skill)
+3. **Calendar auto-recording** — Google Calendar OAuth → auto-schedule → summary delivery (use `calendar-automation` + `notetaker` skills)
+4. **CRM auto-enricher (HubSpot/Salesforce)** — post-call → extract action items + signals → upsert CRM activity (use `notetaker` skill + CRM SDK)
+5. **Interview recorder for HR/recruiting** — per-participant audio + structured interview report (use `notetaker` skill with `audio_separate_streams: true`)
+6. **Multi-tenant notetaker SaaS** — per-user OAuth, per-user calendars, billing-ready (use `calendar-automation` + `notetaker` skills with tenant-scoped routing)
+7. **Compliance recorder** — 90-day retention + per-participant audio + audit log + KMS-encrypted transcripts (use `notetaker` skill with `retention.hours: 2160` + audit logging)
+8. **AI Meeting Assistant (MIA)** — voice-interactive bot that joins and participates (use MIA pattern in `meetstream` core skill)
+9. **Live captions broadcaster** — accessibility-focused live transcript via SSE (use `sales-coach` skill structure but render captions instead of cards)
+10. **Customer call analyzer + insights dashboard** — structured extraction + week-over-week analytics (use `notetaker` skill + Postgres + React)
+
+Each is a complete spec — don't ask 4 clarifying questions if the user pasted one of these patterns. Pre-pick sensible defaults (deepgram for post-call, meetstream_streaming for live, Resend for email, Redis for dedup) and just build. Surface a "want to change any of these defaults?" prompt AFTER the scaffold, not before.
+
+For the full copy-paste prompts (developers can paste them directly into Claude Code), see the "Power Prompts" section in the plugin's README.md.
 
 ---
 

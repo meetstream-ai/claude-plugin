@@ -16,6 +16,27 @@ description: >
 
 Build a production-ready meeting notetaker on the MeetStream API.
 
+## Step 0: Auth check (DO THIS FIRST)
+
+Before asking the 4 config questions below:
+
+```bash
+if [ -z "$MEETSTREAM_API_KEY" ]; then
+  # No API key → invoke the `getting-started` skill first
+  echo "No API key found — running first-time setup"
+else
+  # Validate
+  STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+    -H "Authorization: Token $MEETSTREAM_API_KEY" \
+    "https://api.meetstream.ai/api/v1/bots")
+  [ "$STATUS" = "200" ] || echo "API key invalid — running setup"
+fi
+```
+
+If the key is missing or invalid, **hand off to the `getting-started` skill** (it walks the user through signup at https://app.meetstream.ai → API key creation → env var setup → validation). When it returns, resume this skill from Step 1 below.
+
+If the user explicitly says they have a key and want to skip onboarding, ask them to paste the key, set the env var inline, validate, and proceed.
+
 ## What this skill does
 
 When the user wants a notetaker, ask the 4 questions below, then scaffold a complete app — webhook server, bot creation, transcript fetch, LLM summary, delivery — using their tech stack of choice.
