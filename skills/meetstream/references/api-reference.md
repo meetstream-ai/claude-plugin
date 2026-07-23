@@ -670,7 +670,7 @@ All MIA operations use the same path `/api/v1/mia` (singular). The HTTP method d
 
 **`agent.mcp_servers[]`:**
 - `url` (HTTPS, required)
-- `headers` (object, e.g. `{Authorization: "Bearer ..."}`)
+- `headers` (object, e.g. `{Authorization: "Token ..."}`)
 - `allowed_tools` (array, whitelist)
 - `timeout` (seconds, default 10)
 
