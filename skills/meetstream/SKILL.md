@@ -217,7 +217,7 @@ Q2.3: (Zoom) Have you registered a Zoom app for production use?
       ├─ Yes, with OBF (On-Behalf-Of) flow
       │  → "zoom": { "use_zoom_obf": true }
       │     Prerequisite: Zoom dashboard setup at
-      │     https://docs.meetstream.ai/guides/zoom/zoom-marketplace-app-setup
+      │     https://docs.meetstream.ai/guides/app-integrations/zoom-marketplace-app-setup
       ├─ Yes, standard production
       │  → omit zoom field (default flow)
       └─ Dev mode (no submission yet)
@@ -452,11 +452,9 @@ Q5.2: Want your bot to interact in the meeting (send chat, play TTS audio,
       └─ No → omit socket_connection_url
 
 Q5.3: Want to attach a MeetStream Infrastructure Agent (MIA) to the bot?
-      ├─ Yes → First create the agent: POST /api/v1/mia (see Pattern 9)
-      │        Then on create_bot, include the trio:
+      ├─ Yes → Create the agent in the dashboard (app.meetstream.ai) or via POST /api/v1/mia
+      │        (see Pattern 9), then pass only its ID on create_bot:
       │          "agent_config_id": "<from above>"
-      │          "socket_connection_url": {"websocket_url": "wss://agent-meetstream-prd-main.meetstream.ai/bridge"}
-      │          "live_audio_required":  {"websocket_url": "wss://agent-meetstream-prd-main.meetstream.ai/bridge/audio"}
       └─ No → omit agent_config_id
 ```
 
@@ -940,7 +938,7 @@ MIA (MeetStream Infrastructure Agents) creates a server-configured AI agent that
 - **`pipeline`**: mix STT + LLM + TTS providers (configurable per layer)
 - **`realtime`**: a single realtime model (OpenAI realtime, xAI, Google Gemini) — lower latency
 
-**Create the agent config first:**
+**Create the agent config first** (in the dashboard at app.meetstream.ai, or via the API):
 ```
 POST /api/v1/mia
 {
@@ -955,19 +953,17 @@ POST /api/v1/mia
 
 Returns `{ message, agent_config_id, agent_config: {...} }`.
 
-**Then attach to a bot using the hosted MeetStream bridge:**
+**Then attach it to a bot — pass only `agent_config_id`:**
 ```json
 POST /bots/create_bot
 {
   "meeting_link": "https://meet.google.com/...",
   "bot_name": "Assistant",
-  "agent_config_id": "<from above>",
-  "socket_connection_url":  { "websocket_url": "wss://agent-meetstream-prd-main.meetstream.ai/bridge" },
-  "live_audio_required":   { "websocket_url": "wss://agent-meetstream-prd-main.meetstream.ai/bridge/audio" }
+  "agent_config_id": "<from above>"
 }
 ```
 
-All three — `agent_config_id`, `socket_connection_url`, `live_audio_required` (pointing at the hosted bridge) — are required together for MIA.
+That's all MIA needs — MeetStream runs the agent on its own hosted bridge. Do **not** pass `socket_connection_url` or `live_audio_required` for MIA; those are only for the bring-your-own-bridge patterns 6–8 and point at *your* server.
 
 **Other MIA operations:**
 - `GET /api/v1/mia` — list all (no params) or fetch one (`?agent_config_id=...`)
@@ -1160,9 +1156,9 @@ The OpenAPI schema allows `additionalProperties: { description: Any type }`. Arb
 
 ### Zoom setup
 
-Register a Zoom app + add credentials to MeetStream dashboard. Guide: https://docs.meetstream.ai/guides/zoom/zoom-marketplace-app-setup
+Register a Zoom app + add credentials to MeetStream dashboard. Guide: https://docs.meetstream.ai/guides/app-integrations/zoom-marketplace-app-setup
 
-**Zoom dev mode** restricts bots to meetings hosted by the app owner's account. For external meetings, follow the production submission guide: https://docs.meetstream.ai/guides/zoom/zoom-production-app-submission
+**Zoom dev mode** restricts bots to meetings hosted by the app owner's account. For external meetings, follow the production submission guide: https://docs.meetstream.ai/guides/app-integrations/zoom-app-production-submission
 
 For Zoom OBF (On-Behalf-Of), pass `"zoom": { "use_zoom_obf": true }` on `create_bot`.
 
@@ -1188,7 +1184,7 @@ Then, on `create_bot`, pass the `google_meet` field (documented in the Google Si
 }
 ```
 
-> **Note:** `google_meet` is documented in the prose guide but isn't in the OpenAPI `CreateBotRequest` schema. The Google Signed-In Bots guide is the canonical reference: https://docs.meetstream.ai/guides/google-signed-in-bots
+> **Note:** `google_meet` is documented in the prose guide but isn't in the OpenAPI `CreateBotRequest` schema. The Google Signed-In Bots guide is the canonical reference: https://docs.meetstream.ai/guides/app-integrations/google-signed-in-bots
 
 ---
 
@@ -1217,7 +1213,7 @@ Specified under `recording_config.transcript.provider`. Use **exactly one** prov
 
 ## Webhook Handler Requirements
 
-- Must use **HTTPS** (use ngrok or cloudflared for local dev — see https://docs.meetstream.ai/guides/webhooks/test-webhooks-locally)
+- Must use **HTTPS** (use ngrok or cloudflared for local dev — see https://docs.meetstream.ai/guides/webhooks/local-webhook-server)
 - Must respond `2xx` quickly to acknowledge receipt
 - **No automatic retries.** If your endpoint returns non-2xx, the webhook is **not** retried. Build your handler to never fail (catch errors, queue work, return 200).
 - `bot.joining` may fire up to 3 times if join retries are configured. `bot.inmeeting`, `bot.stopped`, `audio.processed`, `transcription.processed`, `video.processed`, `data_deletion` are each sent **at most once**.

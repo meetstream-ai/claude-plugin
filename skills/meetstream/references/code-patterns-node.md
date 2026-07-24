@@ -914,14 +914,12 @@ async function deleteAgent(agentConfigId: string) {
   return (await axios.delete(`${BASE_URL}/mia`, { headers, params: { agent_config_id: agentConfigId } })).data
 }
 
-// ─── 3. Attach to a bot using the hosted MeetStream bridge ──────────────────
+// ─── 3. Attach to a bot — pass only agent_config_id (MeetStream hosts the bridge) ──
 async function spawnAgentBot(meetingLink: string, agentConfigId: string) {
   const { data } = await axios.post(`${BASE_URL}/bots/create_bot`, {
     meeting_link: meetingLink,
     bot_name: 'AI Agent',
-    agent_config_id: agentConfigId,
-    socket_connection_url: { websocket_url: 'wss://agent-meetstream-prd-main.meetstream.ai/bridge' },
-    live_audio_required: { websocket_url: 'wss://agent-meetstream-prd-main.meetstream.ai/bridge/audio' }
+    agent_config_id: agentConfigId
   }, { headers })
   return data.bot_id
 }

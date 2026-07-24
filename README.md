@@ -6,7 +6,7 @@
 
 **The fastest way to build meeting intelligence — AI notetakers, real-time sales coaches, transcription pipelines, and Google Calendar–driven recording automation.**
 
-[![Plugin Version](https://img.shields.io/badge/plugin-v2.0.0-5C4EFF?style=for-the-badge)](https://github.com/meetstream-ai/claude-plugin)
+[![Plugin Version](https://img.shields.io/badge/plugin-v2.2.0-5C4EFF?style=for-the-badge)](https://github.com/meetstream-ai/claude-plugin)
 [![Live-Tested](https://img.shields.io/badge/endpoints-live--tested-10B981?style=for-the-badge)](https://github.com/meetstream-ai/claude-plugin/commits/main)
 [![MIT License](https://img.shields.io/badge/license-MIT-yellow?style=for-the-badge)](LICENSE)
 [![Get API Key](https://img.shields.io/badge/get%20api%20key-app.meetstream.ai-0EA5E9?style=for-the-badge)](https://app.meetstream.ai/api-keys)
@@ -89,7 +89,7 @@ Each of these is a complete, production-quality prompt. Paste any one into Claud
 
 ### 8️⃣ AI Meeting Assistant (MIA) — voice-interactive bot that participates in the meeting (one prompt)
 
-> Build me a voice-interactive AI assistant that joins meetings and participates conversationally. Use MeetStream's MIA (Meeting Infrastructure Agent). Flow: I run a script to create a pipeline-mode MIA agent config via `POST /api/v1/mia` (OpenAI gpt-4.1 LLM + ElevenLabs voice + Deepgram nova-3 streaming transcriber + first_message: "Hi everyone, I'm Acme AI joining to help with this meeting. Just say 'Hey Acme' to address me.") → save the returned `agent_config_id` → my Next.js dashboard has a "Send AI to Meeting" button that creates a bot with the trio of required fields (`agent_config_id` + `socket_connection_url: wss://agent-meetstream-prd-main.meetstream.ai/bridge` + `live_audio_required: wss://agent-meetstream-prd-main.meetstream.ai/bridge/audio`) → wake word `["hey acme"]` with 30s timeout → the agent responds to questions, takes notes when asked, summarizes on demand → post-meeting summary delivered via email. Include: the agent-config creation script, the bot-creation handler, a webhook server that catches `bot.error` (streaming-provider auth issue → surface to user, don't fail silently), and a settings UI to edit the agent's system prompt without redeploying.
+> Build me a voice-interactive AI assistant that joins meetings and participates conversationally. Use MeetStream's MIA (Meeting Infrastructure Agent). Flow: I run a script to create a pipeline-mode MIA agent config via `POST /api/v1/mia` (OpenAI gpt-4.1 LLM + ElevenLabs voice + Deepgram nova-3 streaming transcriber + first_message: "Hi everyone, I'm Acme AI joining to help with this meeting. Just say 'Hey Acme' to address me.") → save the returned `agent_config_id` → my Next.js dashboard has a "Send AI to Meeting" button that creates a bot by passing just the `agent_config_id` (MeetStream hosts the agent bridge) → wake word `["hey acme"]` with 30s timeout → the agent responds to questions, takes notes when asked, summarizes on demand → post-meeting summary delivered via email. Include: the agent-config creation script, the bot-creation handler, a webhook server that catches `bot.error` (streaming-provider auth issue → surface to user, don't fail silently), and a settings UI to edit the agent's system prompt without redeploying.
 
 ### 9️⃣ Live captions service for accessibility (one prompt)
 
@@ -199,7 +199,7 @@ export PUBLIC_URL=https://your-ngrok-url.ngrok-free.app
 |----------|-------|------------|----------------------|
 | Google Meet | None | ✅ | ✅ |
 | Microsoft Teams | None | ✅ | ❌ |
-| Zoom | [Zoom app required](https://docs.meetstream.ai/guides/zoom/zoom-marketplace-app-setup) | ❌ | ✅ |
+| Zoom | [Zoom app required](https://docs.meetstream.ai/guides/app-integrations/zoom-marketplace-app-setup) | ❌ | ✅ |
 
 ---
 

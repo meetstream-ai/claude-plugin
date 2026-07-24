@@ -1199,19 +1199,13 @@ def delete_agent(agent_config_id: str):
     return resp.json()
 
 
-# ─── 3. Attach to a bot using the hosted MeetStream bridge ─────────────────
+# ─── 3. Attach to a bot — pass only agent_config_id (MeetStream hosts the bridge) ─────────────────
 def spawn_agent_bot(meeting_link: str, agent_config_id: str) -> str:
-    """All three fields (agent_config_id + socket + live_audio) required together."""
+    """MIA needs only agent_config_id — no socket_connection_url / live_audio_required."""
     resp = requests.post(f"{BASE_URL}/bots/create_bot", headers=HEADERS, json={
         "meeting_link": meeting_link,
         "bot_name": "AI Agent",
-        "agent_config_id": agent_config_id,
-        "socket_connection_url": {
-            "websocket_url": "wss://agent-meetstream-prd-main.meetstream.ai/bridge"
-        },
-        "live_audio_required": {
-            "websocket_url": "wss://agent-meetstream-prd-main.meetstream.ai/bridge/audio"
-        }
+        "agent_config_id": agent_config_id
     })
     resp.raise_for_status()
     return resp.json()["bot_id"]
@@ -1233,7 +1227,7 @@ HEADERS = {"Authorization": f"Token {MEETSTREAM_API_KEY}", "Content-Type": "appl
 
 
 # Setup (one-time): register your Google Workspace domain + login certs
-# See https://docs.meetstream.ai/guides/google-signed-in-bots for the full SSO flow.
+# See https://docs.meetstream.ai/guides/app-integrations/google-signed-in-bots for the full SSO flow.
 
 def list_google_domains():
     resp = requests.get(f"{BASE_URL}/google-login-domains", headers=HEADERS)

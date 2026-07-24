@@ -576,7 +576,7 @@ curl -X DELETE "https://api.meetstream.ai/api/v1/calendar/disconnect" \
 
 ## Google Signed-In Bot Endpoints
 
-For bots that authenticate to Google Meet as a real user (paywalled / signed-in-only meetings). Setup involves Google Workspace SSO + certificate registration; see https://docs.meetstream.ai/guides/google-signed-in-bots
+For bots that authenticate to Google Meet as a real user (paywalled / signed-in-only meetings). Setup involves Google Workspace SSO + certificate registration; see https://docs.meetstream.ai/guides/app-integrations/google-signed-in-bots
 
 ### POST `/google-login-domains`
 Register a Google Workspace domain. Body: `LoginGroupRequest` (see OpenAPI for full shape).
@@ -698,17 +698,17 @@ Body requires `agent_config_id` plus any subset of: `agent_name`, `mode`, `model
 
 ### Using a MIA agent on a bot
 
+Pass only the `agent_config_id` — MeetStream runs the agent on its own hosted bridge.
+
 ```json
 POST /bots/create_bot
 {
   "meeting_link": "...",
-  "agent_config_id": "<id>",
-  "socket_connection_url": { "websocket_url": "wss://agent-meetstream-prd-main.meetstream.ai/bridge" },
-  "live_audio_required": { "websocket_url": "wss://agent-meetstream-prd-main.meetstream.ai/bridge/audio" }
+  "agent_config_id": "<id>"
 }
 ```
 
-All three fields are required together to enable MIA.
+Do **not** send `socket_connection_url` or `live_audio_required` for MIA; those are only for the bring-your-own-bridge real-time patterns and point at your own server.
 
 ---
 
@@ -1079,7 +1079,7 @@ The URL must be publicly accessible.
 
 > These two set the **bot's camera feed** to a static image (the bot's video). They are different from `POST /bots/{bot_id}/send_image` which posts to the meeting chat.
 
-Docs: https://docs.meetstream.ai/guides/web-sockets/meeting-control-and-command-patterns
+Docs: https://docs.meetstream.ai/guides/websockets/meeting-control-patterns
 
 ---
 
@@ -1156,4 +1156,4 @@ Provided via `live_video_required: { "websocket_url": "wss://..." }`. Supported 
 
 Production tips: terminate TLS in front of your app (expose `wss://`), allow large WS frames, process writes sequentially per bot_id so chunk order is preserved.
 
-Docs: https://docs.meetstream.ai/guides/live-video-stream
+Docs: https://docs.meetstream.ai/guides/websockets/bridge-server-architecture
