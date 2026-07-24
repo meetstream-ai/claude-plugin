@@ -13,7 +13,7 @@
       "source": {
         "source": "url",
         "url": "https://github.com/meetstream-ai/claude-plugin.git",
-        "sha": "9d8af97a228ae636f26c0e797c696327750d1a4c"
+        "sha": "41b5244b9cab7a51c7bd68060ebe1f588d5459f0"
       },
       "homepage": "https://meetstream.ai",
       "category": "developer-tools",
