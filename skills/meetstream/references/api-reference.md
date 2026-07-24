@@ -251,6 +251,26 @@ Response: `{status, bot_id, command}`.
 
 ---
 
+### POST `/bots/{bot_id}/pause_recording`
+
+Pause recording mid-meeting. Empty body — no parameters. The bot stays in the meeting; recording (and any live transcription) is suspended until you resume.
+
+```bash
+curl -X POST "https://api.meetstream.ai/api/v1/bots/{bot_id}/pause_recording" \
+  -H "Authorization: Token $MEETSTREAM_API_KEY"
+```
+
+Use for privacy windows (break, off-record discussion). Returns 200 on success.
+
+### POST `/bots/{bot_id}/resume_recording`
+
+Resume a paused recording. Empty body — no parameters. Pairs with `pause_recording` for mid-meeting recording control.
+
+```bash
+curl -X POST "https://api.meetstream.ai/api/v1/bots/{bot_id}/resume_recording" \
+  -H "Authorization: Token $MEETSTREAM_API_KEY"
+```
+
 ### POST `/bots/{bot_id}/transcribe`
 Trigger a new post-call transcription run on the bot's stored audio. **Live-verified behaviors:**
 

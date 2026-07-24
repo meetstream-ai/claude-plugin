@@ -805,6 +805,8 @@ For chat / images **into the chat panel only** (not video frame), there are also
 ```
 POST /bots/{bot_id}/send_message    body: { "message": "...", "metadata": { "message_type": "text" } }
 POST /bots/{bot_id}/send_image      body: { "img_url": "https://...", "display_duration": 5, "metadata": {...} }
+POST /bots/{bot_id}/pause_recording   (empty body — suspend recording mid-meeting; bot stays in the call)
+POST /bots/{bot_id}/resume_recording  (empty body — resume a paused recording)
 ```
 
 > **`send_image` field is `img_url`** (not `image_url`). `display_duration` (integer seconds) is optional.
