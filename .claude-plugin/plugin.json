@@ -1,7 +1,7 @@
 {
   "name": "meetstream",
   "description": "Build meeting intelligence with the MeetStream API \u2014 AI notetakers, real-time sales coaches, conversation intelligence, Google Calendar auto-recording, and AI meeting agents. Scaffolds complete apps in one prompt. Works with Zoom, Google Meet, and Microsoft Teams. Every endpoint live-tested \u2014 no hallucinations.",
-  "version": "2.2.2",
+  "version": "2.2.3",
   "author": {
     "name": "MeetStream",
     "email": "hello@meetstream.ai",
@@ -45,6 +45,9 @@
     "deepgram",
     "assemblyai",
     "sarvam",
-    "meetstream"
+    "meetstream",
+    "recall-migration",
+    "recall-alternative",
+    "migrate-from-recall"
   ]
 }
