@@ -4,7 +4,7 @@
 
 # MeetStream for Claude Code
 
-**The fastest way to build meeting intelligence — AI notetakers, real-time sales coaches, transcription pipelines, and Google Calendar–driven recording automation.**
+**The fastest way to build meeting intelligence - AI notetakers, real-time sales coaches, transcription pipelines, and Google Calendar–driven recording automation.**
 
 [![Plugin Version](https://img.shields.io/badge/plugin-v2.2.0-5C4EFF?style=for-the-badge)](https://github.com/meetstream-ai/claude-plugin)
 [![Live-Tested](https://img.shields.io/badge/endpoints-live--tested-10B981?style=for-the-badge)](https://github.com/meetstream-ai/claude-plugin/commits/main)
@@ -45,7 +45,7 @@ The fastest path from idea to production for every meeting-intelligence use case
 | 🎯 **Real-Time AI Sales Coach** | *"build a real-time AI sales coach"* | Live transcription + objection detection + WebSocket push to seller's browser |
 | 📊 **Conversation Intelligence Platform** | *"build a conversation intelligence tool"* | Live + post-call transcripts + speaker analytics + searchable archive |
 | 📅 **Google Calendar Auto-Recording** | *"auto-record every meeting on my Google Calendar"* | OAuth setup + `/calendar/create_calendar` + auto-schedule + recurring event handling + post-meeting delivery |
-| 🔁 **Scheduled / Recurring Meeting Bot** | *"join every standup automatically"* | Calendar-driven, hands-free — bot joins 1 min before each meeting, recurring events auto-reschedule |
+| 🔁 **Scheduled / Recurring Meeting Bot** | *"join every standup automatically"* | Calendar-driven, hands-free - bot joins 1 min before each meeting, recurring events auto-reschedule |
 | 🤖 **AI Meeting Assistant (MIA)** | *"build an AI agent that joins my meetings"* | MIA agent config (pipeline/realtime) + hosted bridge + voice/text interaction |
 | 📞 **Customer Call Analyzer** | *"analyze every sales call for insights"* | Transcript → LLM extraction → CRM auto-update → trend dashboards |
 | 🌍 **Multilingual Meeting Transcriber** | *"transcribe Hindi/Tamil/Telugu meetings"* | Sarvam provider + Indic language config + translation |
@@ -57,7 +57,7 @@ The fastest path from idea to production for every meeting-intelligence use case
 
 ## 🚀 Copy-paste power prompts (build a full app in one shot)
 
-Each of these is a complete, production-quality prompt. Paste any one into Claude Code and you'll get a working, end-to-end app — webhook server, MeetStream integration, AI processing, delivery layer, error handling, all wired up.
+Each of these is a complete, production-quality prompt. Paste any one into Claude Code and you'll get a working, end-to-end app - webhook server, MeetStream integration, AI processing, delivery layer, error handling, all wired up.
 
 ### 1️⃣ API-triggered AI notetaker with email delivery (one prompt)
 
@@ -77,9 +77,9 @@ Each of these is a complete, production-quality prompt. Paste any one into Claud
 
 ### 5️⃣ Interview recorder with per-participant audio for HR/recruiting (one prompt)
 
-> Build me an interview recorder for a recruiting SaaS in **Python + Django**. Flow: recruiter creates an interview record in our Django app with `candidate_email`, `interviewer_emails`, `meeting_link`, `position_id` → on save, send a MeetStream bot with `audio_separate_streams: true` (per-participant audio for clean candidate-only transcripts later) + deepgram post-call provider + `custom_attributes.interview_id={record.pk}` → on `bot.done`, fetch the per-participant audio streams via `/bots/{id}/get_audio_streams` (10-min URLs — download immediately to S3) + fetch the full transcript via canonical flow → generate a structured interview report (candidate strengths/concerns/skills mentioned/red flags) using Claude 3.5 Sonnet → save report + audio S3 URLs to a `InterviewRecording` model → email the recruiter when complete. Include: Django models, signal handlers, Celery tasks for the long-running download/processing work, and explicit handling of the 10-minute URL TTL (always re-fetch on access, never store the URLs).
+> Build me an interview recorder for a recruiting SaaS in **Python + Django**. Flow: recruiter creates an interview record in our Django app with `candidate_email`, `interviewer_emails`, `meeting_link`, `position_id` → on save, send a MeetStream bot with `audio_separate_streams: true` (per-participant audio for clean candidate-only transcripts later) + deepgram post-call provider + `custom_attributes.interview_id={record.pk}` → on `bot.done`, fetch the per-participant audio streams via `/bots/{id}/get_audio_streams` (10-min URLs - download immediately to S3) + fetch the full transcript via canonical flow → generate a structured interview report (candidate strengths/concerns/skills mentioned/red flags) using Claude 3.5 Sonnet → save report + audio S3 URLs to a `InterviewRecording` model → email the recruiter when complete. Include: Django models, signal handlers, Celery tasks for the long-running download/processing work, and explicit handling of the 10-minute URL TTL (always re-fetch on access, never store the URLs).
 
-### 6️⃣ Multi-tenant notetaker SaaS — each user connects their own calendar (one prompt)
+### 6️⃣ Multi-tenant notetaker SaaS - each user connects their own calendar (one prompt)
 
 > Build me a multi-tenant notetaker SaaS in **Next.js 14 (App Router) + Postgres + Prisma**. Flow: user signs up → connects their own Google Calendar via per-user OAuth (each user has their own refresh token, all stored encrypted in Postgres) → my app calls `/calendar/create_calendar` with that user's credentials → enable auto-scheduling → webhooks fire for every meeting → I fetch transcript via canonical flow → AI summary → email to that specific user via Resend. Include: full Next.js App Router setup, Prisma schema for `User`, `CalendarConnection`, `Meeting`, `Summary`, Google OAuth route handlers, encrypted secret storage helper using AWS KMS (or local sealedbox for dev), one webhook endpoint that routes by `custom_attributes.tenant_id`, idempotent processing with Postgres-backed dedup table, billing-ready Stripe Checkout integration (free tier: 10 meetings/mo, pro: $20/mo unlimited), and a clean React dashboard showing the user's last 10 summarized meetings.
 
@@ -87,13 +87,13 @@ Each of these is a complete, production-quality prompt. Paste any one into Claud
 
 > Build me a compliance-grade meeting recorder for regulated industries (healthcare/legal/finance) in **Python + FastAPI**. Flow: every recorded meeting MUST have `recording_config.retention.hours: 2160` (90 days), `audio_separate_streams: true` (for legal evidentiary separation), explicit consent flag in `custom_attributes.consent_obtained_at` (ISO timestamp + obtained_by user_id) → on `bot.inmeeting` webhook, write an audit log entry to an append-only Postgres `audit_log` table (never UPDATE, only INSERT) → on `bot.stopped`, mark the session complete → on `transcription.processed`, fetch + encrypt the transcript at rest (AES-256-GCM with KMS-managed keys) before storing → on `data_deletion` webhook, write a deletion audit entry. Include: full SQLAlchemy models, KMS encryption helpers, a `/audit/{meeting_id}` admin endpoint that returns the full timeline of bot status + processing + delete events, IP allowlist middleware for admin routes, structured JSON logging compatible with Datadog/Splunk, and a README section documenting the compliance posture for legal/security review.
 
-### 8️⃣ AI Meeting Assistant (MIA) — voice-interactive bot that participates in the meeting (one prompt)
+### 8️⃣ AI Meeting Assistant (MIA) - voice-interactive bot that participates in the meeting (one prompt)
 
 > Build me a voice-interactive AI assistant that joins meetings and participates conversationally. Use MeetStream's MIA (Meeting Infrastructure Agent). Flow: I run a script to create a pipeline-mode MIA agent config via `POST /api/v1/mia` (OpenAI gpt-4.1 LLM + ElevenLabs voice + Deepgram nova-3 streaming transcriber + first_message: "Hi everyone, I'm Acme AI joining to help with this meeting. Just say 'Hey Acme' to address me.") → save the returned `agent_config_id` → my Next.js dashboard has a "Send AI to Meeting" button that creates a bot by passing just the `agent_config_id` (MeetStream hosts the agent bridge) → wake word `["hey acme"]` with 30s timeout → the agent responds to questions, takes notes when asked, summarizes on demand → post-meeting summary delivered via email. Include: the agent-config creation script, the bot-creation handler, a webhook server that catches `bot.error` (streaming-provider auth issue → surface to user, don't fail silently), and a settings UI to edit the agent's system prompt without redeploying.
 
 ### 9️⃣ Live captions service for accessibility (one prompt)
 
-> Build me a real-time live captions broadcaster for accessibility (hearing-impaired users) in **Python + FastAPI + Server-Sent Events**. Flow: meeting organizer triggers `POST /captions/start` with a meeting link → MeetStream bot joins with `meetstream_streaming` + `live_transcription_required.webhook_url` → live chunks POSTed to my server → I rebroadcast via SSE to any connected client at `GET /captions/{session_id}` → clients render large, readable captions in their browser with speaker names and a scrolling history. Include: SSE handler that broadcasts to all connected clients per session, a clean accessibility-friendly HTML page (high-contrast, large font, ARIA labels), graceful disconnect handling, automatic 5-minute idle cleanup, and a `nginx.conf` snippet showing how to proxy SSE with proper buffering settings. No LLM processing — captions are passthrough only, raw transcript chunks rendered live.
+> Build me a real-time live captions broadcaster for accessibility (hearing-impaired users) in **Python + FastAPI + Server-Sent Events**. Flow: meeting organizer triggers `POST /captions/start` with a meeting link → MeetStream bot joins with `meetstream_streaming` + `live_transcription_required.webhook_url` → live chunks POSTed to my server → I rebroadcast via SSE to any connected client at `GET /captions/{session_id}` → clients render large, readable captions in their browser with speaker names and a scrolling history. Include: SSE handler that broadcasts to all connected clients per session, a clean accessibility-friendly HTML page (high-contrast, large font, ARIA labels), graceful disconnect handling, automatic 5-minute idle cleanup, and a `nginx.conf` snippet showing how to proxy SSE with proper buffering settings. No LLM processing - captions are passthrough only, raw transcript chunks rendered live.
 
 ### 🔟 Customer call analyzer with weekly insights dashboard (one prompt)
 
@@ -101,7 +101,7 @@ Each of these is a complete, production-quality prompt. Paste any one into Claud
 
 ---
 
-> 💡 **First time?** Each of these power prompts assumes you have a MeetStream API key set. If you don't, run *"set up MeetStream"* first — it walks you through signup at https://app.meetstream.ai and key creation in 60 seconds.
+> 💡 **First time?** Each of these power prompts assumes you have a MeetStream API key set. If you don't, run *"set up MeetStream"* first - it walks you through signup at https://app.meetstream.ai and key creation in 60 seconds.
 
 ---
 
@@ -140,7 +140,7 @@ Every endpoint, field name, response shape, and webhook event in this plugin has
 Specifically verified live:
 - ✅ `create_bot` returns HTTP **201** Created
 - ✅ `bot_details.transcript_id` is the canonical stateless fetch path (not in any webhook payload)
-- ✅ Streaming providers produce **no post-call** `transcription.processed` event — lifecycle ends at `audio.processed`
+- ✅ Streaming providers produce **no post-call** `transcription.processed` event - lifecycle ends at `audio.processed`
 - ✅ `bot.error` fires mid-meeting for streaming-provider auth issues (bot keeps recording)
 - ✅ `recording_permission_denied_timeout` range is **60–300** seconds
 - ✅ `in_call_recording_timeout` minimum is **600** seconds
@@ -229,11 +229,11 @@ The plugin's skills walk you through every variant of this flow (live, post-call
 
 ## Links
 
-- 🌐 [meetstream.ai](https://meetstream.ai) — product
-- 📖 [docs.meetstream.ai](https://docs.meetstream.ai) — full API reference
-- 🎛️ [app.meetstream.ai](https://app.meetstream.ai) — dashboard + API keys
-- 🐙 [github.com/meetstream-ai/claude-plugin](https://github.com/meetstream-ai/claude-plugin) — this repo
-- 💬 [hello@meetstream.ai](mailto:hello@meetstream.ai) — support
+- 🌐 [meetstream.ai](https://meetstream.ai) - product
+- 📖 [docs.meetstream.ai](https://docs.meetstream.ai) - full API reference
+- 🎛️ [app.meetstream.ai](https://app.meetstream.ai) - dashboard + API keys
+- 🐙 [github.com/meetstream-ai/claude-plugin](https://github.com/meetstream-ai/claude-plugin) - this repo
+- 💬 [hello@meetstream.ai](mailto:hello@meetstream.ai) - support
 
 ---
 
