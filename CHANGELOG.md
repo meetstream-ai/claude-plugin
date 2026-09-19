@@ -2,6 +2,18 @@
 
 All notable changes to the MeetStream Claude Code plugin.
 
+## [2.4.0] - 2026-09-18
+
+### Added
+- **Microsoft Teams Signed-In Bots** section in the core skill: dedicated M365 tenant setup (security defaults off, SSPR None), `/teams-login-domains` + `/teams-logins` registration, the `create_bot` `teams` block (`login_required`, `teams_login_domain`, `sign_in_email`, `strict_email`), one concurrent bot per account, name/avatar from the Microsoft account, and the 400/403/404/409/429 error table.
+- Decision tree step Q2.4 for Teams sign-in, and a signed-in row in the Platform Notes table.
+- `references/api-reference.md`: all Teams login endpoints with bodies and responses, and the `teams` / `google_meet` create_bot fields.
+- Pointers to the CLI (`meetstream logins`, `bot create --teams-login-domain / --google-login-domain`, 0.4.0+) and MCP `create_bot` params (0.3.2+).
+
+### Fixed
+- Google Signed-In Bots: added `sign_in_email` / `strict_email`; domain body uses `sso_workspace_domain`; logins take `sso_private_key_pem` / `sso_cert_pem`; updates are PATCH (not PUT) with `domain` in the body, deletes need `?domain=`, and there is no `GET /google-logins/{login_id}`.
+- Removed the em dashes left in the plugin description.
+
 ## [2.3.0] - 2026-09-18
 
 ### Fixed

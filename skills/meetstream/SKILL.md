@@ -84,7 +84,7 @@ Quick top-level questions to start with:
 
 Then **walk Steps 1–8 of the decision tree** to fill in:
 - Bot identity (name, avatar, message, video/audio config) - Step 1
-- Platform-specific setup (Google signed-in, Zoom OBF) - Step 2
+- Platform-specific setup (Google / Teams signed-in, Zoom ZAK/OBF) - Step 2
 - Transcription strategy (none / live / post-call / both) - Step 3
 - Live transcription provider + webhooks - Step 4A
 - Post-call transcription provider - Step 4B
@@ -199,14 +199,16 @@ Q2.1: Which platform is the meeting on?
       ├─ Google Meet → "meeting_link": "https://meet.google.com/abc-defg-hij"
       │                continue Q2.2 (signed-in?)
       ├─ Microsoft Teams → "meeting_link": "https://teams.microsoft.com/l/meetup-join/..."
-      │                    (no extra config needed)
+      │                    continue Q2.4 (signed-in?)
       └─ Zoom → "meeting_link": "https://zoom.us/j/123456789?pwd=..."
                 continue Q2.3 (Zoom setup)
 
 Q2.2: (Google Meet) Does the meeting require a signed-in Google identity?
       ├─ Yes → "google_meet": {
       │           "login_required": true,
-      │           "google_login_domain": "your-company.com"
+      │           "google_login_domain": "your-company.com",
+      │           "sign_in_email": "bot@your-company.com",   // optional: pin one account
+      │           "strict_email": true                        // optional, default true
       │        }
       │        ⚠ Prerequisite: SSO + login cert registration via
       │        /google-login-domains and /google-logins. See Google Signed-In
@@ -225,6 +227,20 @@ Q2.3: (Zoom) Does the bot need an authenticated join?
          ⚠ use_zoom_obf and zoom_oauth_connection_user_id are rejected by the
            API. Use zak_url / obf_url instead.
          For external customer meetings, submit the Zoom app to production.
+
+Q2.4: (Teams) Does the meeting block anonymous/guest join, or must the bot
+      appear as a real Microsoft 365 user?
+      ├─ Yes → "teams": {
+      │           "login_required": true,
+      │           "teams_login_domain": "bots.your-company.com",
+      │           "sign_in_email": "bot1@bots.your-company.com", // optional
+      │           "strict_email": true                            // optional, default true
+      │        }
+      │        ⚠ Prerequisite: a dedicated M365 tenant + accounts registered via
+      │        /teams-login-domains and /teams-logins. ONE concurrent bot per
+      │        account. Name/avatar come from the Microsoft account (bot_name and
+      │        bot_image_url are ignored). See Microsoft Teams Signed-In Bots.
+      └─ No  → omit teams (guest join; works when anonymous join is allowed)
 ```
 
 ---
@@ -1172,6 +1188,7 @@ The OpenAPI schema allows `additionalProperties: { description: Any type }`. Arb
 | MIA agents | ✓ | ✓ | ✓ |
 | `interrupt` WS command (clears audio queue) | ✓ | ✗ (accepted, no-op) | ✗ (accepted, no-op) |
 | Native captions (`meeting_captions`) | ✓ | ✗ | ✓ |
+| Signed-in bot (real account identity) | ✓ (`google_meet`) | ✓ (`zoom.zak_url` / `obf_url`) | ✓ (`teams`, M365 work/school only, 1 bot per account) |
 
 ### Zoom setup
 
@@ -1183,25 +1200,93 @@ For authenticated Zoom joins, pass `"zoom": { "zak_url": "https://..." }` (join 
 
 ### Google Signed-In Bots
 
-To have the bot join Google Meet using a Google identity (for paywalled / signed-in-only meetings), configure SSO in your Google Workspace admin and register domain/login certificates via:
+To have the bot join Google Meet using a Google identity (meetings that block guests, or to show a real name instead of "Unknown"), configure SSO in your Google Workspace admin (Legacy SSO profile pointing at MeetStream's sign-in/sign-out URLs, plus an OpenSSL key + certificate), then register the domain and accounts. Guide: https://docs.meetstream.ai/guides/app-integrations/google-signed-in-bots
 
-- `POST /google-login-domains` - register a Google Workspace domain
-- `GET /google-login-domains` - list domains
-- `GET /google-login-domains/{domain}` - fetch one (path param is the workspace **domain string**)
-- `PUT /google-login-domains/{domain}` / `DELETE /google-login-domains/{domain}` - update / delete
-- `POST /google-logins` / `GET /google-logins` / `PUT/DELETE /google-logins/{id}` - manage logins
+| Method | Path | Notes |
+|---|---|---|
+| POST | `/google-login-domains` | `{ "sso_workspace_domain": "your-company.com", "name": "...", "login_mode": "always" }` (`if_required` also accepted) |
+| GET | `/google-login-domains` | `{ domains: [{ sso_workspace_domain, name, login_mode, max_concurrent_per_login, login_count, active_login_count, created_at }] }` |
+| GET / PATCH / DELETE | `/google-login-domains/{domain}` | Path param is the workspace domain string. PATCH `{ name?, login_mode? }`. DELETE is refused while any login is active |
+| POST | `/google-logins` | `{ domain, email, sso_private_key_pem, sso_cert_pem, is_active? }` (PEM contents of `key.pem` / `cert.pem`) |
+| GET | `/google-logins?domain=<d>` | `{ logins: [...] }` |
+| PATCH | `/google-logins/{login_id}` | Body must include `domain`; plus `is_active?`, `email?`, `sso_private_key_pem?`, `sso_cert_pem?` |
+| DELETE | `/google-logins/{login_id}?domain=<d>` | |
 
-Then, on `create_bot`, pass the `google_meet` field (documented in the Google Signed-In Bots guide):
+There is **no** `GET /google-logins/{login_id}`; use the list endpoint or `GET /google-login-domains/{domain}`. Updates use PATCH, not PUT.
+
+Then, on `create_bot`, pass the `google_meet` block:
 ```json
 {
   "google_meet": {
     "login_required": true,
-    "google_login_domain": "your-domain.com"
+    "google_login_domain": "your-company.com",
+    "sign_in_email": "bot@your-company.com",
+    "strict_email": true
   }
 }
 ```
 
-> **Note:** `google_meet` is documented in the prose guide but isn't in the OpenAPI `CreateBotRequest` schema. The Google Signed-In Bots guide is the canonical reference: https://docs.meetstream.ai/guides/app-integrations/google-signed-in-bots
+- `sign_in_email` (optional) pins one registered account. `strict_email` (optional, default `true`): with `sign_in_email`, `true` fails if that account is busy or unhealthy; `false` falls back to any available account in the domain.
+- Concurrency: a Google account can serve many meetings at once, but add logins as you scale (rule of thumb from the guide: one login per ~20 concurrent Meet sessions). MeetStream distributes bots across them.
+- `google_meet` is not in the OpenAPI `CreateBotRequest` schema; the guide above is canonical.
+- CLI: `meetstream logins google ...` and `meetstream bot create <link> --google-login-domain <d>` (CLI 0.4.0+). MCP: `create_bot`'s `google_login_domain` param (MCP server 0.3.2+). Account management is REST / CLI / SDK only.
+
+### Microsoft Teams Signed-In Bots
+
+By default a Teams bot joins as an anonymous guest and fails outright if the organizer disabled anonymous join. A signed-in bot joins as a real Microsoft 365 account. Guide: https://docs.meetstream.ai/guides/app-integrations/teams-signed-in-bots
+
+**Setup requirements (once):**
+1. A **dedicated Microsoft 365 tenant**, not your production one (Business Basic or higher).
+2. One **standard, non-admin user per bot account**, with a Teams license. Set its display name and profile picture: that is what participants see.
+3. In Entra ID: **disable security defaults** and set self-service password reset to **None** for these accounts (otherwise the first automated sign-in hits MFA registration).
+4. Only Microsoft 365 work/school Teams is supported. Personal Teams (`teams.live.com`) cannot be used.
+
+**Register the domain, then each account:**
+
+| Method | Path | Body / notes |
+|---|---|---|
+| POST | `/teams-login-domains` | `{ "domain": "bots.your-company.com", "name": "Bot tenant", "login_mode": "always" }` (`if_required` is not supported for Teams yet) → 201 |
+| GET | `/teams-login-domains` | `{ domains: [{ domain, name, login_mode, login_count, active_login_count, created_at }] }` |
+| GET | `/teams-login-domains/{domain}` | Domain plus `logins: [{ login_id, email, is_active, lease_status, last_session_result }]`; 404 if unknown |
+| PATCH | `/teams-login-domains/{domain}` | `{ name?, login_mode? }` |
+| DELETE | `/teams-login-domains/{domain}` | Deletes the domain **and all its logins** |
+| POST | `/teams-logins` | `{ "domain": "...", "email": "bot1@bots.your-company.com", "password": "<ACCOUNT_PASSWORD>", "is_active": true }` → 201 |
+| GET | `/teams-logins?domain=<d>` | `domain` is required (400 without it); 404 if the domain isn't registered |
+| GET | `/teams-logins/{login_id}` | Login object |
+| PATCH | `/teams-logins/{login_id}` | `{ password?, is_active? }`. A new password also reactivates a deactivated account |
+| DELETE | `/teams-logins/{login_id}` | |
+
+Login object: `{ login_id, domain, email, is_active, lease_status, last_session_result, last_login_error, created_at, updated_at }`. The password is write-only and never returned. Load it from an env var or secret store in generated code; never hardcode it. If a bad password makes a join fail, MeetStream sets `is_active: false` until you rotate it.
+
+**Create the bot:**
+```json
+{
+  "meeting_link": "https://teams.microsoft.com/l/meetup-join/...",
+  "bot_name": "Notetaker",
+  "teams": {
+    "login_required": true,
+    "teams_login_domain": "bots.your-company.com",
+    "sign_in_email": "bot1@bots.your-company.com",
+    "strict_email": true
+  }
+}
+```
+
+- `teams_login_domain` is required when `login_required` is true. `sign_in_email` and `strict_email` behave as for Google (`strict_email` defaults to `true`).
+- **One concurrent bot per account.** Teams merges same-email sign-ins into one attendee. For N concurrent signed-in Teams bots, register N accounts.
+- **Name and avatar come from the Microsoft account.** `bot_name` and `bot_image_url` are not applied on a signed-in join.
+- A malformed `teams` block is dropped silently and the bot joins as a guest. If a signed-in bot shows up as `(Guest)`, check that `login_required: true` is inside `teams`.
+- CLI: `meetstream logins teams ...` and `meetstream bot create <link> --teams-login-domain <d>` (CLI 0.4.0+). MCP: `create_bot`'s `teams_login_domain` param (MCP server 0.3.2+). Account management is REST / CLI / SDK only.
+
+**Errors on `create_bot`:**
+
+| Status | Meaning | Fix |
+|---|---|---|
+| 400 `teams.teams_login_domain '<d>' is not registered...` | Domain not registered, or a typo | `POST /teams-login-domains` first |
+| 403 | The domain or account belongs to another MeetStream account | Use a domain registered with this API key's account |
+| 404 | `sign_in_email` isn't registered under the domain | Register it with `POST /teams-logins`, or fix the email |
+| 409 | Pinned account busy or deactivated (`strict_email: true`), or no account is both active and free | Rotate the password (PATCH), set `strict_email: false`, or add accounts |
+| 429 `all Teams logins ... in use` | Every account in the domain is leased to another bot | Register more accounts |
 
 ---
 
@@ -1435,6 +1520,8 @@ def delete_bot_data(bot_id: str, confirmed: bool = False) -> dict:
 22. **Waiting for `bot.done` after `/transcribe`** - `/transcribe` is fire-and-forget. You get exactly one `transcription.processed`/`transcription.failed`, no `bot.done` follow-up.
 23. **Relying on `custom_attributes` in `/transcribe`-triggered webhooks** - that field is missing from `/transcribe` events (present on original lifecycle events). Correlate by `bot_id` instead.
 24. **Polling `/transcript/{tid}/get_transcript` without a bound** - on failure it returns HTTP 202 forever. Always check `bot_details.TranscriptStatus` (authoritative: `"Success"`/`"Failed"`/`None`) or watch for the `transcription.failed` webhook to break out.
+25. **Sharing one Teams account across concurrent signed-in bots** - Teams allows one bot per account at a time; extra bots get 409/429. Register one account per concurrent bot. Also don't expect `bot_name` / `bot_image_url` to apply on a signed-in Teams join: the Microsoft account's name and picture are used.
+26. **Using PUT or `GET /google-logins/{id}` for Google logins** - updates are PATCH (with `domain` in the body), deletes need `?domain=`, and there is no GET-by-id.
 
 ---
 

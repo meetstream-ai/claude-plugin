@@ -40,7 +40,9 @@ Creates a bot and sends it to a meeting.
 - `automatic_leave` (object) - timeout rules in seconds (see schema below).
 
 **Not in OpenAPI but documented in prose guides (also accepted):**
-- `google_meet` (object) - for Google Signed-In Bots: `{ "login_required": true, "google_login_domain": "your-domain.com" }`.
+- `google_meet` (object) - Google Signed-In Bots: `{ "login_required": true, "google_login_domain": "your-domain.com", "sign_in_email"?: "bot@your-domain.com", "strict_email"?: true }`.
+- `teams` (object) - Microsoft Teams Signed-In Bots: `{ "login_required": true, "teams_login_domain": "bots.your-domain.com", "sign_in_email"?: "bot1@bots.your-domain.com", "strict_email"?: true }`. Name and avatar come from the Microsoft account (`bot_name` / `bot_image_url` are not applied). A malformed `teams` block is dropped silently (guest join).
+- For both: `login_required: true` opts in; the `*_login_domain` is required when it is set. `sign_in_email` pins one registered account. `strict_email` (default `true`): with `sign_in_email`, `true` fails if that account is busy or unhealthy, `false` falls back to any available account in the domain. See [Signed-In Bot Endpoints](#google-signed-in-bot-endpoints).
 
 > **Important:** `audio_required` is **not** in the `CreateBotRequest` schema. Audio is captured by default. The field DOES exist in calendar-scheduled `bot_config` (different schema).
 
@@ -596,46 +598,109 @@ curl -X DELETE "https://api.meetstream.ai/api/v1/calendar/disconnect" \
 
 ## Google Signed-In Bot Endpoints
 
-For bots that authenticate to Google Meet as a real user (paywalled / signed-in-only meetings). Setup involves Google Workspace SSO + certificate registration; see https://docs.meetstream.ai/guides/app-integrations/google-signed-in-bots
+For bots that authenticate to Google Meet as a real user. Setup involves Google Workspace SSO (Legacy SSO profile) + an OpenSSL key/certificate; see https://docs.meetstream.ai/guides/app-integrations/google-signed-in-bots
 
 ### POST `/google-login-domains`
-Register a Google Workspace domain. Body: `LoginGroupRequest` (see OpenAPI for full shape).
+Register a Google Workspace domain. Body: `{ "sso_workspace_domain": "your-company.com", "name"?: "...", "login_mode"?: "always" | "if_required" }` (default `always`). Returns 201 `{ sso_workspace_domain, name, login_mode, max_concurrent_per_login, created_at }`; 409 if already registered.
 
 ### GET `/google-login-domains`
-List registered domains.
+`{ domains: [{ sso_workspace_domain, name, login_mode, max_concurrent_per_login, login_count, active_login_count, created_at }] }`
 
 ### GET `/google-login-domains/{domain}`
-Fetch one domain. **`{domain}` is the workspace domain string** (e.g. `your-company.com`), not an opaque id.
+Fetch one domain with its `logins`. **`{domain}` is the workspace domain string** (e.g. `your-company.com`), not an opaque id.
 
-### PUT `/google-login-domains/{domain}`
-Update a domain.
+### PATCH `/google-login-domains/{domain}`
+`{ name?, login_mode? }`
 
 ### DELETE `/google-login-domains/{domain}`
-Delete a domain.
+Deletes the domain and its logins. Refused (400) while any login is active; disable them first.
 
 ### POST `/google-logins`
-Add a Google login under a domain.
+`{ "domain": "your-company.com", "email": "bot@your-company.com", "sso_private_key_pem": "<contents of key.pem>", "sso_cert_pem": "<contents of cert.pem>", "is_active"?: true }` → 201 `{ login_id, domain, email, is_active, created_at }`
 
-### GET `/google-logins`
-List Google logins.
+### GET `/google-logins?domain=<d>`
+`{ logins: [{ login_id, email, is_active, active_sessions, last_test_status, last_tested_at, created_at }] }`. There is **no** `GET /google-logins/{login_id}`.
 
-### PUT `/google-logins/{id}`
-Update a login.
+### PATCH `/google-logins/{login_id}`
+Body **must include `domain`**, plus any of `is_active`, `email`, `sso_private_key_pem`, `sso_cert_pem`. Credential changes and deactivation are refused while the login has active sessions.
 
-### DELETE `/google-logins/{id}`
-Delete a login.
+### DELETE `/google-logins/{login_id}?domain=<d>`
+Refused while the login has active sessions.
 
 ### Then on `create_bot`, attach via:
 ```json
 {
   "google_meet": {
     "login_required": true,
-    "google_login_domain": "your-domain.com"
+    "google_login_domain": "your-company.com",
+    "sign_in_email": "bot@your-company.com",
+    "strict_email": true
   }
 }
 ```
 
 (`google_meet` is documented in the Google Signed-In Bots guide; it isn't in the OpenAPI `CreateBotRequest` schema but is the canonical activation payload.)
+
+---
+
+## Microsoft Teams Signed-In Bot Endpoints
+
+For bots that join Teams as a real Microsoft 365 account (meetings that block anonymous join). Requires a dedicated M365 tenant with security defaults disabled and self-service password reset set to None for the bot accounts. Microsoft 365 work/school Teams only (not `teams.live.com`). Guide: https://docs.meetstream.ai/guides/app-integrations/teams-signed-in-bots
+
+### POST `/teams-login-domains`
+`{ "domain": "bots.your-company.com", "name"?: "...", "login_mode": "always" }` (`domain` required; `if_required` is not supported for Teams yet) → 201 `{ domain, name, login_mode, created_at }`
+
+### GET `/teams-login-domains`
+`{ domains: [{ domain, name, login_mode, login_count, active_login_count, created_at }] }`
+
+### GET `/teams-login-domains/{domain}`
+`{ domain, name, login_mode, logins: [{ login_id, email, is_active, lease_status, last_session_result }], created_at, updated_at }`; 404 `{ "error": "Domain not found" }`
+
+### PATCH `/teams-login-domains/{domain}`
+`{ name?, login_mode? }` → `{ success, domain: { domain, name, login_mode, updated_at } }`
+
+### DELETE `/teams-login-domains/{domain}`
+Deletes the domain **and all associated logins** → `{ success, message }`
+
+### POST `/teams-logins`
+`{ "domain": "bots.your-company.com", "email": "bot1@bots.your-company.com", "password": "<ACCOUNT_PASSWORD>", "is_active"?: true }` → 201 login object. The password is write-only (never returned); load it from a secret store, never hardcode it.
+
+### GET `/teams-logins?domain=<d>`
+`domain` is required (400 without it) → `{ logins: [login] }`; 404 `{ "error": "Domain <d> not registered" }`
+
+### GET `/teams-logins/{login_id}`
+Login object; 404 `{ "error": "Login not found" }`
+
+### PATCH `/teams-logins/{login_id}`
+`{ password?, is_active? }` → `{ success, login }`. A new password also reactivates an account that was deactivated after a failed sign-in.
+
+### DELETE `/teams-logins/{login_id}`
+→ `{ success, message: "Login deleted successfully" }`
+
+Login object: `{ login_id, domain, email, is_active, lease_status, last_session_result, last_login_error, created_at, updated_at }`
+
+### Then on `create_bot`, attach via:
+```json
+{
+  "teams": {
+    "login_required": true,
+    "teams_login_domain": "bots.your-company.com",
+    "sign_in_email": "bot1@bots.your-company.com",
+    "strict_email": true
+  }
+}
+```
+
+- **One concurrent bot per account.** Register N accounts for N concurrent signed-in Teams bots.
+- `bot_name` / `bot_image_url` are not applied: the Microsoft account's display name and picture are used.
+
+| `create_bot` error | Meaning |
+|---|---|
+| 400 `teams.teams_login_domain '<d>' is not registered...` | Register the domain first |
+| 403 | Domain or account belongs to another MeetStream account |
+| 404 | `sign_in_email` not registered under the domain |
+| 409 | Pinned account busy/deactivated with `strict_email: true`, or no account both active and free |
+| 429 `all Teams logins ... in use` | Every account in the domain is leased |
 
 ---
 

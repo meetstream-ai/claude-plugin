@@ -1,6 +1,6 @@
 {
   "name": "meetstream-ai",
-  "description": "MeetStream plugins for Claude Code \u2014 AI notetakers, sales coaches, real-time transcription, Google Calendar auto-recording, and meeting intelligence",
+  "description": "MeetStream plugins for Claude Code: AI notetakers, sales coaches, real-time transcription, Google Calendar auto-recording, and meeting intelligence",
   "owner": {
     "name": "MeetStream",
     "email": "hello@meetstream.ai",
@@ -9,7 +9,7 @@
   "plugins": [
     {
       "name": "meetstream",
-      "description": "Build meeting intelligence with MeetStream \u2014 AI notetakers, real-time sales coaches, conversation intelligence, Google Calendar auto-recording, and AI meeting agents. Scaffolds complete apps in one prompt. Works with Zoom, Google Meet, Teams. Every endpoint live-tested \u2014 no hallucinations.",
+      "description": "Build meeting intelligence with MeetStream: AI notetakers, real-time sales coaches, conversation intelligence, Google Calendar auto-recording, and AI meeting agents. Scaffolds complete apps in one prompt. Works with Zoom, Google Meet, Teams. Every endpoint live-tested, no hallucinations.",
       "source": {
         "source": "url",
         "url": "https://github.com/meetstream-ai/claude-plugin.git",
