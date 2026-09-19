@@ -2,6 +2,19 @@
 
 All notable changes to the MeetStream Claude Code plugin.
 
+## [2.3.0] - 2026-09-18
+
+### Fixed
+- **Webhook model rewritten against 4,139 captured deliveries (Jun 2026).** Terminals are two-layer: every ending arrives once as `event: "bot.stopped"` and `bot_event` gives the reason (`bot.stopped`, `bot.kicked`, `bot.notallowed`, `bot.denied`, `bot.failed`). Lobby timeouts, denials and failures carry `status_code: 500`. Every event carries a `timestamp`. `bot.done` fires on every path, streaming-only bots included. Added `bot.in_waiting_room`, `bot.scheduled`, `bot.uploading`, `bot.transcriptionready` and the `*.skipped` events.
+- Example webhook handlers branch on `bot_event` instead of `bot_status` (a kick and a clean exit both report `Stopped`); the status poller compares case-insensitively (`FAILED` / `ERROR` / `Failed`).
+- Zoom authenticated joins use `zoom.zak_url` / `zoom.obf_url`. Removed `use_zoom_obf` and the old OAuth callback URL, which the API now rejects.
+- Default retention is 30 days (720h), not 24h.
+- `word_is_final` does appear on most live-transcript words; documented as optional.
+
+### Changed
+- Removed per-hour provider price estimates from the notetaker skill.
+- Removed remaining em dashes.
+
 ## [2.2.0] - 2026-05-27
 
 ### Added

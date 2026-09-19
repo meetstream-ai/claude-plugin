@@ -1,7 +1,7 @@
 ---
 name: getting-started
 description: >
-  First-time setup for MeetStream — guides a brand-new user through account
+  First-time setup for MeetStream - guides a brand-new user through account
   signup, API key creation, environment configuration, and a validation ping.
   MUST be invoked before any other MeetStream skill (notetaker, sales-coach,
   calendar-automation, etc.) if MEETSTREAM_API_KEY is missing. Auto-trigger
@@ -12,7 +12,7 @@ description: >
 allowed-tools: Bash, Read, Write, Edit
 ---
 
-# MeetStream Getting Started — First-Time Setup
+# MeetStream Getting Started - First-Time Setup
 
 This skill is the **mandatory Step 0** for any MeetStream integration. If the user doesn't have an account or API key, no other skill can succeed. Walk them through it before scaffolding anything.
 
@@ -34,17 +34,17 @@ This skill is the **mandatory Step 0** for any MeetStream integration. If the us
 ```bash
 # Quick check
 if [ -z "$MEETSTREAM_API_KEY" ]; then
-  echo "No API key set — starting onboarding"
+  echo "No API key set - starting onboarding"
 else
   # Validate it
   STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
     -H "Authorization: Token $MEETSTREAM_API_KEY" \
     "https://api.meetstream.ai/api/v1/bots")
   if [ "$STATUS" = "200" ]; then
-    echo "✅ API key already valid — skipping onboarding"
+    echo "✅ API key already valid - skipping onboarding"
     exit 0
   else
-    echo "❌ API key set but invalid (HTTP $STATUS) — re-running onboarding"
+    echo "❌ API key set but invalid (HTTP $STATUS) - re-running onboarding"
   fi
 fi
 ```
@@ -57,7 +57,7 @@ Tell the user:
 
 ```
 You'll need a MeetStream account to use this. Free tier includes credits to
-get you started — no credit card needed up front.
+get you started - no credit card needed up front.
 
 👉 Open https://app.meetstream.ai in your browser
 
@@ -79,15 +79,15 @@ Now create an API key:
 
 👉 Open https://app.meetstream.ai/api-keys
 
-  1. Click "Create API Key" (or similar — top right of the page)
+  1. Click "Create API Key" (or similar - top right of the page)
   2. Name it something memorable (e.g. "claude-code-dev")
-  3. Copy the key — it starts with "ms_..."
-  4. ⚠ Save it now — you usually can't view it again after closing the modal
+  3. Copy the key - it starts with "ms_..."
+  4. ⚠ Save it now - you usually can't view it again after closing the modal
 
 Paste the key here when ready (I'll redact it from logs).
 ```
 
-When the user pastes the key, do NOT echo it back. Acknowledge with just `"Got it — key starts with ms_xxxx... (length: N chars)"`.
+When the user pastes the key, do NOT echo it back. Acknowledge with just `"Got it - key starts with ms_xxxx... (length: N chars)"`.
 
 ## Step 4: Set the API key in their shell
 
@@ -112,7 +112,7 @@ echo 'export MEETSTREAM_API_KEY=ms_xxxxx' >> ~/.bashrc
 source ~/.bashrc
 ```
 
-### For project-scoped (.env) — recommended for application code
+### For project-scoped (.env) - recommended for application code
 
 If the user is building an app (notetaker / coach / etc.), they'll also want it in `.env`:
 
@@ -149,7 +149,7 @@ After a valid key, suggest:
 One more recommended step: verify which transcription providers are configured
 on your account. This catches "provider missing" errors before you build anything.
 
-Run the `verify-account` skill, or I can run it now — want me to?
+Run the `verify-account` skill, or I can run it now - want me to?
 ```
 
 If yes, hand off to the `verify-account` skill.
@@ -182,10 +182,10 @@ Which one?
 ## Troubleshooting
 
 ### "I see the dashboard but no 'Create API Key' button"
-Direct them to https://app.meetstream.ai/api-keys (deep link). Account may need email verification first — check inbox.
+Direct them to https://app.meetstream.ai/api-keys (deep link). Account may need email verification first - check inbox.
 
 ### "The key I created returns 401"
-- Make sure they copied the WHOLE key (it's long — usually starts with `ms_` then 30+ characters)
+- Make sure they copied the WHOLE key (it's long - usually starts with `ms_` then 30+ characters)
 - Make sure there are no leading/trailing whitespace characters
 - Make sure they exported it: `echo $MEETSTREAM_API_KEY` should print the key (not empty)
 

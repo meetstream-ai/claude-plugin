@@ -1,7 +1,7 @@
 ---
 name: calendar-automation
 description: >
-  Build Google Calendar-driven meeting automation on MeetStream — connect a
+  Build Google Calendar-driven meeting automation on MeetStream - connect a
   Google Calendar once and a bot auto-joins every upcoming meeting, records,
   transcribes, and triggers your post-meeting workflow. Use when the user says
   "auto-record my Google Calendar meetings", "connect Google Calendar to
@@ -15,7 +15,7 @@ description: >
 
 # Calendar Automation Scaffold (Google Calendar → MeetStream)
 
-Build a hands-free meeting bot that auto-joins every Google Calendar meeting. Connect once, then forget — MeetStream watches the calendar, schedules bots 1 minute before each meeting, and runs your post-meeting pipeline.
+Build a hands-free meeting bot that auto-joins every Google Calendar meeting. Connect once, then forget - MeetStream watches the calendar, schedules bots 1 minute before each meeting, and runs your post-meeting pipeline.
 
 ## Step 0: Auth check (DO THIS FIRST)
 
@@ -24,8 +24,8 @@ If `MEETSTREAM_API_KEY` is missing or invalid, **invoke the `getting-started` sk
 ## What this scaffolds
 
 - Google Cloud OAuth client setup (one-time)
-- `POST /calendar/create_calendar` — connect a Google account to MeetStream
-- `POST /calendar/auto-schedule/enable` — turn on hands-free mode with default bot config
+- `POST /calendar/create_calendar` - connect a Google account to MeetStream
+- `POST /calendar/auto-schedule/enable` - turn on hands-free mode with default bot config
 - Recurring event handling (`recurring_event: true`, `toggle-recurrence`)
 - Disconnect flow
 
@@ -45,7 +45,7 @@ I'll set up Google Calendar auto-recording with MeetStream. Quick config:
 
 3. DEFAULT BOT BEHAVIOR for auto-scheduled bots:
    - Bot name? [default: "Your Auto Notetaker"]
-   - Record video? [default: false — transcript-only]
+   - Record video? [default: false - transcript-only]
    - Provider? deepgram / assemblyai / meetstream / meetstream_streaming
      [default: deepgram for post-call summaries]
    - Welcome message in chat? [default: none]
@@ -187,7 +187,7 @@ def list_scheduled_bots():
 
 def reschedule_bot(bot_id: str, new_join_time_iso: str):
     """Move a scheduled bot to a different time (e.g. user reschedules the
-    meeting in Google Calendar — MeetStream usually handles this automatically
+    meeting in Google Calendar - MeetStream usually handles this automatically
     via Google watch channels, but you can also trigger it explicitly)."""
     return requests.patch(
         f"{BASE}/calendar/scheduled_bots/{bot_id}",
@@ -249,7 +249,7 @@ def toggle_recurring(event_id: str, enabled: bool):
 
 
 def trigger_auto_reschedule(user_id: str, event_id: str, recurrence_rule: str):
-    """Manually trigger the next-occurrence reschedule. Usually not needed —
+    """Manually trigger the next-occurrence reschedule. Usually not needed -
     MeetStream auto-reschedules after each occurrence when recurring_event=True."""
     resp = requests.post(f"{BASE}/calendar/auto-reschedule", headers=HEADERS, json={
         "user_id": user_id,
@@ -274,14 +274,14 @@ def disconnect_calendar():
     return resp.json()  # {disconnected, user_id, watch_channel_stopped, events_deleted, schedules_cancelled, message}
 ```
 
-> ⚠ This is a destructive operation. Require explicit user confirmation before calling. (The OpenAPI spec shows POST for this — that's a quirk; the docs guide, cURL example, and response example all use DELETE.)
+> ⚠ This is a destructive operation. Require explicit user confirmation before calling. (The OpenAPI spec shows POST for this - that's a quirk; the docs guide, cURL example, and response example all use DELETE.)
 
 ## How auto-scheduling actually works (live behavior, not just docs)
 
 - **Job cadence:** Every 24h at midnight UTC. The job picks up the next 24h of events with valid meeting links.
 - **Pre-join window:** Bots are scheduled to join **1 minute before** the meeting's start time.
 - **Dedup:** Events that already have a scheduled bot are skipped (no duplicate joins).
-- **Real-time updates:** Google Calendar push notifications via watch channels — MeetStream auto-reschedules if a user moves a meeting, and auto-cancels if a meeting is deleted.
+- **Real-time updates:** Google Calendar push notifications via watch channels - MeetStream auto-reschedules if a user moves a meeting, and auto-cancels if a meeting is deleted.
 - **Watch channel renewal:** Daily background job renews any watch channel expiring within 2 days. Your real-time sync stays active indefinitely with zero maintenance.
 - **Cancelled meetings:** Detected via Google watch → EventBridge schedule deleted, bot marked Cancelled. No bot is ever created for a cancelled meeting.
 
@@ -294,7 +294,7 @@ Next steps:
   1. Set MEETSTREAM_API_KEY, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN in .env
   2. Run python connect.py   (one-time, calls /calendar/create_calendar)
   3. Run python enable.py    (one-time, calls /calendar/auto-schedule/enable with default_bot_config)
-  4. Verify with python list.py   (calls /calendar/scheduled_bots — should show upcoming bots)
+  4. Verify with python list.py   (calls /calendar/scheduled_bots - should show upcoming bots)
   5. Your webhook server (callback_url from step 3) will receive lifecycle events for each meeting
 
 📚 For the post-meeting workflow (transcript fetch → AI summary → delivery), use the `notetaker` skill.
@@ -305,7 +305,7 @@ Next steps:
 
 - **Field name prefixes:** `create_calendar` requires `google_refresh_token` / `google_client_id` / `google_client_secret`. Without the `google_` prefix, the API rejects.
 - **bot_config schema differs from create_bot:** calendar `bot_config` uses `transcription` (not `recording_config.transcript`), and supports `no_one_joined_timeout` (which doesn't exist on `create_bot`). The docs guide is authoritative here.
-- **409 Conflict on duplicate schedule:** scheduling the same event twice returns `409` with the existing bot's ID. Don't error out — that's the API telling you the bot is already there.
+- **409 Conflict on duplicate schedule:** scheduling the same event twice returns `409` with the existing bot's ID. Don't error out - that's the API telling you the bot is already there.
 - **`toggle-recurrence` returns 400** if you call it on a non-recurring event.
 - **Disconnect is DELETE**, not POST (despite OpenAPI). Follow the docs guide.
-- **Personal Gmail accounts work** — you don't need Google Workspace for this integration.
+- **Personal Gmail accounts work** - you don't need Google Workspace for this integration.

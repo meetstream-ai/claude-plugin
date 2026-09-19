@@ -1,4 +1,4 @@
-# MeetStream — Node.js / TypeScript Code Patterns
+# MeetStream - Node.js / TypeScript Code Patterns
 
 Complete, runnable implementations for common MeetStream use cases.
 
@@ -61,22 +61,22 @@ async function getTranscript(botId: string): Promise<any[]> {
   //      and read bot_details.transcript_id
   //   2) GET /transcript/{transcript_id}/get_transcript
   //      - HTTP 200 → top-level array (success)
-  //      - HTTP 202 → dict {message} — back off, retry later
-  //   3) If TranscriptStatus === 'Failed', throw — get_transcript otherwise returns 202 forever
+  //      - HTTP 202 → dict {message} - back off, retry later
+  //   3) If TranscriptStatus === 'Failed', throw - get_transcript otherwise returns 202 forever
   const { data: detail } = await axios.get(`${BASE_URL}/bots/${botId}/detail`, { headers })
   const bd = detail?.bot_details ?? {}
 
   // Authoritative status check
   if (bd.TranscriptStatus === 'Failed') {
-    throw new Error(`Transcript failed for ${botId} — check transcription.failed webhook for details`)
+    throw new Error(`Transcript failed for ${botId} - check transcription.failed webhook for details`)
   }
 
   const transcriptId = bd.transcript_id
   if (!transcriptId) {
-    throw new Error(`No transcript_id for ${botId} — likely meeting_captions or streaming-only provider`)
+    throw new Error(`No transcript_id for ${botId} - likely meeting_captions or streaming-only provider`)
   }
 
-  // axios throws on non-2xx by default — disable so we can branch on 202
+  // axios throws on non-2xx by default - disable so we can branch on 202
   const resp = await axios.get(
     `${BASE_URL}/transcript/${transcriptId}/get_transcript`,
     { headers, validateStatus: s => s === 200 || s === 202 }
@@ -88,11 +88,11 @@ async function getTranscript(botId: string): Promise<any[]> {
 }
 
 app.post('/webhook', async (req: Request, res: Response) => {
-  // ALWAYS 200 first — webhooks are NOT retried
+  // ALWAYS 200 first - webhooks are NOT retried
   res.json({ status: 'ok' })
 
   const { bot_id, event, bot_status, timestamp } = req.body
-  // Lifecycle events lack timestamp — fall back to message which is unique enough
+  // Every event carries a timestamp; message is only a defensive fallback
   const dedupeKey = `${bot_id}:${event}:${timestamp ?? req.body.message ?? ''}`
   if (seenEvents.has(dedupeKey)) return
   seenEvents.add(dedupeKey)
@@ -108,26 +108,29 @@ app.post('/webhook', async (req: Request, res: Response) => {
       case 'bot.joining':    console.log(`Bot ${bot_id} connecting...`); break
       case 'bot.error':
         // Live-verified: streaming-provider upstream error (e.g. "AssemblyAI Insufficient funds").
-        // The bot CONTINUES — only live transcription is impacted. Don't treat this as fatal.
+        // The bot CONTINUES - only live transcription is impacted. Don't treat this as fatal.
         console.warn(`Bot ${bot_id} streaming-provider error: ${req.body.message}`)
         break
       case 'bot.inmeeting':  console.log(`Bot ${bot_id} joined the meeting`); break
       case 'bot.recording':  console.log(`Bot ${bot_id} started recording`); break
       case 'bot.leaving':    console.log(`Bot ${bot_id} is leaving`); break
 
-      case 'bot.stopped':
-        if (bot_status !== 'Stopped') {
-          // NotAllowed / Denied / Error surfaced via bot_status here
-          console.error(`Bot did not exit cleanly: ${bot_status} — ${req.body.message}`)
+      case 'bot.stopped': {
+        // Every ending arrives as event "bot.stopped"; bot_event carries the reason:
+        // bot.stopped | bot.kicked | bot.notallowed | bot.denied | bot.failed
+        const reason = req.body.bot_event ?? 'bot.stopped'
+        if (reason !== 'bot.stopped') {
+          console.error(`Bot ended with ${reason} (status_code ${req.body.status_code}): ${req.body.message}`)
         }
         break
+      }
 
       case 'manifest.completed': console.log(`Manifest uploaded for ${bot_id}`); break
       case 'audio.processed':    console.log(`Audio ready for ${bot_id}`); break
       case 'video.processed':    console.log(`Video ready for ${bot_id}`); break
 
       case 'transcription.processed': {
-        // transcript_id is NOT in this payload — resolve via bot_details.transcript_id
+        // transcript_id is NOT in this payload - resolve via bot_details.transcript_id
         const segments = await getTranscript(bot_id)
         for (const seg of segments) {
           console.log(`[${seg.speaker}] ${seg.transcript}`)  // field is `transcript`, not `text`
@@ -136,7 +139,7 @@ app.post('/webhook', async (req: Request, res: Response) => {
       }
 
       case 'transcription.failed':
-        // Live-verified failure event — status_code=500
+        // Live-verified failure event - status_code=500
         console.error(`Transcription FAILED for ${bot_id}: ${req.body.message}`)
         break
 
@@ -204,7 +207,7 @@ interface LiveTranscriptChunk {
     punctuated_word?: string
     speech_confidence?: number
   }>
-  is_final?: boolean         // top-level — interim vs final committed text
+  is_final?: boolean         // top-level - interim vs final committed text
   end_of_turn?: boolean
   turn_is_formatted?: boolean
   transcription_mode?: string  // observed "raw" from meetstream_streaming
@@ -268,7 +271,7 @@ app.listen(3000, () => console.log('Live transcript webhook on :3000/live-transc
 
 ---
 
-## Pattern 3: Interactive Bot — All 5 WebSocket Commands
+## Pattern 3: Interactive Bot - All 5 WebSocket Commands
 
 The bot **connects to your WebSocket as a client** when it joins, sends a `ready` handshake, then accepts JSON commands.
 
@@ -466,7 +469,7 @@ const meetstreamHeaders = {
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
-// Idempotency dedup — in production, persist to Redis / Postgres
+// Idempotency dedup - in production, persist to Redis / Postgres
 const seenEvents = new Set<string>()
 
 async function generateSummary(botId: string): Promise<string> {
@@ -507,11 +510,11 @@ async function generateSummary(botId: string): Promise<string> {
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return res.status(405).end()
 
-  // ACK first — webhooks are NOT retried
+  // ACK first - webhooks are NOT retried
   res.json({ status: 'ok' })
 
   const { bot_id, event, timestamp } = req.body
-  // Lifecycle events lack timestamp — fall back to message which is unique enough
+  // Every event carries a timestamp; message is only a defensive fallback
   const dedupeKey = `${bot_id}:${event}:${timestamp ?? req.body.message ?? ''}`
   if (seenEvents.has(dedupeKey)) return
   seenEvents.add(dedupeKey)
@@ -520,7 +523,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
       const summary = await generateSummary(bot_id)
       console.log('Meeting summary:', summary)
-      // Deliver however your app needs — email, your own webhook, DB write, etc.
+      // Deliver however your app needs - email, your own webhook, DB write, etc.
       // await sendEmail(summary); await saveToDb(summary);
     } catch (err) {
       console.error('Summary generation failed:', err)
@@ -580,7 +583,7 @@ async function connectCalendar(refreshToken: string, clientId: string, clientSec
 }
 
 // ─── Disconnect ──────────────────────────────────────────────────────────────
-// Per docs guide + cURL example: DELETE, no body. Irreversible — stops watch
+// Per docs guide + cURL example: DELETE, no body. Irreversible - stops watch
 // channels, cancels pending schedules, deletes events, removes OAuth creds.
 // (OpenAPI shows POST as a quirk; the docs guide is authoritative.)
 async function disconnectCalendar() {
@@ -598,7 +601,7 @@ async function listEvents() {
   // /calendar/events syncs from Google; /calendar/get_events reads local DB only
   const { data } = await axios.get(`${BASE_URL}/calendar/events`, { headers })
   for (const ev of data.results ?? []) {
-    console.log(`${ev.start_time} — ${ev.meeting_platform} — ${ev.meeting_url}`)
+    console.log(`${ev.start_time} - ${ev.meeting_platform} - ${ev.meeting_url}`)
   }
   return data
 }
@@ -621,7 +624,7 @@ async function scheduleBotForEvent(eventId: string, botConfig: object, options: 
     return data
   } catch (err: any) {
     if (err.response?.status === 409) {
-      // Already scheduled — get the existing bot_id and PATCH instead
+      // Already scheduled - get the existing bot_id and PATCH instead
       console.log('Already scheduled. Existing bot_id:', err.response.data.bot_id)
       return err.response.data
     }
@@ -781,7 +784,7 @@ await axios.post(`${BASE_URL}/bots/create_bot`, {
 
 ## Pattern 8: Live Video Receiver (fMP4 over WebSocket)
 
-Supported on **Google Meet + Teams only — NOT Zoom**.
+Supported on **Google Meet + Teams only - NOT Zoom**.
 
 ```typescript
 // npm install ws @types/ws
@@ -801,7 +804,7 @@ wss.on('connection', (ws: WebSocket) => {
 
   ws.on('message', (raw: Buffer, isBinary: boolean) => {
     if (isBinary) {
-      // fMP4 chunk — append in order
+      // fMP4 chunk - append in order
       if (session.output) session.output.write(raw)
       return
     }
@@ -856,7 +859,7 @@ await axios.post(`${BASE_URL}/bots/create_bot`, {
 
 ---
 
-## Pattern 9: MIA — AI Agent in a Meeting
+## Pattern 9: MIA - AI Agent in a Meeting
 
 ```typescript
 import axios from 'axios'
@@ -914,7 +917,7 @@ async function deleteAgent(agentConfigId: string) {
   return (await axios.delete(`${BASE_URL}/mia`, { headers, params: { agent_config_id: agentConfigId } })).data
 }
 
-// ─── 3. Attach to a bot — pass only agent_config_id (MeetStream hosts the bridge) ──
+// ─── 3. Attach to a bot - pass only agent_config_id (MeetStream hosts the bridge) ──
 async function spawnAgentBot(meetingLink: string, agentConfigId: string) {
   const { data } = await axios.post(`${BASE_URL}/bots/create_bot`, {
     meeting_link: meetingLink,
@@ -965,7 +968,7 @@ app.post('/webhook', (req: Request, res: Response) => {
 
 ```typescript
 async function waitForTranscript(botId: string, timeoutMs = 600_000): Promise<any[]> {
-  // Stateless polling — uses bot_details.transcript_id, no transcript_id arg needed
+  // Stateless polling - uses bot_details.transcript_id, no transcript_id arg needed
   const start = Date.now()
   const h = { 'Authorization': `Token ${process.env.MEETSTREAM_API_KEY}` }
 
@@ -976,7 +979,8 @@ async function waitForTranscript(botId: string, timeoutMs = 600_000): Promise<an
     )
     console.log(`Status: ${statusData.status}`)
 
-    if (['Stopped', 'NotAllowed', 'Denied', 'Error'].includes(statusData.status)) {
+    // Casing varies (e.g. FAILED / ERROR / Failed), so compare lowercased
+    if (['stopped', 'notallowed', 'denied', 'error', 'failed', 'done'].includes(String(statusData.status).toLowerCase())) {
       const { data: detail } = await axios.get(
         `https://api.meetstream.ai/api/v1/bots/${botId}/detail`,
         { headers: h }
@@ -1003,7 +1007,7 @@ async function waitForTranscript(botId: string, timeoutMs = 600_000): Promise<an
 
 ## Pattern 11: `/transcribe` (Backup / Fallback Path)
 
-> This is a **fallback** pattern — not the primary post-call workflow. For standard post-call notetaking, configure the post-call provider on `create_bot` up front (Pattern 1 / Pattern 4). Use `/transcribe` only when:
+> This is a **fallback** pattern - not the primary post-call workflow. For standard post-call notetaking, configure the post-call provider on `create_bot` up front (Pattern 1 / Pattern 4). Use `/transcribe` only when:
 > - The bot used a streaming-only provider and you now need a post-call transcript too
 > - The original provider failed (out of credit, wrong config) and you want to retry with a different provider
 > - You want to re-transcribe with a higher-quality / different-language provider after the fact
@@ -1026,7 +1030,7 @@ const headers = {
  *  2. Server processes in background
  *  3. Exactly one transcription.processed OR transcription.failed fires on callback_url
  *  4. bot_details.transcript_id is OVERWRITTEN with this new run's id
- *  5. NO bot.done event after — fire-and-forget
+ *  5. NO bot.done event after - fire-and-forget
  *  6. NO custom_attributes in the webhook payload (unlike original lifecycle events)
  */
 async function triggerPostCallTranscription(
@@ -1060,7 +1064,7 @@ async function addPostCallTranscriptToStreamingBot(botId: string, callbackUrl: s
       entity_detection: false,
     },
   })
-  // Wait for transcription.processed webhook, then use canonical getTranscript() (Pattern 1) —
+  // Wait for transcription.processed webhook, then use canonical getTranscript() (Pattern 1) -
   // bot_details.transcript_id will already point at the new run.
 }
 ```

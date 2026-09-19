@@ -1,4 +1,4 @@
-# MeetStream — Python Code Patterns
+# MeetStream - Python Code Patterns
 
 Complete, runnable implementations for common MeetStream use cases.
 
@@ -64,13 +64,13 @@ def create_bot(meeting_link: str, callback_url: str) -> str:
 def get_transcript(bot_id: str) -> list[dict]:
     """Stateless transcript fetch. Call only after transcription.processed fires.
 
-    Live-verified safe flow — handles all 3 status disagreements:
+    Live-verified safe flow - handles all 3 status disagreements:
       1. GET /bots/{bot_id}/detail → check bot_details.TranscriptStatus (authoritative)
          and read bot_details.transcript_id
       2. GET /transcript/{transcript_id}/get_transcript
          - HTTP 200 → top-level array (success path)
-         - HTTP 202 → dict {"message": "still processing"} — back off
-      3. If TranscriptStatus == 'Failed', raise — get_transcript otherwise returns 202 forever
+         - HTTP 202 → dict {"message": "still processing"} - back off
+      3. If TranscriptStatus == 'Failed', raise - get_transcript otherwise returns 202 forever
 
     Returns a list of segment dicts. Per-segment text field is 'transcript' (not 'text').
     """
@@ -78,26 +78,26 @@ def get_transcript(bot_id: str) -> list[dict]:
     detail_resp.raise_for_status()
     bd = detail_resp.json().get("bot_details") or {}
 
-    # Authoritative status check — TranscriptStatus is the source of truth
+    # Authoritative status check - TranscriptStatus is the source of truth
     ts = bd.get("TranscriptStatus")
     if ts == "Failed":
-        raise RuntimeError(f"Transcript failed for {bot_id} — check transcription.failed webhook for details")
+        raise RuntimeError(f"Transcript failed for {bot_id} - check transcription.failed webhook for details")
 
     transcript_id = bd.get("transcript_id")
     if not transcript_id:
-        # meeting_captions or streaming-only provider — no post-call fetch path
-        raise RuntimeError(f"No transcript_id for {bot_id} — likely meeting_captions or streaming-only provider")
+        # meeting_captions or streaming-only provider - no post-call fetch path
+        raise RuntimeError(f"No transcript_id for {bot_id} - likely meeting_captions or streaming-only provider")
 
     resp = requests.get(f"{BASE_URL}/transcript/{transcript_id}/get_transcript", headers=HEADERS)
     if resp.status_code == 202:
-        # Transcript not ready — caller should retry after delay
+        # Transcript not ready - caller should retry after delay
         raise RuntimeError(f"Transcript not yet ready (HTTP 202): {resp.json().get('message')}")
     resp.raise_for_status()
     return resp.json()  # list[{speaker, transcript, start_time, end_time, words[]}]
 
 
 def get_native_captions(bot_id: str) -> str | None:
-    """For meeting_captions provider — transcript_id is null; fetch via /detail.
+    """For meeting_captions provider - transcript_id is null; fetch via /detail.
 
     Returns the S3 caption_file URL, or None if not available.
     """
@@ -108,7 +108,7 @@ def get_native_captions(bot_id: str) -> str | None:
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
-    """ALWAYS return 2xx — webhooks are NOT retried."""
+    """ALWAYS return 2xx - webhooks are NOT retried."""
     try:
         event = request.json or {}
         bot_id = event.get("bot_id")
@@ -117,7 +117,7 @@ def webhook():
         timestamp = event.get("timestamp")
 
         # Idempotency dedup
-        # Lifecycle events lack timestamp — fall back to message which is unique enough
+        # Every event carries a timestamp; message is only a defensive fallback
         dedupe_key = f"{bot_id}:{event_type}:{timestamp or event.get('message','')}"
         with SEEN_EVENTS_LOCK:
             if dedupe_key in SEEN_EVENTS:
@@ -126,7 +126,7 @@ def webhook():
 
         print(f"Event: {event_type} | Bot: {bot_id} | Status: {bot_status or '-'}")
 
-        # Lifecycle events (in order — all live-verified)
+        # Lifecycle events (in order - all live-verified)
         if event_type == "bot.joining":
             print(f"Bot {bot_id} connecting...")
         elif event_type == "bot.error":
@@ -140,11 +140,13 @@ def webhook():
         elif event_type == "bot.leaving":
             print(f"Bot {bot_id} is leaving")
         elif event_type == "bot.stopped":
-            if bot_status == "Stopped":
-                print(f"Bot {bot_id} exited normally — waiting for processing events...")
+            # Every ending arrives as event "bot.stopped"; bot_event carries the reason:
+            # bot.stopped | bot.kicked | bot.notallowed | bot.denied | bot.failed
+            reason = event.get("bot_event", "bot.stopped")
+            if reason == "bot.stopped":
+                print(f"Bot {bot_id} exited normally, waiting for processing events...")
             else:
-                # NotAllowed / Denied / Error surfaced via bot_status here
-                print(f"Bot {bot_id} did not join cleanly: {bot_status} — {event.get('message')}")
+                print(f"Bot {bot_id} ended with {reason} (status_code {event.get('status_code')}): {event.get('message')}")
 
         # Post-call processing events
         elif event_type == "manifest.completed":
@@ -154,7 +156,7 @@ def webhook():
         elif event_type == "video.processed":
             print(f"Video ready for bot {bot_id}")
         elif event_type == "transcription.processed":
-            # transcript_id is NOT in this payload — resolve via bot_details.transcript_id
+            # transcript_id is NOT in this payload - resolve via bot_details.transcript_id
             segments = get_transcript(bot_id)
             for seg in segments:
                 # Per-segment text field is 'transcript', NOT 'text'
@@ -174,13 +176,13 @@ def webhook():
             print(f"Bot {bot_id} data deleted ({event.get('deleted_objects', 0)} objects)")
 
         elif event_type and event_type.startswith("participant_events."):
-            # Different payload shape — bot_id is under data.bot.id
+            # Different payload shape - bot_id is under data.bot.id
             inner = event.get("data", {}).get("data", {})
             p = inner.get("participant", {})
             print(f"{inner.get('action')}: {p.get('full_name')} ({p.get('platform')})")
 
     except Exception as e:
-        # Log but still return 200 — no retries on non-2xx
+        # Log but still return 200 - no retries on non-2xx
         print(f"Webhook handler error (already returning 200): {e}")
 
     return jsonify({"status": "ok"}), 200
@@ -194,7 +196,7 @@ if __name__ == "__main__":
 
 ## Pattern 2: Real-Time Transcription (HTTPS Webhook)
 
-Live transcription is delivered as HTTPS POSTs to your `webhook_url` — **not** over WebSocket.
+Live transcription is delivered as HTTPS POSTs to your `webhook_url` - **not** over WebSocket.
 
 ```python
 # pip install flask requests
@@ -259,8 +261,8 @@ def live_transcript():
         text = chunk.get("transcript", "")
         ts = chunk.get("timestamp", "")
         # Live payload has two boolean flags (live-captured):
-        #   - is_final: provider-level — interim chunk vs final committed text
-        #   - end_of_turn: speaker-level — speaker finished their utterance
+        #   - is_final: provider-level - interim chunk vs final committed text
+        #   - end_of_turn: speaker-level - speaker finished their utterance
         # Use whichever fits your use case. For "commit to UI on turn end", check end_of_turn.
         is_final = chunk.get("is_final", False)
         end_of_turn = chunk.get("end_of_turn", False)
@@ -282,7 +284,7 @@ if __name__ == "__main__":
 
 ---
 
-## Pattern 3: Interactive Bot — All 5 WebSocket Commands
+## Pattern 3: Interactive Bot - All 5 WebSocket Commands
 
 The bot connects to your WS as a client, sends a `ready` handshake, then accepts JSON commands.
 
@@ -544,7 +546,7 @@ def connect_calendar(refresh_token: str, client_id: str, client_secret: str):
 def disconnect_calendar():
     """Per docs guide + cURL example: DELETE, no body.
 
-    Irreversible — stops watch channels, cancels pending schedules,
+    Irreversible - stops watch channels, cancels pending schedules,
     deletes synced events, removes Google OAuth credentials.
     (OpenAPI shows POST as a quirk; the docs guide is authoritative.)
     """
@@ -674,7 +676,7 @@ def get_auto_schedule_settings():
 
 # ─── Recurring events ──────────────────────────────────────────────────────
 def toggle_recurrence(event_id: str, recurring_enabled: bool):
-    """Path has NO event_id — event_id goes in the body."""
+    """Path has NO event_id - event_id goes in the body."""
     resp = requests.post(f"{BASE_URL}/calendar/toggle-recurrence", headers=HEADERS, json={
         "event_id": event_id,
         "recurring_enabled": recurring_enabled
@@ -724,7 +726,7 @@ def join_meeting(meeting_link: str, callback_url: str) -> str:
         "recording_config": {
             "transcript": {
                 "provider": {
-                    # AssemblyAI: OpenAPI marks 9 fields required — pass full config
+                    # AssemblyAI: OpenAPI marks 9 fields required - pass full config
                     "assemblyai": {
                         "speech_models": ["universal-2"],
                         "language_code": "en_us",
@@ -794,7 +796,7 @@ def webhook():
         event = request.json or {}
         event_type = event.get("event")
         bot_id = event.get("bot_id")
-        # Lifecycle events lack timestamp — fall back to message
+        # Every event carries a timestamp; message is only a defensive fallback
         dedupe_key = f"{bot_id}:{event_type}:{event.get('timestamp') or event.get('message','')}"
         if dedupe_key in SEEN_EVENTS:
             return jsonify({"status": "duplicate"}), 200
@@ -803,7 +805,7 @@ def webhook():
         if event_type == "transcription.processed":
             fetch_and_summarize(bot_id)
         elif event_type == "bot.stopped" and event.get("bot_status") != "Stopped":
-            print(f"Bot {bot_id} failed: {event.get('bot_status')} — {event.get('message')}")
+            print(f"Bot {bot_id} failed: {event.get('bot_status')} - {event.get('message')}")
     except Exception as e:
         print(f"Webhook error: {e}")
     return jsonify({"status": "ok"}), 200
@@ -972,7 +974,7 @@ requests.post(f"{BASE_URL}/bots/create_bot", headers=HEADERS, json={
 
 ## Pattern 8: Live Video Receiver (fMP4 over WebSocket)
 
-Supported on **Google Meet + Teams only — NOT Zoom**.
+Supported on **Google Meet + Teams only - NOT Zoom**.
 
 ```python
 # pip install websockets
@@ -990,7 +992,7 @@ async def video_receiver(websocket):
     try:
         async for message in websocket:
             if isinstance(message, bytes):
-                # fMP4 chunk — append in order
+                # fMP4 chunk - append in order
                 if output_file:
                     output_file.write(message)
                 continue
@@ -1036,7 +1038,7 @@ if __name__ == "__main__":
 Then on `create_bot`:
 ```python
 requests.post(f"{BASE_URL}/bots/create_bot", headers=HEADERS, json={
-    "meeting_link": "https://meet.google.com/...",  # Meet or Teams only — NOT Zoom
+    "meeting_link": "https://meet.google.com/...",  # Meet or Teams only - NOT Zoom
     "bot_name": "Video Listener",
     "video_required": True,
     "live_video_required": {"websocket_url": "wss://your-server.com/video"}
@@ -1045,7 +1047,7 @@ requests.post(f"{BASE_URL}/bots/create_bot", headers=HEADERS, json={
 
 ---
 
-## Pattern 9: MIA — AI Agent in a Meeting
+## Pattern 9: MIA - AI Agent in a Meeting
 
 ```python
 import os
@@ -1092,7 +1094,7 @@ def create_realtime_openai_agent() -> str:
 
 
 def create_realtime_xai_agent() -> str:
-    """xAI Grok — model is hardcoded server-side."""
+    """xAI Grok - model is hardcoded server-side."""
     resp = requests.post(f"{BASE_URL}/mia", headers=HEADERS, json={
         "agent_name": "Grok Agent",
         "mode": "realtime",
@@ -1199,9 +1201,9 @@ def delete_agent(agent_config_id: str):
     return resp.json()
 
 
-# ─── 3. Attach to a bot — pass only agent_config_id (MeetStream hosts the bridge) ─────────────────
+# ─── 3. Attach to a bot - pass only agent_config_id (MeetStream hosts the bridge) ─────────────────
 def spawn_agent_bot(meeting_link: str, agent_config_id: str) -> str:
-    """MIA needs only agent_config_id — no socket_connection_url / live_audio_required."""
+    """MIA needs only agent_config_id - no socket_connection_url / live_audio_required."""
     resp = requests.post(f"{BASE_URL}/bots/create_bot", headers=HEADERS, json={
         "meeting_link": meeting_link,
         "bot_name": "AI Agent",
@@ -1275,7 +1277,7 @@ def create_signed_in_bot(meeting_link: str, domain: str) -> str:
 
 ## Pattern 11: `/transcribe` (Backup / Fallback Path)
 
-> This is a **fallback** pattern — not the primary post-call workflow. For standard post-call notetaking, configure the post-call provider on `create_bot` up front (Pattern 1 / Pattern 5). Use `/transcribe` only when:
+> This is a **fallback** pattern - not the primary post-call workflow. For standard post-call notetaking, configure the post-call provider on `create_bot` up front (Pattern 1 / Pattern 5). Use `/transcribe` only when:
 > - The bot used a streaming-only provider and you now need a post-call transcript too
 > - The original provider failed (out of credit, wrong config) and you want to retry with a different provider
 > - You want to re-transcribe with a higher-quality / different-language provider after the fact
@@ -1297,7 +1299,7 @@ def trigger_post_call_transcription(bot_id: str, callback_url: str, provider: di
       2. Server processes in background
       3. Exactly one transcription.processed OR transcription.failed fires on callback_url
       4. bot_details.transcript_id is OVERWRITTEN with this new run's id
-      5. NO bot.done event after — fire-and-forget
+      5. NO bot.done event after - fire-and-forget
       6. NO custom_attributes in the webhook payload (unlike original lifecycle events)
 
     Default provider is deepgram nova-3 if not specified. Pick whichever provider
@@ -1332,4 +1334,4 @@ def add_post_call_transcript_to_streaming_bot(bot_id: str, callback_url: str):
         }
     })
     # Wait for transcription.processed webhook, then use the canonical get_transcript()
-    # pattern (Pattern 1) — bot_details.transcript_id will already point at the new run.
+    # pattern (Pattern 1) - bot_details.transcript_id will already point at the new run.

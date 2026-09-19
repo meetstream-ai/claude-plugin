@@ -20,8 +20,8 @@ If `MEETSTREAM_API_KEY` is missing or invalid, **invoke the `getting-started` sk
 ## What to do
 
 1. **Ask the user:**
-   - Meeting link (Google Meet preferred — easiest to admit a bot to)
-   - Provider preference: `meetstream_streaming` (live, default — no external key) or a specific post-call provider
+   - Meeting link (Google Meet preferred - easiest to admit a bot to)
+   - Provider preference: `meetstream_streaming` (live, default - no external key) or a specific post-call provider
    - Webhook URL: their own, or "use webhook.site" to create a temporary capture URL
 
 2. **Set up the capture URL** if needed (create webhook.site token via API).
@@ -51,7 +51,7 @@ curl -s -X POST "https://api.meetstream.ai/api/v1/bots/create_bot" \
   -H "Content-Type: application/json" \
   -d "{
     \"meeting_link\": \"$MEETING_LINK\",
-    \"bot_name\": \"Test Bot — delete me\",
+    \"bot_name\": \"Test Bot - delete me\",
     \"video_required\": false,
     \"callback_url\": \"$WEBHOOK\",
     \"recording_config\": {
@@ -119,8 +119,8 @@ Status: <final bot_status>
 Events received: <count>
 
 Want to delete the recording + transcript now? (y/N)
-  → If y: DELETE /bots/<bot_id>/delete (DESTRUCTIVE — data gone forever)
-  → If n: data auto-expires after the retention period (default 24h)
+  → If y: DELETE /bots/<bot_id>/delete (DESTRUCTIVE - data gone forever)
+  → If n: data auto-expires after the retention period (default 30 days)
 ```
 
 ## Output format for the report
@@ -145,20 +145,20 @@ Lifecycle timeline:
   02:23  audio.processed      Success
 
 Live transcript chunks: 47 (delivered to webhook.site)
-Post-call events:       None (Path B — streaming-only, expected)
+Post-call events:       None (Path B - streaming-only, expected)
 
 ✅ End-to-end flow worked.
 ```
 
-If anything fails, surface the message field from the failing event — it usually points directly at the cause (provider key missing, wrong meeting link format, etc.).
+If anything fails, surface the message field from the failing event - it usually points directly at the cause (provider key missing, wrong meeting link format, etc.).
 
 ## Common test results
 
 | Outcome | Most likely cause | Fix |
 |---|---|---|
 | Stuck at `bot.joining` for >2 min | Bot in waiting room; user needs to admit it | Admit the bot in the meeting UI |
-| `bot.stopped` with `bot_status: NotAllowed` | Waiting room timed out | User didn't admit; or admit faster next time |
-| `bot.stopped` with `bot_status: Denied` | Host blocked the bot | Ask host to allow bots, or use Google Signed-In setup |
+| `bot.stopped` with `bot_event: bot.notallowed` | Waiting room timed out | User didn't admit; or admit faster next time |
+| `bot.stopped` with `bot_event: bot.denied` | Host blocked the bot | Ask host to allow bots, or use Google Signed-In setup |
 | `bot.error` mid-meeting | Streaming provider auth issue | Check provider key in MeetStream dashboard |
 | `transcription.failed` | Post-call provider missing key | Use `verify-account` skill to confirm; switch provider or add key |
 | 0 live chunks | Streaming provider failed silently OR no one spoke | Check `bot.error` events; have someone speak in the meeting |

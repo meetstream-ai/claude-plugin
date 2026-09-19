@@ -1,7 +1,7 @@
 ---
 name: sales-coach
 description: >
-  Build a real-time AI sales coaching tool on MeetStream — live transcription
+  Build a real-time AI sales coaching tool on MeetStream - live transcription
   streams to a server that detects objections, talk-time imbalance, missed
   questions, etc., and surfaces coach cards to the seller during the call.
   Use when the user says "real-time AI sales coach", "AI cue cards during
@@ -41,7 +41,7 @@ I'll build you a real-time sales coach. Quick config:
 3. DELIVERY?  How does the seller see the coach cards?
    (The plugin scaffolds the browser-tab path end-to-end. Other channels
    are your own integration with that channel's own SDK.)
-   a) Browser tab the seller keeps open during the call (scaffolded — uses WebSocket)
+   a) Browser tab the seller keeps open during the call (scaffolded - uses WebSocket)
    b) Mobile push (you wire up FCM / APNS / your own push provider)
    c) Generic outbound webhook (you forward to whatever channel you want)
    [default: browser tab via WebSocket]
@@ -101,7 +101,7 @@ async def start_call(meeting_link: str, seller_id: str):
 
 @app.post("/live")
 async def live_chunk(req: Request):
-    # ALWAYS 200 fast — webhooks not retried on non-2xx
+    # ALWAYS 200 fast - webhooks not retried on non-2xx
     chunk = await req.json()
     process_chunk(chunk)  # debounces + triggers LLM detection async
     return {"ok": True}
@@ -234,7 +234,7 @@ async def unregister_seller(seller_id: str, ws):
     sellers[seller_id].discard(ws)
 ```
 
-Minimal seller UI (`coach.html`) — uses safe DOM methods (no `innerHTML`) so LLM-generated card text can't break out and execute as HTML/JS:
+Minimal seller UI (`coach.html`) - uses safe DOM methods (no `innerHTML`) so LLM-generated card text can't break out and execute as HTML/JS:
 ```html
 <!DOCTYPE html>
 <html><head><title>Sales Coach</title>
@@ -250,7 +250,7 @@ Minimal seller UI (`coach.html`) — uses safe DOM methods (no `innerHTML`) so L
 </head><body>
 <h1>Coach feed</h1><div id="feed"></div>
 <script>
-// Whitelist of expected card types — never trust the type field for classnames blindly
+// Whitelist of expected card types - never trust the type field for classnames blindly
 const ALLOWED_TYPES = new Set(['objection', 'signal', 'monologue', 'warning', 'none']);
 
 const sellerId = new URLSearchParams(location.search).get('seller');
@@ -266,8 +266,8 @@ ws.onmessage = (e) => {
 
   const title = document.createElement('p');
   title.className = 'card-title';
-  // textContent, not innerHTML — LLM output is treated as plain text
-  title.textContent = type.toUpperCase() + (c.subtype ? ' — ' + c.subtype : '');
+  // textContent, not innerHTML - LLM output is treated as plain text
+  title.textContent = type.toUpperCase() + (c.subtype ? ' - ' + c.subtype : '');
   card.appendChild(title);
 
   const body = document.createElement('p');
@@ -297,7 +297,7 @@ Next steps:
   5. curl -X POST /calls/start with meeting_link + seller_id="alice"
   6. Seller joins meeting; coach cards appear as objections/signals are detected
 
-🎯 No external transcription key needed — uses meetstream_streaming (free on stock accounts).
+🎯 No external transcription key needed - uses meetstream_streaming (free on stock accounts).
 
 🔧 Want a post-call transcript too? After bot.stopped, call:
    POST /bots/{bot_id}/transcribe with a post-call provider.
@@ -305,7 +305,7 @@ Next steps:
 
 ## Critical gotchas (live-verified)
 
-- Streaming provider lifecycle ENDS at `audio.processed` — no `transcription.processed`, no `bot.done`. Don't wait for those.
+- Streaming-only bots never get `transcription.processed` or `transcription.failed`. They do still get `bot.done`, so use that as the "call finished" signal.
 - `bot.error` fires if the streaming provider hits an upstream issue (e.g. AssemblyAI insufficient funds). The bot keeps recording; only live transcription is degraded. Surface this to the seller as a warning card so they know to expect silence.
-- Live transcript chunks lack `timestamp` for dedup — fall back to `{bot_id, message}` or skip dedup on lifecycle events.
+- Every webhook and live transcript chunk carries a `timestamp`; dedupe on `{bot_id, bot_event ?? event, timestamp}`.
 - `meetstream_streaming` is the only streaming provider that works without external keys. Use it unless the user explicitly needs Deepgram/AssemblyAI streaming.

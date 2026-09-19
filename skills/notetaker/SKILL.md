@@ -1,7 +1,7 @@
 ---
 name: notetaker
 description: >
-  Build a complete MeetStream-powered AI meeting notetaker — bot joins,
+  Build a complete MeetStream-powered AI meeting notetaker - bot joins,
   records, transcribes, generates an AI summary, and emails it to the
   meeting attendees (you choose the email provider: Resend / SendGrid /
   SMTP). Use when the user says "build a notetaker", "AI meeting
@@ -23,13 +23,13 @@ Before asking the 4 config questions below:
 ```bash
 if [ -z "$MEETSTREAM_API_KEY" ]; then
   # No API key → invoke the `getting-started` skill first
-  echo "No API key found — running first-time setup"
+  echo "No API key found - running first-time setup"
 else
   # Validate
   STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
     -H "Authorization: Token $MEETSTREAM_API_KEY" \
     "https://api.meetstream.ai/api/v1/bots")
-  [ "$STATUS" = "200" ] || echo "API key invalid — running setup"
+  [ "$STATUS" = "200" ] || echo "API key invalid - running setup"
 fi
 ```
 
@@ -39,7 +39,7 @@ If the user explicitly says they have a key and want to skip onboarding, ask the
 
 ## What this skill does
 
-When the user wants a notetaker, ask the 4 questions below, then scaffold a complete app — webhook server, bot creation, transcript fetch, LLM summary, delivery — using their tech stack of choice.
+When the user wants a notetaker, ask the 4 questions below, then scaffold a complete app - webhook server, bot creation, transcript fetch, LLM summary, delivery - using their tech stack of choice.
 
 ## Step 1: Requirements (4 questions)
 
@@ -57,22 +57,22 @@ I'll build you a complete meeting notetaker. Quick config:
    [default: manual API call]
 
 3. SUMMARY DELIVERY?  Where should the summary go?
-   (MeetStream gives you the transcript — delivery is your app's job. Pick
+   (MeetStream gives you the transcript - delivery is your app's job. Pick
    whichever channel you'll wire up yourself using that channel's own SDK.)
-   a) Email (Resend / SendGrid / SMTP — easiest, no extra setup)
+   a) Email (Resend / SendGrid / SMTP - easiest, no extra setup)
    b) Generic outbound webhook to your own server (you forward from there)
    c) Save to a database (Postgres / Supabase / Firestore) for an in-app feed
    [default: email via Resend]
 
 4. PROVIDERS?  Which post-call transcription provider does your MeetStream account have keys for?
    Run /meetstream-verify-account first if you're not sure. Otherwise pick:
-   - deepgram (highest accuracy, ~$0.26/hr)
-   - assemblyai (best speaker diarization, ~$0.37/hr)
+   - deepgram (highest accuracy)
+   - assemblyai (best speaker diarization)
    - meetstream (in-house, depends on account config)
    [default: deepgram]
 ```
 
-If they say "you decide" — use the defaults.
+If they say "you decide" - use the defaults.
 
 ## Step 2: Scaffold the project
 
@@ -118,7 +118,7 @@ async def start_meeting(meeting_link: str, user_email: str, tenant_id: str):
 
 @app.post("/webhook/meetstream")
 async def webhook(request: Request, tasks: BackgroundTasks):
-    # ALWAYS return 2xx fast — webhooks are NOT retried on non-2xx
+    # ALWAYS return 2xx fast - webhooks are NOT retried on non-2xx
     payload = await request.json()
     tasks.add_task(handle_webhook, payload)
     return {"status": "ok"}
@@ -135,7 +135,7 @@ HEADERS = {
 }
 
 def create_bot(meeting_link: str, callback_url: str, custom_attributes: dict) -> str:
-    """Send a bot with a post-call provider — Path A lifecycle (bot.done is terminal)."""
+    """Send a bot with a post-call provider - Path A lifecycle (bot.done is terminal)."""
     resp = requests.post(f"{BASE}/bots/create_bot", headers=HEADERS, json={
         "meeting_link": meeting_link,
         "bot_name": "Acme Notetaker",
@@ -189,13 +189,13 @@ from app.queue import is_duplicate
 def handle_webhook(payload: dict):
     bot_id = payload.get("bot_id")
     event = payload.get("event")
-    # Dedupe with timestamp || message fallback (lifecycle events lack timestamp)
+    # Dedupe on timestamp (present on every event); message is a defensive fallback
     dedupe = f"{bot_id}:{event}:{payload.get('timestamp') or payload.get('message','')}"
     if is_duplicate(dedupe):
         return
 
     if event == "transcription.processed":
-        # Path A success — fetch + summarize + deliver
+        # Path A success - fetch + summarize + deliver
         segments = get_transcript(bot_id)
         meta = get_metadata(bot_id)
         custom = meta.get("custom_attributes", {})
@@ -207,10 +207,10 @@ def handle_webhook(payload: dict):
             tenant_id=custom.get("tenant_id"),
         )
     elif event == "transcription.failed":
-        # Log + alert (don't retry — transcript_id stays Failed; would need /transcribe with different provider)
+        # Log + alert (don't retry - transcript_id stays Failed; would need /transcribe with different provider)
         alert_ops(bot_id, payload.get("message"))
     elif event == "bot.stopped" and payload.get("bot_status") != "Stopped":
-        # NotAllowed / Denied / Error — meeting never recorded
+        # NotAllowed / Denied / Error - meeting never recorded
         alert_user(bot_id, f"Bot couldn't join: {payload.get('bot_status')}")
 ```
 
@@ -241,7 +241,7 @@ def generate_summary(segments: list[dict], meeting_link: str | None = None) -> s
     return resp.choices[0].message.content
 ```
 
-`app/delivery.py` (Resend email — swap for SendGrid / SMTP / your own SDK as needed; MeetStream is delivery-agnostic):
+`app/delivery.py` (Resend email - swap for SendGrid / SMTP / your own SDK as needed; MeetStream is delivery-agnostic):
 ```python
 import os, resend
 
@@ -270,7 +270,7 @@ Next steps:
   4. In another terminal: ngrok http 3000   (note the https URL)
   5. Set PUBLIC_URL=<your ngrok url> in .env, restart server
   6. Test: python scripts/start_bot.py "https://meet.google.com/abc-defg-hij" you@email.com
-  7. Watch your webhook logs — you should see lifecycle events, then a summary email after the meeting ends.
+  7. Watch your webhook logs - you should see lifecycle events, then a summary email after the meeting ends.
 
 🔧 Verify your account first if any provider call fails:
    Use the verify-account skill to check which transcription providers are configured.
@@ -281,11 +281,11 @@ Next steps:
 ## Defaults that matter (live-verified)
 
 - `automatic_leave` defaults: 600/600/600/14400/300 (don't shorten unless you have a reason)
-- `recording_config.retention.hours: 168` (7 days) — enough for the user to re-run summary if needed
-- Always set `callback_url` — without it you have to poll
+- `recording_config.retention.hours: 168` (7 days) - enough for the user to re-run summary if needed
+- Always set `callback_url` - without it you have to poll
 - Always stringify `custom_attributes` values defensively
-- Webhook handler returns 2xx FIRST, then queues — non-2xx means lost event
+- Webhook handler returns 2xx FIRST, then queues - non-2xx means lost event
 
 ## If the user wants live transcripts instead of post-call
 
-This is a different product (live captions / real-time agent). Defer to the `sales-coach` skill, or read the `meetstream` skill's "STEP 4A — Live transcription path" decision tree.
+This is a different product (live captions / real-time agent). Defer to the `sales-coach` skill, or read the `meetstream` skill's "STEP 4A - Live transcription path" decision tree.

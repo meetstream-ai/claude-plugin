@@ -16,7 +16,7 @@ Run a comprehensive health check on the user's MeetStream account before scaffol
 
 ## Step 0: Make sure there's an API key to verify
 
-If `MEETSTREAM_API_KEY` is unset, **invoke the `getting-started` skill first** — without an account + key, there's nothing to verify. Signup is at https://app.meetstream.ai.
+If `MEETSTREAM_API_KEY` is unset, **invoke the `getting-started` skill first** - without an account + key, there's nothing to verify. Signup is at https://app.meetstream.ai.
 
 ## What to do
 
@@ -119,7 +119,7 @@ for name, provider in providers.items():
     else:
         print(f"   ⚠ {name:12} HTTP {code}: {body}")
 
-# 3. Probe streaming providers (similar — but with live webhook URL)
+# 3. Probe streaming providers (similar - but with live webhook URL)
 print("\n[3] Streaming providers")
 streaming = {
     "meetstream_streaming": {"meetstream_streaming": {}},
@@ -175,7 +175,7 @@ print("=" * 60)
 
 - ✅ on a provider = it's configured in your account, post-call/streaming bots with that provider will work
 - ❌ on a provider = key missing or invalid in MeetStream dashboard. Either add the key at https://app.meetstream.ai → Integrations, or use a different provider
-- `meetstream_streaming` and `meeting_captions` should always be ✅ — they don't need external keys
+- `meetstream_streaming` and `meeting_captions` should always be ✅ - they don't need external keys
 
 ## After the report
 
@@ -189,4 +189,4 @@ Recommend a build strategy based on what's configured:
 
 This skill **does** create real bots (1 per provider) against fake meeting links and immediately deletes them. The bots never join any actual meeting. Cleanup is automatic via `DELETE /bots/{id}/delete`. The script will print each deletion so the user can audit.
 
-> The destructive `/delete` is **intentional and explicit** in this verification context — the bots created here have no value. Outside this skill, do NOT auto-call `/delete`.
+> The destructive `/delete` is **intentional and explicit** in this verification context - the bots created here have no value. Outside this skill, do NOT auto-call `/delete`.
