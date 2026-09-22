@@ -105,11 +105,37 @@ Per the OpenAPI `CreateBotRequest` schema, only two fields are required:
 - `meeting_link` (string) - Zoom, Google Meet, or Teams URL
 - `bot_name` (string) - the display name shown in the meeting
 
-`video_required` defaults to **`true`** (the bot records video unless you opt out). Set `video_required: false` for transcript-only workflows.
+`video_required` defaults to **`true`** in the API (the bot records video unless you opt out). **House policy: send `video_required: false` explicitly on every bot** unless the user asked to record video. Omitting the field records video. Audio only is faster to process and smaller to store, and transcripts, summaries, diarization and speaker timelines all work without video.
+
+When the user does want video, send `recording_config.video_layout: "speaker_view"` alongside it. The API default layout is `grid_view`, so speaker view only happens if you ask for it.
 
 There is **no `audio_required` field** on `CreateBotRequest`. Audio is recorded by default. (`audio_separate_streams` is a different feature that enables per-participant audio tracks.)
 
 > **Note:** `audio_required` DOES exist for **calendar-scheduled** bots - inside `bot_config` on `POST /calendar/schedule/{event_id}`, the auto-schedule `default_bot_config`, etc. The "doesn't exist" rule only applies to `create_bot`.
+
+---
+
+## Recording Defaults - apply to every bot you build
+
+These three rules are product policy, not API behaviour. The API defaults differ, which is exactly why each field has to be sent explicitly.
+
+| Setting | What you send by default | When to change it |
+|---|---|---|
+| `video_required` | `false` | Only `true` when the user explicitly asks to record video. The API default is `true`, so an omitted field records video. |
+| `recording_config.video_layout` | `"speaker_view"` whenever video is on | Only `"grid_view"` when the user explicitly asks for grid or gallery view. The API default is `grid_view`, so speaker view must be sent. |
+| `video_separate_streams` | never set it | Only `true` when the user explicitly asks for per-participant (per-speaker) video streams. It multiplies storage and processing per participant. |
+
+Per-participant **audio** (`audio_separate_streams`) is unaffected by this policy. Keep the existing guidance for it.
+
+### `recording_config.video_layout`
+
+- Values: exactly `"speaker_view"` or `"grid_view"`. Nothing else passes validation.
+- `"grid_view"` is the API default when `video_required: true`, so send `"speaker_view"` explicitly to get it.
+- Ignored when `video_required` is `false`. An audio-only bot never runs the compositor.
+- Platforms: Google Meet, Microsoft Teams and Zoom accept both values. WhatsApp accepts only `"grid_view"`. Any other platform rejects `video_layout`.
+- Speaker view follows the active speaker, which is what people want for review and clipping. Grid view is a composited mosaic of everyone.
+
+Existing per-participant video templates and options stay as they are. They are explicit opt-ins by design.
 
 ---
 
@@ -148,7 +174,7 @@ In all other cases, configure the right provider on `create_bot` up front. `/tra
 
 Walk the user through these questions in order. Each answer pins down one field in the final `create_bot` payload. At the end, you'll have a complete, correct request body tailored to their use case.
 
-> When the user is vague ("I want a meeting bot"), DO NOT guess defaults - actually walk them through this tree. The defaults are not always what they want (e.g. `video_required` defaults to `true` which burns storage for transcript-only use cases).
+> When the user is vague ("I want a meeting bot"), DO NOT guess defaults - actually walk them through this tree. The API defaults are not always what they want (e.g. `video_required` defaults to `true`, which burns storage for transcript-only use cases). The one thing you do not need to ask about is the recording defaults above: video off unless the user mentioned video, speaker view when video is on, per-participant video only on request.
 
 ---
 
@@ -169,9 +195,24 @@ Q1.3: Custom avatar / profile picture?
       │        • Host it on S3 / Cloudflare R2 / public CDN
       └─ No  → omit bot_image_url
 
-Q1.4: Will you ever need the meeting video file later (archive, playback)?
-      ├─ Yes → "video_required": true   (DEFAULT - bot records video)
-      └─ No  → "video_required": false  (saves storage + bandwidth; audio still captured)
+Q1.4: Did the user ask to record the meeting VIDEO file (archive, playback)?
+      ├─ Yes → "video_required": true   → continue to Q1.4a for the layout
+      └─ No  → "video_required": false  (DEFAULT for everything we build)
+               • send it explicitly: the API default is true, so an omitted
+                 field records video
+               • saves storage + bandwidth; audio is still captured, and
+                 transcript, summary, diarization and speaker timeline
+                 all work without video
+
+Q1.4a: (only when video_required is true) Which layout?
+      ├─ User explicitly asked for grid / gallery
+      │       → "recording_config": { "video_layout": "grid_view" }
+      └─ Anything else
+              → "recording_config": { "video_layout": "speaker_view" }  (RECOMMENDED)
+               • the API default is "grid_view", so speaker view must be sent
+               • only "speaker_view" and "grid_view" are valid values
+               • ignored when video_required is false
+               • Google Meet / Teams / Zoom accept both; WhatsApp is grid only
 
 Q1.5: Want per-participant audio tracks (one file per speaker)?
       ├─ Yes → "audio_separate_streams": true
@@ -180,12 +221,15 @@ Q1.5: Want per-participant audio tracks (one file per speaker)?
       │        • Each track: WebM/Opus, 48kbps, 48kHz mono
       └─ No  → omit (default false; you get one mixed audio file)
 
-Q1.6: Want per-participant video tracks (one webcam stream per person)?
+Q1.6: Did the user EXPLICITLY ask for per-participant video tracks
+      (one webcam stream per person)?
       ├─ Yes → "video_separate_streams": true
       │        • All 3 platforms
       │        • Up to 6 concurrent webcams
       │        • WebM/VP8, 15 FPS, video-only
-      └─ No  → omit (you get one composite video)
+      └─ No  → omit (you get one composite video). Never set this implicitly:
+               it multiplies storage and processing per participant.
+               Per-participant AUDIO (Q1.5) is not affected by this rule.
 ```
 
 > ❌ Do NOT add `"audio_required": true` - that field doesn't exist on `create_bot` (audio is always captured). It DOES exist in calendar-scheduled `bot_config`, which is a different schema.
@@ -934,7 +978,8 @@ Supported on **Google Meet and Microsoft Teams only - not Zoom**.
 ```json
 {
   "video_required": true,
-  "live_video_required": { "websocket_url": "wss://your-server.com/video" }
+  "live_video_required": { "websocket_url": "wss://your-server.com/video" },
+  "recording_config": { "video_layout": "speaker_view" }
 }
 ```
 
@@ -1447,6 +1492,7 @@ Bot management:
 - **Per-participant audio** captures up to **16 concurrent speaker streams**. Supported on **Google Meet + Zoom only**, NOT Teams. Files: WebM container, Opus codec, 48 kbps, 48 kHz, mono.
 - **Per-participant video** captures up to **6 concurrent webcam streams**. Supported on all 3 platforms. Files: WebM container, VP8 codec, 15 FPS, video-only (audio fetched separately).
 - Both flags (`audio_separate_streams`, `video_separate_streams`) can be set at the top level of `create_bot` OR nested inside `recording_config`.
+- **Never set `video_separate_streams` (at either level) unless the user explicitly asked for per-participant video.** Per-participant audio is unaffected by that rule.
 
 ---
 
@@ -1503,7 +1549,7 @@ def delete_bot_data(bot_id: str, confirmed: bool = False) -> dict:
 6. **Wrong calendar field names** - Calendar create requires `google_refresh_token` / `google_client_id` / `google_client_secret` (with the `google_` prefix).
 7. **Using `audio_required` on `create_bot`** - not in the OpenAPI schema. Audio is captured by default. (It DOES exist for calendar-scheduled `bot_config`.)
 8. **Skipping `bot_name`** - it's required, not optional.
-9. **Assuming `video_required` defaults to false** - it defaults to `true`. Set it to `false` for transcript-only workflows or you'll burn storage.
+9. **Assuming `video_required` defaults to false** - it defaults to `true` in the API, so an omitted field records video. Send `"video_required": false` explicitly on every bot unless the user asked to record video.
 10. **Assuming `status_code` is always 200**: it's 500 for `transcription.failed` and for failing terminals (`bot.notallowed`, `bot.denied`, most `bot.failed`). Branch on `event`, then `bot_event`.
 11. **Expecting webhook retries**: there are none. Always return 2xx and queue work asynchronously. Dedupe on `{bot_id, bot_event or event, timestamp}`.
 12. **Using `websocket_url` for live transcription** - `live_transcription_required` accepts only `webhook_url` (HTTPS POST). The `websocket_url` field is for `live_audio_required`, `live_video_required`, and `socket_connection_url`.
@@ -1522,6 +1568,8 @@ def delete_bot_data(bot_id: str, confirmed: bool = False) -> dict:
 24. **Polling `/transcript/{tid}/get_transcript` without a bound** - on failure it returns HTTP 202 forever. Always check `bot_details.TranscriptStatus` (authoritative: `"Success"`/`"Failed"`/`None`) or watch for the `transcription.failed` webhook to break out.
 25. **Sharing one Teams account across concurrent signed-in bots** - Teams allows one bot per account at a time; extra bots get 409/429. Register one account per concurrent bot. Also don't expect `bot_name` / `bot_image_url` to apply on a signed-in Teams join: the Microsoft account's name and picture are used.
 26. **Using PUT or `GET /google-logins/{id}` for Google logins** - updates are PATCH (with `domain` in the body), deletes need `?domain=`, and there is no GET-by-id.
+27. **Turning video on without a layout** - the API default is `grid_view`. Whenever `video_required: true`, send `recording_config.video_layout: "speaker_view"` unless the user explicitly asked for grid or gallery view. Only `"speaker_view"` and `"grid_view"` validate; the field is ignored when video is off; Google Meet, Teams and Zoom accept both, and WhatsApp accepts only `"grid_view"`.
+28. **Setting `video_separate_streams` because it looked useful** - per-participant video is opt-in only. Never set it unless the user explicitly asked for per-participant video streams. Per-participant `audio_separate_streams` is not affected by this rule.
 
 ---
 

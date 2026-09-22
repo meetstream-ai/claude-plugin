@@ -853,7 +853,8 @@ await axios.post(`${BASE_URL}/bots/create_bot`, {
   meeting_link: 'https://meet.google.com/...',  // Meet or Teams only
   bot_name: 'Video Listener',
   video_required: true,
-  live_video_required: { websocket_url: 'wss://your-server.com/video' }
+  live_video_required: { websocket_url: 'wss://your-server.com/video' },
+  recording_config: { video_layout: 'speaker_view' }  // API default is grid_view
 }, { headers })
 ```
 

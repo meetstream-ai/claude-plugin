@@ -2,6 +2,22 @@
 
 All notable changes to the MeetStream Claude Code plugin.
 
+## [2.5.0] - 2026-09-22
+
+### Changed
+- **Recording defaults policy applied across the plugin: video off by default, speaker view when video is on, per-participant video only on request.** New "Recording Defaults" section in the core skill states all three rules in one place, and the decision tree, the `create_bot` field list and the Common Mistakes list now carry them.
+- Decision tree Step 1: Q1.4 asks whether the user actually asked for video and defaults to `"video_required": false`; new Q1.4a picks the layout; Q1.6 makes per-participant video an explicit opt-in.
+- `agents/meetstream-debugger.md`: three new error-catalog rows for unexpected video, grid-view output, and unexpected per-participant webcam files.
+- Inline notes on the `notetaker`, `sales-coach`, `calendar-automation` and `verify-account` examples confirming they are audio only.
+
+### Added
+- **`recording_config.video_layout` documented** in the core skill and `references/api-reference.md`: values are exactly `speaker_view` and `grid_view`, `grid_view` is the API default when `video_required: true`, the field is ignored when video is off, Google Meet / Teams / Zoom accept both values, and WhatsApp accepts only `grid_view`.
+- Common Mistakes 27 (video on without a layout) and 28 (setting `video_separate_streams` unasked).
+- The live-video examples in the core skill and both code-pattern reference files now send `video_layout: "speaker_view"`.
+
+### Fixed
+- `skills/migrate-from-recall/SKILL.md`: the Recall `recording_mode` row mapped only to `video_required`, losing the layout. It now maps to `video_required` plus `recording_config.video_layout` (`gallery_view` to `grid_view`, `audio_only` to `video_required: false`).
+
 ## [2.4.0] - 2026-09-18
 
 ### Added

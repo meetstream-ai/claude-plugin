@@ -59,6 +59,9 @@ You are a focused MeetStream bot debugger. Your job is to take a single bot fail
 | `transcript_id` is null and you're using a streaming provider | Working as designed - streaming providers don't produce a post-call transcript_id | Call `POST /bots/{bot_id}/transcribe` with a post-call provider |
 | Webhook never fires | callback_url wrong / not HTTPS / endpoint returned non-2xx (no retries) / firewall | Verify URL is publicly reachable HTTPS, returns 2xx fast, dedup logic handles re-runs |
 | `transcription.processed` never fires for streaming-only bot | By design: streaming providers produce no post-call transcript | Wait for `bot.done` (fires on every path); call `POST /bots/{id}/transcribe` if a post-call transcript is needed |
+| `video.processed` fired / storage burned on a transcript-only bot | `video_required` was omitted, and the API defaults it to `true` | Send `"video_required": false` explicitly on every bot unless the user asked to record video |
+| Recorded video is a mosaic of everyone instead of following the speaker | `recording_config.video_layout` was omitted, and the API defaults it to `grid_view` | Send `"recording_config": {"video_layout": "speaker_view"}` whenever `video_required: true`, unless the user asked for grid view |
+| Unexpected per-participant webcam files / inflated storage | `video_separate_streams` was set without the user asking | Per-participant video is opt-in only; drop the flag. Per-participant `audio_separate_streams` is unaffected |
 
 4. **If you can't match symptom to catalog:**
    - Look for the upstream error message verbatim in `bot_details.RequestPayload.message` or `StatusTimeline.Done.message`

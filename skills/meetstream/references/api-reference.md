@@ -21,10 +21,10 @@ Creates a bot and sends it to a meeting.
 - `bot_name` (string) - name shown in the meeting
 
 **Optional fields in the schema:**
-- `video_required` (bool, **default `true`**) - record video. Set `false` for transcript-only.
+- `video_required` (bool, **API default `true`**) - record video. **Send `false` explicitly on every bot** unless the user asked to record video; an omitted field records video. When it is `true`, pair it with `recording_config.video_layout` (below).
 - `zoom` (object): authenticated Zoom joins. `{ "zak_url": "https://..." }` or `{ "obf_url": "https://..." }`, each an HTTPS endpoint on your server that returns a fresh token. `use_zoom_obf` and `zoom_oauth_connection_user_id` are rejected.
 - `audio_separate_streams` (bool) - per-participant audio tracks (Google Meet + Zoom only). Can also be set under `recording_config`.
-- `video_separate_streams` (bool) - per-participant video tracks (all 3 platforms). Can also be set under `recording_config`.
+- `video_separate_streams` (bool) - per-participant video tracks (all 3 platforms). Can also be set under `recording_config`. **Opt-in only: never set it unless the user explicitly asked for per-participant video.** Per-participant audio is not affected by that rule.
 - `bot_message` (string) - initial chat message posted on join.
 - `bot_image_url` (string) - bot avatar URL. **Must be publicly accessible per the prose docs.**
 - `callback_url` (string) - HTTPS endpoint for lifecycle webhook events.
@@ -1003,6 +1003,7 @@ Dedupe on `{bot_id, bot_event ?? event, timestamp}`. Every event carries a `time
         "events": ["participant_events.join", "participant_events.leave"]
       }
     ],
+    "video_layout": "speaker_view",
     "audio_separate_streams": true,
     "video_separate_streams": true
   }
@@ -1011,7 +1012,15 @@ Dedupe on `{bot_id, bot_event ?? event, timestamp}`. Every event carries a `time
 
 Default retention: `{ "type": "timed", "hours": 24 }`.
 
-`audio_separate_streams` and `video_separate_streams` can also be set at the top level of `create_bot`.
+`audio_separate_streams` and `video_separate_streams` can also be set at the top level of `create_bot`. `video_separate_streams` is opt-in only: never set it unless the user explicitly asked for per-participant video.
+
+### `video_layout`
+
+- Values: exactly `"speaker_view"` or `"grid_view"`. Nothing else passes validation.
+- **API default is `"grid_view"`** when `video_required: true`, so `"speaker_view"` must be sent explicitly. Send `"speaker_view"` whenever video is enabled unless the user explicitly asked for grid or gallery view.
+- Ignored when `video_required` is `false`. An audio-only bot never runs the compositor.
+- Platforms: Google Meet, Microsoft Teams and Zoom accept both values. WhatsApp accepts only `"grid_view"`. Any other platform rejects the field.
+- Speaker view follows the active speaker. Grid view is a composited mosaic of everyone.
 
 ### Transcription providers (use exactly one under `transcript.provider`)
 

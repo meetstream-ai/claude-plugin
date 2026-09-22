@@ -148,7 +148,7 @@ def create_coach_bot(meeting_link: str, callback_url: str,
     resp = requests.post(f"{BASE}/bots/create_bot", headers=HEADERS, json={
         "meeting_link": meeting_link,
         "bot_name": "Sales Coach",
-        "video_required": False,
+        "video_required": False,  # audio only. Video stays off unless the user asks for it
         "callback_url": callback_url,
         "live_transcription_required": {"webhook_url": live_transcript_url},
         "custom_attributes": {k: str(v) for k, v in custom_attributes.items()},

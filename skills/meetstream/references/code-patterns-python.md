@@ -1041,7 +1041,8 @@ requests.post(f"{BASE_URL}/bots/create_bot", headers=HEADERS, json={
     "meeting_link": "https://meet.google.com/...",  # Meet or Teams only - NOT Zoom
     "bot_name": "Video Listener",
     "video_required": True,
-    "live_video_required": {"websocket_url": "wss://your-server.com/video"}
+    "live_video_required": {"websocket_url": "wss://your-server.com/video"},
+    "recording_config": {"video_layout": "speaker_view"},  # API default is grid_view
 })
 ```
 

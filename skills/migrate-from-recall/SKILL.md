@@ -70,7 +70,7 @@ Apply these mappings. For full field-level detail, read `references/api-referenc
 | Recall | MeetStream |
 | ------ | ---------- |
 | `meeting_url` | `meeting_link` |
-| `recording_mode` (`speaker_view`/`gallery_view`/`audio_only`) | `video_required` (boolean) |
+| `recording_mode` (`speaker_view`/`gallery_view`/`audio_only`) | `video_required` (boolean) + `recording_config.video_layout` (`speaker_view`/`grid_view`). `audio_only` maps to `video_required: false`. Recall's `gallery_view` maps to `grid_view`. Default every migrated bot to `video_required: false`, and send `video_layout: "speaker_view"` when video is on: the MeetStream API default is `grid_view`. |
 | `metadata` | `custom_attributes` (string values) |
 | `transcription_options` | `recording_config.transcript` (object shape differs - review) |
 | `real_time_transcription.destination_url` | `live_transcription_required.webhook_url` (requires a streaming provider) |

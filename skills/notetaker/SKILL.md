@@ -139,7 +139,9 @@ def create_bot(meeting_link: str, callback_url: str, custom_attributes: dict) ->
     resp = requests.post(f"{BASE}/bots/create_bot", headers=HEADERS, json={
         "meeting_link": meeting_link,
         "bot_name": "Acme Notetaker",
-        "video_required": False,
+        "video_required": False,  # audio only: notetakers never need video. Only set True
+                                 # if the user asks, and then add
+                                 # "recording_config": {"video_layout": "speaker_view"}
         "callback_url": callback_url,
         "custom_attributes": {k: str(v) for k, v in custom_attributes.items()},  # stringify
         "recording_config": {

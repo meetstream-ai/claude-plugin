@@ -136,7 +136,7 @@ def enable_auto_schedule(callback_url: str):
         "default_bot_config": {
             "bot_name": "Auto Notetaker",
             "audio_required": True,
-            "video_required": False,
+            "video_required": False,  # audio only unless the user asks to record video
             "callback_url": callback_url,
             "transcription": {
                 # NOTE: calendar bot_config uses "transcription" (not nested under recording_config).

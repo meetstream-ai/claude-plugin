@@ -92,7 +92,7 @@ for name, provider in providers.items():
     payload = {
         "meeting_link": f"https://meet.google.com/verify-probe-{name}",
         "bot_name": f"verify-{name}",
-        "video_required": False,
+        "video_required": False,  # audio only
         "recording_config": {
             "transcript": {"provider": provider},
             "retention": {"type": "timed", "hours": 1},
@@ -129,7 +129,7 @@ for name, provider in streaming.items():
     payload = {
         "meeting_link": f"https://meet.google.com/verify-probe-{name}",
         "bot_name": f"verify-{name}",
-        "video_required": False,
+        "video_required": False,  # audio only
         "live_transcription_required": {"webhook_url": "https://example.com/probe"},
         "recording_config": {
             "transcript": {"provider": provider},
