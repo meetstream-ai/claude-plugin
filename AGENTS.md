@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Guidance for AI coding agents working in this repository. This repo is the **MeetStream plugin for Claude Code** - the MCP server plus skills, distributed through the Claude Code marketplace.
+Guidance for AI coding agents working in this repository. This repo is the **MeetStream plugin for Claude Code** - skills and a debugger agent, distributed through the Claude Code marketplace. It does not include the MCP server; install that separately as shown below.
 
 ## Always use the MeetStream MCP
 
@@ -55,7 +55,7 @@ Add to `~/.codeium/windsurf/mcp_config.json`:
 
 ### Claude (desktop and web)
 
-Customize -> Connectors -> + -> Add custom connector. Name it `meetstream` and set the URL to `https://mcp.meetstream.ai/mcp?key=YOUR_MEETSTREAM_API_KEY`, leaving the OAuth fields blank. Claude's custom connectors cannot send a custom auth header, so the key goes in the URL; give each person their own key so it can be revoked individually.
+Customize -> Connectors -> + -> Add custom connector. Name it `meetstream`, set the URL to `https://mcp.meetstream.ai/mcp`, leave the OAuth fields blank and click Connect. Claude opens app.meetstream.ai: sign in and click Allow, and the dashboard creates an API key for that connection (delete it on the API keys page to disconnect). If OAuth is not an option, `https://mcp.meetstream.ai/mcp?key=YOUR_MEETSTREAM_API_KEY` still works, since Claude's custom connectors cannot send a custom auth header; give each person their own key so it can be revoked individually.
 
 ### Codex
 
@@ -69,9 +69,14 @@ bearer_token_env_var = "MEETSTREAM_API_KEY"
 
 ### Run it locally instead
 
+Any client that speaks stdio can run the Go binary, which keeps the key on your machine:
+
 ```sh
-MEETSTREAM_API_KEY=ms_... npx -y @meetstream/mcp
+go install github.com/meetstream-ai/meetstream-mcp/go/cmd/meetstream-mcp@latest
+MEETSTREAM_API_KEY=ms_... meetstream-mcp
 ```
+
+Do not use `npx @meetstream/mcp`. That npm package is the old Node server, frozen at 0.3.0, and it predates the current defaults.
 
 ### Use the MCP before
 
@@ -85,7 +90,7 @@ MEETSTREAM_API_KEY=ms_... npx -y @meetstream/mcp
 There is no build and no test runner. The plugin is declarative: JSON manifests plus Markdown skills.
 
 ```
-.claude-plugin/plugin.json       plugin manifest (name, version, mcpServers, skills)
+.claude-plugin/plugin.json       plugin manifest (name, version, metadata)
 .claude-plugin/marketplace.json  marketplace entry
 skills/<name>/SKILL.md           one skill per directory
 agents/                          bundled agents
@@ -148,7 +153,7 @@ These are live-verified. Do not "fix" code that follows them.
 ## Related
 
 - Docs: https://docs.meetstream.ai
-- MCP server: [`@meetstream/mcp`](https://github.com/meetstream-ai/meetstream-mcp)
+- MCP server: https://github.com/meetstream-ai/meetstream-mcp (hosted at `https://mcp.meetstream.ai/mcp`)
 - CLI: [`@meetstream/cli`](https://github.com/meetstream-ai/meetstream-cli)
 - Claude Code plugin: https://github.com/meetstream-ai/claude-plugin
 - Cursor plugin: https://github.com/meetstream-ai/meetstream-cursor-plugin
