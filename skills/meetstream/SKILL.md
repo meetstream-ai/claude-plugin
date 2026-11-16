@@ -78,7 +78,7 @@ Before planning or building, **walk the user through the [Bot Configuration Deci
 
 Quick top-level questions to start with:
 1. **API key** - if not provided, ask. Link: https://app.meetstream.ai/api-keys
-2. **Platform** - Google Meet, Teams, Zoom, or all? (Zoom needs extra setup; see Platform Notes)
+2. **Platform** - Google Meet, Teams, Zoom, or all? (none needs setup; see Platform Notes for optional Zoom configuration)
 3. **Language** - Python or Node.js/TypeScript?
 4. **Use case** - match to one of the patterns below
 
@@ -245,7 +245,7 @@ Q2.1: Which platform is the meeting on?
       ├─ Microsoft Teams → "meeting_link": "https://teams.microsoft.com/l/meetup-join/..."
       │                    continue Q2.4 (signed-in?)
       └─ Zoom → "meeting_link": "https://zoom.us/j/123456789?pwd=..."
-                continue Q2.3 (Zoom setup)
+                continue Q2.3 (optional Zoom join type)
 
 Q2.2: (Google Meet) Does the meeting require a signed-in Google identity?
       ├─ Yes → "google_meet": {
@@ -267,10 +267,13 @@ Q2.3: (Zoom) Does the bot need an authenticated join?
       │     Both URLs are HTTPS endpoints on YOUR server that return a fresh
       │     token when MeetStream calls them. Guide:
       │     https://docs.meetstream.ai/guides/app-integrations/zoom-authenticated-bots
-      └─ No → omit the zoom field
+      └─ No (the default) → omit the zoom field
+         Zoom needs NO setup: the meeting link and the MeetStream API key are
+         enough. No Zoom Marketplace app, no SDK keys, no OAuth, no tokens.
+         Never tell the user to create a Zoom app before their first bot.
+         ⚠ zak_url and obf_url need the user's own Zoom app (optional).
          ⚠ use_zoom_obf and zoom_oauth_connection_user_id are rejected by the
            API. Use zak_url / obf_url instead.
-         For external customer meetings, submit the Zoom app to production.
 
 Q2.4: (Teams) Does the meeting block anonymous/guest join, or must the bot
       appear as a real Microsoft 365 user?
@@ -1237,9 +1240,24 @@ The OpenAPI schema allows `additionalProperties: { description: Any type }`. Arb
 
 ### Zoom setup
 
-Register a Zoom app + add credentials to MeetStream dashboard. Guide: https://docs.meetstream.ai/guides/app-integrations/zoom-marketplace-app-setup
+**Zoom needs no setup.** To send a bot to a Zoom meeting you need only the MeetStream API key and the meeting link: no Zoom Marketplace app, no Zoom app credentials, no Meeting SDK keys, no Zoom OAuth connection and no tokens. The same `create_bot` request works for Zoom, Google Meet and Microsoft Teams. Do not ask the user to create or register a Zoom app before their first bot.
 
-**Zoom dev mode** restricts bots to meetings hosted by the app owner's account. For external meetings, follow the production submission guide: https://docs.meetstream.ai/guides/app-integrations/zoom-app-production-submission
+Optional Zoom configuration, and what each adds:
+
+| Option | What it adds |
+|---|---|
+| Your own Zoom app credentials (Client ID and Client Secret saved in Dashboard > Integrations > Zoom) | The bot joins with your Zoom app. Needed for `zak_url` / `obf_url`, per-participant camera video, live video into the bot camera and MIA agent camera or avatar video |
+| Connected Zoom accounts (Zoom OAuth Meeting Bots) | Meetings you map can be recorded without an Admit or Allow recording prompt |
+| `zoom.zak_url` (signed-in bot) | Joins as a Zoom user: can join meetings that allow only signed-in users, and can join before the host |
+| `zoom.obf_url` (on-behalf-of bot) | Joins on behalf of a user who is already in the meeting |
+
+Without your own Zoom app:
+- Per-participant video (`video_separate_streams`) contains screen shares only. Per-participant audio works.
+- The bot camera shows images (`bot_image_url`, Send Image). Live video into the bot camera and MIA camera or avatar video are not available.
+- The bot asks the host to allow recording, and records from the moment it is admitted.
+- Meetings that require Zoom sign-in cannot be joined. Use `zak_url`.
+
+If the user has saved Zoom app credentials or connected a Zoom account, bots join with that app as before. Optional setup guides: https://docs.meetstream.ai/guides/app-integrations/zoom-marketplace-app-setup and, for joining meetings outside the app's own account with your app, https://docs.meetstream.ai/guides/app-integrations/zoom-app-production-submission
 
 For authenticated Zoom joins, pass `"zoom": { "zak_url": "https://..." }` (join as a signed-in user) or `"zoom": { "obf_url": "https://..." }` (join On Behalf Of a user who is already in the meeting). Each URL is an HTTPS endpoint on your server that returns a fresh token when MeetStream calls it. The older `use_zoom_obf` flag and `zoom_oauth_connection_user_id` are rejected by the API. Guide: https://docs.meetstream.ai/guides/app-integrations/zoom-authenticated-bots
 
