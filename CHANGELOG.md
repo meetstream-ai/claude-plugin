@@ -2,6 +2,11 @@
 
 All notable changes to the MeetStream Claude Code plugin.
 
+## [2.5.1] - 2026-11-15
+
+### Changed
+- **Zoom needs no setup.** The core skill, the decision tree (Q2.3) and the README platform table no longer tell users to register a Zoom Marketplace app. A Zoom bot needs only the MeetStream API key and the meeting link. Your own Zoom app is now documented as optional, with what it adds (ZAK / OBF joins, per-participant camera video, live bot camera video) and the limits without it.
+
 ## [2.5.0] - 2026-09-22
 
 ### Changed

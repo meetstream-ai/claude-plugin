@@ -199,7 +199,7 @@ export PUBLIC_URL=https://your-ngrok-url.ngrok-free.app
 |----------|-------|------------|----------------------|
 | Google Meet | None | ✅ | ✅ |
 | Microsoft Teams | None | ✅ | ❌ |
-| Zoom | [Zoom app required](https://docs.meetstream.ai/guides/app-integrations/zoom-marketplace-app-setup) | ❌ | ✅ |
+| Zoom | None (your own Zoom app is optional) | ❌ | ✅ |
 
 ---
 
