@@ -52,7 +52,7 @@ def create_bot(meeting_link: str, callback_url: str) -> str:
             "everyone_left_timeout": 600,
             "voice_inactivity_timeout": 600,
             "in_call_recording_timeout": 14400,
-            "recording_permission_denied_timeout": 300
+            "recording_permission_denied_timeout": 600
         }
     })
     resp.raise_for_status()
@@ -244,7 +244,7 @@ def create_realtime_bot(meeting_link: str, webhook_url: str) -> str:
             "waiting_room_timeout": 600,
             "everyone_left_timeout": 600,
             "in_call_recording_timeout": 14400,
-            "recording_permission_denied_timeout": 300
+            "recording_permission_denied_timeout": 600
         }
     })
     resp.raise_for_status()
@@ -319,7 +319,7 @@ def create_interactive_bot(meeting_link: str, control_ws_url: str) -> str:
         "automatic_leave": {
             "waiting_room_timeout": 600,
             "everyone_left_timeout": 600,
-            "recording_permission_denied_timeout": 300
+            "recording_permission_denied_timeout": 600
         }
     })
     resp.raise_for_status()
@@ -747,7 +747,7 @@ def join_meeting(meeting_link: str, callback_url: str) -> str:
             "everyone_left_timeout": 600,
             "voice_inactivity_timeout": 600,
             "in_call_recording_timeout": 14400,
-            "recording_permission_denied_timeout": 300
+            "recording_permission_denied_timeout": 600
         }
     })
     resp.raise_for_status()
@@ -1078,6 +1078,31 @@ def create_pipeline_agent() -> str:
     return resp.json()["agent_config_id"]
 
 
+def create_claude_agent() -> str:
+    """Anthropic Claude as the LLM: pipeline mode only.
+
+    Key saved in the dashboard under model integrations (provider "anthropic").
+    temperature 0-1; tool_choice only "auto" or "none"; top_p,
+    frequency_penalty, presence_penalty and logit_bias return 400.
+    Claude is a MIA LLM only, never a transcription provider.
+    """
+    resp = requests.post(f"{BASE_URL}/mia", headers=HEADERS, json={
+        "agent_name": "Claude Assistant",
+        "mode": "pipeline",
+        "model": {
+            "provider": "anthropic",
+            "model": "claude-haiku-5-5",  # fastest replies; claude-sonnet-5-5 for harder tasks
+            "system_prompt": "You are a concise meeting assistant.",
+            "temperature": 0.5
+        },
+        "voice": {"provider": "openai", "voice_id": "nova"},
+        "transcriber": {"provider": "deepgram", "model": "nova-3", "language": "en"},
+        "agent": {"response_type": "voice"}
+    })
+    resp.raise_for_status()
+    return resp.json()["agent_config_id"]
+
+
 def create_realtime_openai_agent() -> str:
     """Realtime mode: single OpenAI realtime model, low latency."""
     resp = requests.post(f"{BASE_URL}/mia", headers=HEADERS, json={
@@ -1267,7 +1292,7 @@ def create_signed_in_bot(meeting_link: str, domain: str) -> str:
             "everyone_left_timeout": 600,
             "voice_inactivity_timeout": 600,
             "in_call_recording_timeout": 14400,
-            "recording_permission_denied_timeout": 300
+            "recording_permission_denied_timeout": 600
         }
     })
     resp.raise_for_status()
@@ -1336,3 +1361,99 @@ def add_post_call_transcript_to_streaming_bot(bot_id: str, callback_url: str):
     })
     # Wait for transcription.processed webhook, then use the canonical get_transcript()
     # pattern (Pattern 1) - bot_details.transcript_id will already point at the new run.
+
+---
+
+## Pattern 12: In-Meeting Commands, Errors and Rate Limits
+
+Raise / lower hand, `update_mia` with `wait_for_ack`, the speaker timeline download link, the uniform error body and the prepaid 429 with `Retry-After`.
+
+```python
+import os
+import time
+import uuid
+import requests
+
+KEY = os.environ["MEETSTREAM_API_KEY"]
+BASE_URL = "https://api.meetstream.ai/api/v1"
+HEADERS = {"Authorization": f"Token {KEY}", "Content-Type": "application/json"}
+
+
+# ─── Error text: {"message"} first, then {"error"}, then a bare string ─────
+def error_text(resp: requests.Response) -> str:
+    try:
+        body = resp.json()
+    except ValueError:
+        return resp.text
+    if isinstance(body, dict):
+        return body.get("message") or body.get("error") or str(body)
+    return str(body)
+
+
+# ─── create_bot that honors Retry-After (prepaid: 5/min, 50/hour) ──────────
+def create_bot_with_retry(body: dict, idempotency_key: str | None = None, max_attempts: int = 5) -> dict:
+    """Reuse one Idempotency-Key on every attempt so a retry never makes a second bot.
+
+    429 = prepaid rate limit; 409 with Retry-After = the same key is still saving.
+    507 = idempotent replay of the same bot: a success, not an error.
+    """
+    headers = {**HEADERS, "Idempotency-Key": idempotency_key or str(uuid.uuid4())}
+    for attempt in range(1, max_attempts + 1):
+        resp = requests.post(f"{BASE_URL}/bots/create_bot", headers=headers, json=body, timeout=30)
+        if resp.status_code in (201, 507):
+            return resp.json()  # {bot_id, transcript_id, meeting_url, status}
+        retry_after = int(resp.headers.get("Retry-After", "0") or 0)
+        if resp.status_code in (429, 409) and retry_after > 0 and attempt < max_attempts:
+            print(f"create_bot {resp.status_code}: {error_text(resp)}; retrying in {retry_after}s")
+            time.sleep(retry_after)
+            continue
+        raise RuntimeError(f"create_bot failed ({resp.status_code}): {error_text(resp)}")
+    raise RuntimeError("create_bot: retries exhausted")
+
+
+# ─── Raise / lower hand (bot must be InMeeting or Recording, else 409) ─────
+def set_hand(bot_id: str, raised: bool) -> bool:
+    resp = requests.post(
+        f"{BASE_URL}/bots/{bot_id}/send_command",
+        headers=HEADERS,
+        json={"command": "raise_hand" if raised else "lower_hand"},
+        timeout=15,  # the bot answers within 10 s
+    )
+    if resp.status_code == 409:
+        raise RuntimeError(f"Bot {bot_id} is not in the meeting yet: {error_text(resp)}")
+    resp.raise_for_status()
+    # {status: "accepted", bot_id, command, hand_raised}
+    # hand_raised is the state read back from the meeting, not an echo.
+    return resp.json()["hand_raised"]
+
+
+# ─── update_mia and wait for the agent to confirm ──────────────────────────
+def update_mia_confirmed(bot_id: str, params: dict) -> dict:
+    resp = requests.post(
+        f"{BASE_URL}/bots/{bot_id}/update_mia",
+        headers=HEADERS,
+        json={"agent_config_params": params, "wait_for_ack": True},
+        timeout=30,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    # status: applied | partially_applied | failed | accepted (ack_timeout: true)
+    if data.get("status") in ("failed", "partially_applied"):
+        print(f"update_mia errors: {data.get('errors')}")  # [{field, reason}]
+    return data
+
+
+# ─── Speaker timeline: inline JSON, or a download link for large timelines ─
+def get_speaker_timeline(bot_id: str):
+    resp = requests.get(f"{BASE_URL}/bots/{bot_id}/get_speaker_timeline", headers=HEADERS, timeout=30)
+    if resp.status_code == 404:
+        raise RuntimeError(f"Timeline not ready: {error_text(resp)}")
+    resp.raise_for_status()
+    body = resp.json()
+    if isinstance(body, dict) and "speaker_timeline_url" in body:
+        # Pre-signed, valid 1 hour, no API key. Same format as the inline body.
+        dl = requests.get(body["speaker_timeline_url"], timeout=120)
+        dl.raise_for_status()
+        return dl.json()
+    return body
+```

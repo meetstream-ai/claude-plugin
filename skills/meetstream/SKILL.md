@@ -10,7 +10,7 @@ description: >
   Google Meet", "join a meeting programmatically", "Microsoft Teams bot",
   "AI sales coach", "live meeting captions", "meeting webhook", "meeting
   recap email", "meeting action items extractor", "send a bot to a meeting",
-  "Google Calendar auto-record". Also activate when the user references
+  "Google Calendar auto-record", "make the bot raise its hand". Also activate when the user references
   meeting bot API errors, MeetStream webhook events (bot.joining,
   bot.recording, bot.stopped, transcription.processed, etc.), or asks how
   to integrate with api.meetstream.ai. For specific scaffolds (notetaker,
@@ -129,11 +129,12 @@ Per-participant **audio** (`audio_separate_streams`) is unaffected by this polic
 
 ### `recording_config.video_layout`
 
-- Values: exactly `"speaker_view"` or `"grid_view"`. Nothing else passes validation.
-- `"grid_view"` is the API default when `video_required: true`, so send `"speaker_view"` explicitly to get it.
+- Values on every platform: `"speaker_view"` and `"grid_view"`. Google Meet and Microsoft Teams also accept `"speaker_view_default"` and `"grid_view_default"`: the bot records the platform's own speaker or grid view in the call as one finished file. Zoom accepts only `"speaker_view"` and `"grid_view"`. Any other value returns 400 `invalid video_layout value. Allowed values: ...` listing the values for that platform.
+- `"grid_view"` is the API default when `video_required: true`, so send `"speaker_view"` explicitly to get it. Use a `_default` value only when the user asks for the platform's own layout.
 - Ignored when `video_required` is `false`. An audio-only bot never runs the compositor.
-- Platforms: Google Meet, Microsoft Teams and Zoom accept both values. WhatsApp accepts only `"grid_view"`. Any other platform rejects `video_layout`.
-- Speaker view follows the active speaker, which is what people want for review and clipping. Grid view is a composited mosaic of everyone.
+- WhatsApp accepts only `"grid_view"`. Any other platform rejects `video_layout`.
+- Speaker view follows the active speaker, which is what people want for review and clipping. Grid view is a composited mosaic of everyone. Teams `grid_view_default` shows at most 9 tiles.
+- Google Meet speaker view recordings are 1600x900. Do not hard-code 1280x720 when you process the video.
 
 Existing per-participant video templates and options stay as they are. They are explicit opt-ins by design.
 
@@ -190,8 +191,10 @@ Q1.2: Should it post a welcome message in the meeting chat on join?
 
 Q1.3: Custom avatar / profile picture?
       ├─ Yes → "bot_image_url": "https://your-cdn.com/avatar.png"
-      │        • MUST be publicly accessible URL (no auth, no signed URLs)
-      │        • Base64 / data URIs NOT supported
+      │        • MUST be a public https:// URL to a PNG, JPEG, GIF or WebP
+      │          (no auth, no signed URLs, must resolve to a public address)
+      │        • http:// and data: URIs return HTTP 400 (no longer dropped
+      │          silently)
       │        • Host it on S3 / Cloudflare R2 / public CDN
       └─ No  → omit bot_image_url
 
@@ -210,9 +213,11 @@ Q1.4a: (only when video_required is true) Which layout?
       └─ Anything else
               → "recording_config": { "video_layout": "speaker_view" }  (RECOMMENDED)
                • the API default is "grid_view", so speaker view must be sent
-               • only "speaker_view" and "grid_view" are valid values
+               • "speaker_view" and "grid_view" work on Google Meet, Teams, Zoom;
+                 Google Meet and Teams also take "speaker_view_default" /
+                 "grid_view_default" (the platform's own in-call layout)
                • ignored when video_required is false
-               • Google Meet / Teams / Zoom accept both; WhatsApp is grid only
+               • WhatsApp is grid only
 
 Q1.5: Want per-participant audio tracks (one file per speaker)?
       ├─ Yes → "audio_separate_streams": true
@@ -225,6 +230,7 @@ Q1.6: Did the user EXPLICITLY ask for per-participant video tracks
       (one webcam stream per person)?
       ├─ Yes → "video_separate_streams": true
       │        • All 3 platforms
+      │        • Google Meet + Teams: needs "video_required": true, else HTTP 400
       │        • Up to 6 concurrent webcams
       │        • WebM/VP8, 15 FPS, video-only
       └─ No  → omit (you get one composite video). Never set this implicitly:
@@ -259,7 +265,7 @@ Q2.2: (Google Meet) Does the meeting require a signed-in Google identity?
       │        Bots section. Without this setup the bot will fail to join.
       └─ No  → omit google_meet (works for public Meet rooms)
 
-Q2.3: (Zoom) Does the bot need an authenticated join?
+Q2.3: (Zoom) Does the bot need an authenticated join or the user's own Zoom app?
       ├─ Joining as a signed-in Zoom user (ZAK)
       │  → "zoom": { "zak_url": "https://you.example.com/zoom/zak" }
       ├─ Joining On Behalf Of a user already in the meeting (OBF)
@@ -267,11 +273,20 @@ Q2.3: (Zoom) Does the bot need an authenticated join?
       │     Both URLs are HTTPS endpoints on YOUR server that return a fresh
       │     token when MeetStream calls them. Guide:
       │     https://docs.meetstream.ai/guides/app-integrations/zoom-authenticated-bots
+      ├─ Must the bot join with the user's own Zoom app (they saved one)?
+      │  → "zoom": { "use_own_app": true }   (400 if no app is configured)
+      ├─ Must the bot join WITHOUT the user's Zoom app, even if one is saved?
+      │  → "zoom": { "use_own_app": false }
       └─ No (the default) → omit the zoom field
          Zoom needs NO setup: the meeting link and the MeetStream API key are
          enough. No Zoom Marketplace app, no SDK keys, no OAuth, no tokens.
          Never tell the user to create a Zoom app before their first bot.
-         ⚠ zak_url and obf_url need the user's own Zoom app (optional).
+         With use_own_app omitted, the bot uses the user's Zoom app when one
+         is saved or connected, and joins without one otherwise.
+         ⚠ zak_url and obf_url need the user's own Zoom app (optional), and
+           cannot be combined with "use_own_app": false (HTTP 400).
+         ⚠ Zoom links with no meeting number (for example /my/ personal
+           links) return HTTP 400 invalid_meeting_link.
          ⚠ use_zoom_obf and zoom_oauth_connection_user_id are rejected by the
            API. Use zak_url / obf_url instead.
 
@@ -366,11 +381,20 @@ Q4A.2: Which streaming provider?
        │  → provider: { "jigsawstack_streaming": {} }
        │     Account needs JigsawStack key.
        │
-       └─ "Just use the meeting's built-in captions" (Google Meet / Teams only)
+       ├─ "I have a Smallest AI account"
+       │  → provider: {
+       │       "smallest_streaming": { "model": "pulse", "language": "en" }
+       │     }
+       │     • model: "pulse" (default) or "pulse-2" (English only)
+       │     • Key saved in the dashboard under voice integrations (Smallest AI);
+       │       without it: HTTP 400 "SmallestAPIKey not configured in user profile"
+       │
+       └─ "Just use the meeting's built-in captions" (Google Meet / Teams)
           → provider: { "meeting_captions": {} }
             ✅ Free, no provider needed at all
             ❌ Quality depends on the meeting platform's own captions
-            ❌ Doesn't work on Zoom
+            ⚠ Zoom: only for bots that join WITHOUT the user's own Zoom app.
+              With the user's Zoom app it returns HTTP 400.
 
 Q4A.3: Need to also stream raw audio bytes (for your own ML model)?
        ├─ Yes → "live_audio_required": { "websocket_url": "wss://you/audio" }
@@ -435,6 +459,18 @@ Q4B.2: Which post-call provider?
        │     }
        │     ⚠ 9 fields marked required per OpenAPI. Account needs AssemblyAI key.
        │
+       ├─ "I have a Smallest AI account"
+       │  → provider: {
+       │       "smallest": { "model": "pulse", "language": "en", "diarize": true }
+       │     }
+       │     • model: "pulse" (default) or "pulse-pro" (English only)
+       │     • diarize applies to "pulse" only (default true). Optional:
+       │       keywords, redact_pii, redact_pci, emotion_detection,
+       │       gender_detection
+       │     • language is not checked at create time; a bad code arrives
+       │       as transcription.failed
+       │     Account needs a Smallest AI key (voice integrations).
+       │
        ├─ "Indic languages (Hindi/Tamil/Telugu/etc.)"
        │  → provider: {
        │       "sarvam": {
@@ -496,15 +532,20 @@ This:
 ### STEP 5 - Other webhooks (beyond transcription)
 
 ```
-Q5.1: Need to know when participants join/leave the meeting?
+Q5.1: Need to know when participants join/leave the meeting, or raise/lower
+      their hand?
       ├─ Yes → add to recording_config:
       │   "realtime_endpoints": [{
       │     "type": "webhook",
       │     "url": "https://you/participants",
-      │     "events": ["participant_events.join", "participant_events.leave"]
+      │     "events": ["participant_events.join", "participant_events.leave",
+      │                "participant_events.raise_hand", "participant_events.lower_hand"]
       │   }]
       │   ⚠ These webhooks have a DIFFERENT shape - nested under
       │   data.data.action / data.bot.id, no top-level bot_id or bot_status.
+      │   ⚠ Hand events go ONLY to realtime_endpoints that list them, never to
+      │   workspace webhooks. Google Meet and Zoom. Transitions only; the
+      │   bot's own hand is never reported.
       └─ No → omit realtime_endpoints
 
 Q5.2: Want your bot to interact in the meeting (send chat, play TTS audio,
@@ -520,6 +561,22 @@ Q5.3: Want to attach a MeetStream Infrastructure Agent (MIA) to the bot?
       │        (see Pattern 9), then pass only its ID on create_bot:
       │          "agent_config_id": "<from above>"
       └─ No → omit agent_config_id
+
+Q5.4: Want to publish live video/audio INTO the bot's camera and mic (WebRTC)?
+      ├─ Yes → "bot_camera_stream": { "websocket_url": "wss://you/camera" }
+      │        • Google Meet (ws:// or wss://), Teams and Zoom (wss:// only)
+      │        • The bot connects OUT to your signaling socket; the host must
+      │          resolve to a public address
+      │        • Zoom: cannot be combined with agent_config_id (HTTP 400)
+      │        • Guide: https://docs.meetstream.ai/guides/websockets/bot-camera-streaming
+      └─ No → omit bot_camera_stream
+
+Q5.5: Should the bot raise its hand before it speaks (wait its turn)?
+      ├─ Yes → after the bot is InMeeting/Recording, call
+      │        POST /bots/{bot_id}/send_command  {"command": "raise_hand"}
+      │        and {"command": "lower_hand"} when done. See "In-Meeting
+      │        Commands" below. Nothing to add to create_bot.
+      └─ No → nothing to do
 ```
 
 ---
@@ -554,6 +611,15 @@ Q7.1: Need to correlate webhooks back to your internal records (tenant ID,
       │        ⚠ custom_attributes is echoed on lifecycle events BUT NOT on
       │        /transcribe-triggered webhooks. Correlate by bot_id there.
       └─ No → omit custom_attributes (recommended only for trivial use cases)
+
+Q7.2: Should recordings go to one of the user's own storage destinations?
+      ├─ Yes → "storage_id": "<destination ID from the dashboard>"
+      │        • 1-80 letters, numbers, underscores or hyphens, else HTTP 400
+      │        • Destinations are set up in the dashboard (no public API)
+      │        • An unknown ID or a destination that fails validation: HTTP 400
+      │          with the storage error text
+      └─ No → omit storage_id (workspace default destination, or MeetStream
+               storage when none is configured)
 ```
 
 ---
@@ -566,13 +632,13 @@ Q7.1: Need to correlate webhooks back to your internal records (tenant ID,
   "everyone_left_timeout": 600,       // 10 min - handle bio breaks
   "voice_inactivity_timeout": 600,    // 10 min - silent presentations
   "in_call_recording_timeout": 14400, // 4 hr - handle long workshops
-  "recording_permission_denied_timeout": 300  // 5 min - Zoom-only, MAX is 300
+  "recording_permission_denied_timeout": 600  // 10 min - Zoom-only, MAX is 600 (also the default)
 }
 ```
 
 Live-verified constraints:
 - `in_call_recording_timeout` minimum 600s (API HTTP 400 below)
-- `recording_permission_denied_timeout` range 60–300s (API HTTP 400 outside)
+- `recording_permission_denied_timeout` range 60–600s, default 600 (API HTTP 400 outside)
 
 ---
 
@@ -606,7 +672,7 @@ Authorization: Token YOUR_API_KEY
     "everyone_left_timeout": 600,
     "voice_inactivity_timeout": 600,
     "in_call_recording_timeout": 14400,
-    "recording_permission_denied_timeout": 300
+    "recording_permission_denied_timeout": 600
   }
 }
 ```
@@ -631,7 +697,7 @@ A live AI-coach bot for the same meeting might look like:
     "everyone_left_timeout": 600,
     "voice_inactivity_timeout": 600,
     "in_call_recording_timeout": 14400,
-    "recording_permission_denied_timeout": 300
+    "recording_permission_denied_timeout": 600
   }
 }
 ```
@@ -875,6 +941,10 @@ POST /bots/{bot_id}/resume_recording  (empty body - resume a paused recording)
 
 > **`send_image` field is `img_url`** (not `image_url`). `display_duration` (integer seconds) is optional.
 
+Image URLs the bot downloads (`img_url`, `sendimg_url`, `bot_image_url`, `initial_audio.url`) must resolve to public addresses on every redirect hop. A URL that resolves to a private, loopback or metadata address is refused when the bot fetches it (no 400 at request time, the image just never appears).
+
+To make the bot raise or lower its hand, use the REST `send_command` endpoint (see [In-Meeting Commands](#in-meeting-commands-send_command)), not the WebSocket.
+
 See `references/code-patterns-python.md` Pattern 3 and `references/code-patterns-node.md` Pattern 3 for full implementations of every command including chunked audio streaming, barge-in, and streaming chat.
 
 ### Pattern 4: Calendar-Automated Bot
@@ -928,7 +998,7 @@ See `references/code-patterns-node.md` Pattern 4 (Next.js) or `references/code-p
 
 ### Pattern 6: Participant Tracking (real-time)
 
-Real-time join/leave events during the meeting:
+Real-time join/leave and raise/lower hand events during the meeting:
 
 ```json
 {
@@ -936,11 +1006,21 @@ Real-time join/leave events during the meeting:
     "realtime_endpoints": [{
       "type": "webhook",
       "url": "https://your-server.com/participants",
-      "events": ["participant_events.join", "participant_events.leave"]
+      "events": [
+        "participant_events.join",
+        "participant_events.leave",
+        "participant_events.raise_hand",
+        "participant_events.lower_hand"
+      ]
     }]
   }
 }
 ```
+
+**Hand events** (`participant_events.raise_hand` / `participant_events.lower_hand`, Google Meet and Zoom):
+- Opt-in per bot: they go **only** to `realtime_endpoints` entries that list them. Workspace webhooks never receive them.
+- Same nested shape as `participant_events.join`, with `data.data.action` set to `"raise_hand"` or `"lower_hand"`.
+- Transitions only. The bot's own hand is never reported. "Lower all hands" sends one `lower_hand` per raised hand. A participant who leaves with a hand up gets no `lower_hand`, so clear their state on `participant_events.leave`.
 
 ### Pattern 7: Live Audio Streaming (binary frames)
 
@@ -1033,11 +1113,57 @@ POST /bots/create_bot
 That's all MIA needs - MeetStream runs the agent on its own hosted bridge. Do **not** pass `socket_connection_url` or `live_audio_required` for MIA; those are only for the bring-your-own-bridge patterns 6–8 and point at *your* server.
 
 **Other MIA operations:**
-- `GET /api/v1/mia` - list all (no params) or fetch one (`?agent_config_id=...`)
+- `GET /api/v1/mia` - list all (no params) or fetch one (`?agent_config_id=...`). Secrets come back masked (`****` + last four characters); sending the mask back on `PUT` keeps the stored value.
 - `PUT /api/v1/mia` - update; body requires `agent_config_id` + fields to change
 - `DELETE /api/v1/mia?agent_config_id=...` - delete (query param, not path)
+- `POST /bots/{bot_id}/update_mia` - change a running agent's prompt, params or wake words mid-meeting. Add `"wait_for_ack": true` to get the result instead of a plain `accepted` (see [In-Meeting Commands](#in-meeting-commands-send_command)).
+
+**Anthropic Claude as the MIA LLM** (`model.provider: "anthropic"`):
+- Pipeline mode only. Uses the Anthropic API key saved in the dashboard under model integrations (provider `anthropic`).
+- `model.model`: for example `claude-haiku-5-5` (fastest replies) or `claude-sonnet-5-5`, `claude-opus-5-5`.
+- `temperature` must be 0 to 1. `reasoning_effort` is optional (`"low"` when omitted). `tool_choice` may only be `"auto"` or `"none"`.
+- `top_p`, `frequency_penalty`, `presence_penalty` and `logit_bias` return 400 `Anthropic models do not support: ...`.
+- Claude is an LLM for MIA only. It is **not** a transcription provider and is not a `create_bot` field.
 
 Supported providers: see `references/api-reference.md` MIA section.
+
+### In-Meeting Commands (`send_command`)
+
+`POST /bots/{bot_id}/send_command` runs one command on a live bot. Body: `{"command": "<name>", ...}`.
+
+**Raise / lower hand** (Google Meet, Zoom, Microsoft Teams):
+
+```bash
+curl -X POST "https://api.meetstream.ai/api/v1/bots/$BOT_ID/send_command" \
+  -H "Authorization: Token $MEETSTREAM_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"command": "raise_hand"}'
+```
+
+Response 200:
+
+```json
+{ "status": "accepted", "bot_id": "83acdd72-...", "command": "raise_hand", "hand_raised": true }
+```
+
+- **The bot must be in the meeting** (`InMeeting` or `Recording`). Joining, in the lobby, or already left: **409**. Wait for `bot.inmeeting` before you send it.
+- `hand_raised` is the state the bot read back from the meeting **after** acting, not an echo of the request. Repeating a command is a no-op that returns the current state. The host (and, on Google Meet, the meeting itself once that person speaks) can lower the hand, so send `lower_hand` first if you are not sure of the state.
+- `{"command": "lower_hand"}` returns `"hand_raised": false`. No other body fields are used.
+- Allow up to 10 seconds for the response. Retry a 5xx once.
+- WhatsApp bots and Zoom RTMS sessions return 400 (`unsupported_on_whatsapp` / `unsupported_on_zoom_rtms`). Bots that run outside the US region return 501.
+- Guide: https://docs.meetstream.ai/guides/features/raise-lower-hand
+
+**`update_mia` with `wait_for_ack`** (`POST /bots/{bot_id}/update_mia` with this body, or `send_command` with `"command": "update_mia"` added):
+
+```json
+{ "agent_config_params": { "customer_name": "Sarah" }, "wait_for_ack": true }
+```
+
+- Without `wait_for_ack`, 200 means "accepted for delivery", not "applied".
+- With `"wait_for_ack": true`, the response carries the agent's result: `status` is `applied`, `partially_applied`, `failed` (with `errors: [{field, reason}]`) or `accepted` (with `ack_timeout: true` when the agent did not answer in time; the update may still apply). `applied` lists the fields that were applied.
+- A non-boolean `wait_for_ack` returns 400 `wait_for_ack must be a boolean (true or false)`.
+
+Other commands on the same endpoint: `screenshot` (Zoom: only on bots that join without your own Zoom app), `pause_recording`, `resume_recording`, and chat (`sendmsg` / `sendchat`). On Zoom and Teams, chat is accepted while the bot waits in the lobby and is posted on admission; Google Meet returns 409 in the lobby.
 
 ---
 
@@ -1045,7 +1171,7 @@ Supported providers: see `references/api-reference.md` MIA section.
 
 **Lifecycle depends on whether you configured a post-call provider or a streaming-only provider.** This is the most important architectural distinction in the entire API - and it's not in the official docs.
 
-### Path A: Post-call provider (`deepgram`, `assemblyai`, `sarvam`, `jigsawstack`, `meetstream`)
+### Path A: Post-call provider (`deepgram`, `assemblyai`, `sarvam`, `jigsawstack`, `meetstream`, `smallest`)
 
 ```
 create_bot (returns transcript_id)
@@ -1064,7 +1190,7 @@ create_bot (returns transcript_id)
   → data_deletion            (200), only after DELETE /bots/{id}/delete or retention expiry
 ```
 
-### Path B: Streaming-only provider (`meetstream_streaming`, `assemblyai_streaming`, `deepgram_streaming`, `jigsawstack_streaming`, `meeting_captions`)
+### Path B: Streaming-only provider (`meetstream_streaming`, `assemblyai_streaming`, `deepgram_streaming`, `jigsawstack_streaming`, `smallest_streaming`, `meeting_captions`)
 
 ```
 create_bot (returns transcript_id: null)
@@ -1128,6 +1254,7 @@ Every delivery carries `event`, `bot_id` and `timestamp`. Most also carry `bot_e
 | `bot.inmeeting` | `InMeeting` | 200 | Bot joined the meeting | |
 | `bot.recording` | `Recording` | 200 | Recording started | |
 | `participant_events.join` / `.leave` | | | Participants join/leave (requires `recording_config.realtime_endpoints`) | Nested: `data.data.action`, `data.data.participant.{id,name,full_name,platform}`, `data.data.timestamp.{relative,absolute}`, `data.bot.{id,metadata}`. No top-level `bot_id`, `bot_status` or `bot_event`. |
+| `participant_events.raise_hand` / `.lower_hand` | | | A participant raised or lowered their hand (Google Meet, Zoom). Sent **only** to `realtime_endpoints` that list the event, never to workspace webhooks | Same nested shape as `participant_events.join`; `data.data.action` is `raise_hand` / `lower_hand` |
 | `bot.leaving` | `Leaving` | 200 | Bot is leaving | |
 | `bot.stopped` | varies | 200 or 500 | Bot exited or never got in. **Read `bot_event` for the reason** | see "Terminal events" |
 | `bot.uploading` | | 200 | Media upload in progress | |
@@ -1155,6 +1282,18 @@ Every ending arrives **once**, with `event: "bot.stopped"`. `bot_event` carries 
 
 Branch on `bot_event`, not `bot_status`: a kick and a clean exit both report `Stopped`, and failure casing varies. Compare `bot_status` case-insensitively if you use it at all.
 
+### Failure reasons (`ErrorReason`)
+
+A `bot.failed` terminal (status `Failed`) carries a specific reason in `bot_details.ErrorReason` on `GET /bots/{bot_id}/detail`. Google Meet `bot.failed` webhooks (and Teams for `sign_in_required`) also carry it as `failure_reason`. Treat unknown values as a generic failure. Reasons that matter most for join failures:
+
+| `ErrorReason` | `failure_reason` | Platform | What happened | What to do |
+|---|---|---|---|---|
+| `MeetingRestricted` | `meeting_restricted` | Google Meet, Teams | The meeting admits only the host's organization or invited people, so the guest bot cannot ask to join. Message `Failed: Meeting access is restricted` | Use a signed-in bot from an allowed domain/tenant, or ask the organizer to allow the bot |
+| `SignInRequired` | `sign_in_required` | Google Meet, Teams (new on Teams) | The meeting does not accept anonymous guests. Message `Failed: Sign in required` | Use a Google or Teams signed-in bot |
+| `InvalidMeetingLink` | `invalid_meeting_link` | Google Meet, Teams (new on Teams) | The link is broken, cut off or not a meeting. Message `Failed: Invalid meeting link` | Copy the full join link from the invite |
+
+A Zoom link with no meeting number (for example a `/my/` personal link) is refused earlier: `create_bot` returns 400 `invalid_meeting_link: ...` and no bot is created. Full list of reasons and messages: https://docs.meetstream.ai/guides/reference/bot-status-and-error-codes
+
 ### `status_code` is NOT always 200
 
 `transcription.failed` and the failing terminals (`bot.notallowed`, `bot.denied`, most `bot.failed`) carry `status_code: 500`. All 466 captured `bot.done` deliveries were 200. Branch on `event`, then `bot_event`; use `status_code` only as a quick error indicator.
@@ -1178,7 +1317,7 @@ Each entry is `{message, status, timestamp}`. `status: true` means that stage wa
     "everyone_left_timeout": 600,
     "voice_inactivity_timeout": 600,
     "in_call_recording_timeout": 14400,
-    "recording_permission_denied_timeout": 300
+    "recording_permission_denied_timeout": 600
   }
 }
 ```
@@ -1189,11 +1328,12 @@ All values in seconds. Use these defaults unless you have a specific reason to c
 - `everyone_left_timeout` - stay after everyone else leaves - **600s (10 min)**
 - `voice_inactivity_timeout` - wait if no audio detected (someone could be presenting silently) - **600s (10 min)**
 - `in_call_recording_timeout` - max recording duration - **14400s (4 hours)**, the canonical default for full-length meetings
-- `recording_permission_denied_timeout` - wait if recording permission denied (**Zoom-only**) - **300s (5 min)** - this is the max the API allows (range is 60–300)
+- `recording_permission_denied_timeout` - wait if recording permission denied (**Zoom-only**) - **600s (10 min)** - this is the max the API allows and also the API default (range is 60–600)
 
 > **Live-tested constraints (not in OpenAPI spec):**
 > - `in_call_recording_timeout` minimum is **600 seconds** - the live API returns `HTTP 400: "in_call_recording_timeout must be at least 600 seconds"` below that.
-> - `recording_permission_denied_timeout` accepted range is **60–300 seconds** (live-verified). Below 60 returns HTTP 400; above 300 returns `HTTP 400: "recording_permission_denied_timeout must not exceed 300 seconds"`. Use 300 (the max) for maximum patience.
+> - `recording_permission_denied_timeout` accepted range is **60–600 seconds**, default **600** (the limit was 300 and the default 60 before November 2026). Below 60 returns HTTP 400; above 600 returns `HTTP 400: "recording_permission_denied_timeout must not exceed 600 seconds (got N)"`. Use 600 (the max) for maximum patience.
+> - A Zoom bot that joins without the user's own Zoom app records from admission whatever the host answers to the recording prompt, so this timeout does not apply to it.
 
 **Why 14400 for `in_call_recording_timeout` specifically:** real meetings often run longer than 30 minutes. Defaulting to anything less risks the bot disconnecting while people are still talking. 4 hours is the canonical safe value for full-length sales / interview / workshop sessions.
 
@@ -1203,11 +1343,15 @@ Without these defaults, a stuck bot can sit in a meeting indefinitely.
 
 ## `bot_image_url`
 
-Custom profile picture must be a **publicly accessible URL** - MeetStream fetches it externally. The OpenAPI schema describes it as a URL string. Base64 / data URIs are not supported by the docs guide; the image must be reachable without authentication.
+Custom profile picture must be a **publicly accessible URL** - MeetStream fetches it externally. The image must be reachable without authentication.
 
 ```json
 { "bot_image_url": "https://your-server.com/avatar.png" }
 ```
+
+- Must be `https://` and point to a PNG, JPEG, GIF or WebP image. A URL without one of those extensions is accepted only up to 2048 characters.
+- `http://`, `data:` URIs and other unusable values return **400** `bot_image_url must be an https:// URL to a PNG, JPEG, GIF or WebP image; ...`. They used to be dropped silently, so old code that sent a bad URL now fails.
+- The host must resolve to a public address on every redirect hop. A private, loopback or metadata address is refused when the bot downloads the image (no 400; the bot just has no avatar).
 
 ---
 
@@ -1226,7 +1370,7 @@ The OpenAPI schema allows `additionalProperties: { description: Any type }`. Arb
 
 | Feature | Google Meet | Zoom | Microsoft Teams |
 |---|---|---|---|
-| Basic bot (`create_bot`) | ✓ | ✓ (setup required) | ✓ |
+| Basic bot (`create_bot`) | ✓ | ✓ (no setup) | ✓ |
 | Recording + post-call transcript | ✓ | ✓ | ✓ |
 | Live transcription webhook | ✓ | ✓ | ✓ |
 | Live audio (`live_audio_required`) | ✓ | ✓ | ✓ |
@@ -1235,7 +1379,11 @@ The OpenAPI schema allows `additionalProperties: { description: Any type }`. Arb
 | Per-participant video streams | ✓ | ✓ | ✓ |
 | MIA agents | ✓ | ✓ | ✓ |
 | `interrupt` WS command (clears audio queue) | ✓ | ✗ (accepted, no-op) | ✗ (accepted, no-op) |
-| Native captions (`meeting_captions`) | ✓ | ✗ | ✓ |
+| Raise / lower hand (`send_command`) | ✓ | ✓ | ✓ |
+| Participant hand events (`participant_events.raise_hand` / `.lower_hand`) | ✓ | ✓ | not documented yet |
+| Live video into the bot camera (`bot_camera_stream`) | ✓ (ws/wss) | ✓ (wss, with your own Zoom app) | ✓ (wss) |
+| Native captions (`meeting_captions`) | ✓ | only without your own Zoom app (400 with it) | ✓ |
+| `video_layout` `speaker_view_default` / `grid_view_default` | ✓ | ✗ (400) | ✓ |
 | Signed-in bot (real account identity) | ✓ (`google_meet`) | ✓ (`zoom.zak_url` / `obf_url`) | ✓ (`teams`, M365 work/school only, 1 bot per account) |
 
 ### Zoom setup
@@ -1246,18 +1394,30 @@ Optional Zoom configuration, and what each adds:
 
 | Option | What it adds |
 |---|---|
-| Your own Zoom app credentials (Client ID and Client Secret saved in Dashboard > Integrations > Zoom) | The bot joins with your Zoom app. Needed for `zak_url` / `obf_url`, per-participant camera video, live video into the bot camera and MIA agent camera or avatar video |
+| Your own Zoom app credentials (Client ID and Client Secret saved in Dashboard > Integrations > Zoom) | The bot joins with your Zoom app. Needed for `zak_url` / `obf_url`, per-participant camera video and live video into the bot camera (`bot_camera_stream`) |
 | Connected Zoom accounts (Zoom OAuth Meeting Bots) | Meetings you map can be recorded without an Admit or Allow recording prompt |
 | `zoom.zak_url` (signed-in bot) | Joins as a Zoom user: can join meetings that allow only signed-in users, and can join before the host |
 | `zoom.obf_url` (on-behalf-of bot) | Joins on behalf of a user who is already in the meeting |
 
 Without your own Zoom app:
 - Per-participant video (`video_separate_streams`) contains screen shares only. Per-participant audio works.
-- The bot camera shows images (`bot_image_url`, Send Image). Live video into the bot camera and MIA camera or avatar video are not available.
-- The bot asks the host to allow recording, and records from the moment it is admitted.
+- The bot camera shows images (`bot_image_url`, Send Image). Live video into the bot camera (`bot_camera_stream`) is not available. MIA agents on this bot can show images, video and an avatar.
+- The bot asks the host to allow recording, and records from the moment it is admitted. `recording_permission_denied_timeout` does not apply.
 - Meetings that require Zoom sign-in cannot be joined. Use `zak_url`.
+- `meeting_captions` and `initial_audio` work only on this bot. `screenshot` (via `send_command`) works here; the bot that uses your own Zoom app returns 400 for it.
 
-If the user has saved Zoom app credentials or connected a Zoom account, bots join with that app as before. Optional setup guides: https://docs.meetstream.ai/guides/app-integrations/zoom-marketplace-app-setup and, for joining meetings outside the app's own account with your app, https://docs.meetstream.ai/guides/app-integrations/zoom-app-production-submission
+**Choosing the join with `zoom.use_own_app`** (optional, `true`, `false` or omitted):
+
+| `zoom.use_own_app` | What happens |
+|---|---|
+| omitted or `null` (default) | The bot uses the user's Zoom app when one is saved or a healthy Zoom account is connected, and joins without an app otherwise. |
+| `true` | The bot must join with the user's Zoom app. With no app saved, `create_bot` returns 400. |
+| `false` | The bot joins without the user's Zoom app, even when one is saved. Cannot be combined with `zak_url` / `obf_url`: 400 `zoom.zak_url and zoom.obf_url cannot be used with zoom.use_own_app set to false`. |
+
+- Any other value returns 400 `zoom.use_own_app must be true or false`. The field is not echoed in bot details.
+- There is **no fallback**: if Zoom refuses the user's own app, the bot does not retry without it. Send `use_own_app: false` to avoid the app.
+- When the no-setup join is needed but not available for the account's region, `create_bot` returns 400 `Zoom bots are not available in this region right now`.
+- `zoom.use_own_app` also works on `POST /calendar/schedule/{event_id}` and `PATCH /calendar/scheduled_bots/{bot_id}`. Optional setup guides: https://docs.meetstream.ai/guides/app-integrations/zoom-marketplace-app-setup and, for joining meetings outside the app's own account with your app, https://docs.meetstream.ai/guides/app-integrations/zoom-app-production-submission
 
 For authenticated Zoom joins, pass `"zoom": { "zak_url": "https://..." }` (join as a signed-in user) or `"zoom": { "obf_url": "https://..." }` (join On Behalf Of a user who is already in the meeting). Each URL is an HTTPS endpoint on your server that returns a fresh token when MeetStream calls it. The older `use_zoom_obf` flag and `zoom_oauth_connection_user_id` are rejected by the API. Guide: https://docs.meetstream.ai/guides/app-integrations/zoom-authenticated-bots
 
@@ -1369,6 +1529,10 @@ Specified under `recording_config.transcript.provider`. Use **exactly one** prov
 | `deepgram_streaming` | Live | Real-time. All ~12 fields marked required per OpenAPI. Needs Deepgram key. |
 | `assemblyai_streaming` | Live | Real-time English. All ~10 fields marked required per OpenAPI. Needs AssemblyAI key. |
 | `jigsawstack_streaming` | Live | Live-verified existence (referenced in API error message); schema not yet documented in OpenAPI. |
+| `smallest` | Post-call | Smallest AI Pulse. `model`: `pulse` (default) or `pulse-pro` (English only). `language` default `"en"`. Options: `diarize` (`pulse` only, default true), `keywords`, `redact_pii`, `redact_pci`, `emotion_detection`, `gender_detection`. Also accepted by `POST /bots/{bot_id}/transcribe`. |
+| `smallest_streaming` | Live | Smallest AI streaming. `model`: `pulse` (default) or `pulse-2` (English only). Counts as a streaming provider for `live_transcription_required`. |
+
+> **Smallest AI key:** one key, saved in the dashboard under voice integrations (Smallest AI), serves both `smallest` / `smallest_streaming` and MIA voice. Without it `create_bot` returns 400 `SmallestAPIKey not configured in user profile`. A bad `model` returns 400 `Invalid smallest model: ... Allowed values: ...`. An unsupported `language` is not caught at create time; it arrives as `transcription.failed`.
 
 > **Account configuration matters.** Provider keys must be added to your MeetStream account dashboard before use. If a key is missing or invalid, the `transcription.failed` event fires with `status_code: 500` and a `message` describing the upstream auth failure (e.g. `"Deepgram API error: 401"` or `"Unauthorized Connection: Insufficient funds"`). **Test your account's provider configuration before relying on a post-call provider in production.**
 
@@ -1379,6 +1543,8 @@ Specified under `recording_config.transcript.provider`. Use **exactly one** prov
 ## Webhook Handler Requirements
 
 - Must use **HTTPS** (use ngrok or cloudflared for local dev - see https://docs.meetstream.ai/guides/webhooks/local-webhook-server)
+- Must resolve to a **public address**. Webhooks from post-call processing (`manifest.completed`, `audio.processed`, `transcription.processed` / `.failed`, `video.processed` and the other post-call events) are delivered only to public addresses, on every redirect hop. A `callback_url` or workspace webhook URL that resolves to a private, loopback or metadata address is not delivered. A tunnel (ngrok, cloudflared) gives a public address for local development.
+- Every delivery sends `User-Agent: MeetStream-Webhook/1.0`.
 - Must respond `2xx` quickly to acknowledge receipt
 - **No automatic retries.** If your endpoint returns non-2xx, the webhook is **not** retried. Build your handler to never fail (catch errors, queue work, return 200).
 - `bot.joining` may fire up to 3 times if join retries are configured, and `bot.inmeeting` can repeat. `bot.stopped`, `audio.processed`, `transcription.processed`, `video.processed`, `bot.done`, `data_deletion` are each sent **at most once**.
@@ -1488,7 +1654,7 @@ After the relevant `*.processed` event fires:
 | Raw transcript | `GET /transcript/{transcript_id}/get_transcript?raw=true` | Raw provider output |
 | List transcripts for a bot | `GET /bots/{bot_id}/transcriptions` | Returns `{bot_id, transcriptions: [{transcript_id, provider, status, created_at, config, download_urls}]}` |
 | Trigger a new transcription run | `POST /bots/{bot_id}/transcribe` | Body: `{provider: {<key>: {...}}, callback_url?}` |
-| Speaker timeline | `GET /bots/{bot_id}/get_speaker_timeline` | Returns chunks with **byte offsets** into the audio file (not time) |
+| Speaker timeline | `GET /bots/{bot_id}/get_speaker_timeline` | Returns chunks with **byte offsets** into the audio file (not time). **Large timelines (about 5 MB or more) come back as a download link instead:** `{bot_id, speaker_timeline_url, size_bytes, truncated: false}`. The URL is pre-signed (no API key), valid 1 hour, and the file has the same format as the inline body. Always check for `speaker_timeline_url`. 404 `Manifest file not found. It may still be processing.` until the bot leaves |
 | In-meeting chat | `GET /bots/{bot_id}/get_chats` | |
 | Audio file | `GET /bots/{bot_id}/get_audio` | Pre-signed S3 URL, **valid 1 hour** |
 | Video file | `GET /bots/{bot_id}/get_video` | Pre-signed S3 URL, **valid 10 minutes** |
@@ -1557,6 +1723,55 @@ def delete_bot_data(bot_id: str, confirmed: bool = False) -> dict:
 
 ---
 
+## Errors, Rate Limits and Validation
+
+**Error body.** Most errors return `{"message": "..."}`. On the bot data endpoints (`get_audio`, `get_video`, `get_speaker_timeline`, `get_chats`, `get_participants`, screenshots), an error that used to be a bare JSON string is now `{"message": "..."}`. On `remove_bot`, `stop_status` and `GET /bots/{bot_id}/transcriptions`, `{"error": "..."}` became `{"message": "..."}`. A few endpoints (in-meeting commands, the credit check, the 429 below) still send `error`. Read all shapes:
+
+```python
+def error_text(resp) -> str:
+    try:
+        body = resp.json()
+    except ValueError:
+        return resp.text
+    if isinstance(body, dict):
+        return body.get("message") or body.get("error") or str(body)
+    return str(body)  # older bare-string bodies
+```
+
+**Prepaid rate limit (429).** Prepaid (pay-as-you-go) accounts can create **5 bots per rolling minute and 50 per rolling hour**. Invoice accounts are not limited. Not counted: bots with `join_at` 10 minutes or more ahead, calendar bots for meetings 10+ minutes away, the scheduled join itself, and idempotent replays. Over the limit, no bot is created and the API returns:
+
+```http
+HTTP/1.1 429 Too Many Requests
+Retry-After: 37
+
+{"error": "rate_limit_exceeded", "message": "...", "limit": 5, "window": "minute", "retry_after": 37}
+```
+
+Sleep for `Retry-After` seconds, then resend the same request (same `Idempotency-Key` or `deduplication_key` if you use one). Concurrent creates with the same key make one bot; a loser can get 409 with `Retry-After: 2` while the first request is still saving, so retry that 409 with the same key too. Code: Pattern 12 in `references/code-patterns-node.md` and `references/code-patterns-python.md`.
+
+**`create_bot` requests that now return 400** (they used to pass or were silently changed):
+
+| Request | 400 message starts with |
+|---|---|
+| `audio_required: false` and `video_required: false` with no other job (no `realtime_endpoints`, live stream, `socket_connection_url`, `bot_message` or `agent_config_id`) | `audio_required and video_required are both false, so the bot would record nothing.` |
+| Google Meet / Teams `video_separate_streams: true` without `video_required: true` | `video_separate_streams=true requires video_required=true for Google Meet and Microsoft Teams.` |
+| `bot_image_url` that is not an https:// image URL (see [`bot_image_url`](#bot_image_url)) | `bot_image_url must be an https:// URL to a PNG, JPEG, GIF or WebP image;` |
+| Zoom link with no meeting number (for example `/my/` personal links) | `invalid_meeting_link: this Zoom link has no meeting number,` |
+| Zoom `meeting_captions` on a bot that uses the user's own Zoom app | `meeting_captions is not supported on Zoom.` |
+| `zoom.use_own_app` not a boolean, or `false` with `zak_url` / `obf_url` | `zoom.use_own_app must be true or false` / `zoom.zak_url and zoom.obf_url cannot be used with zoom.use_own_app set to false` |
+| `storage_id` not 1-80 letters, numbers, `_` or `-` | `storage_id must contain 1-80 letters, numbers, underscores or hyphens` |
+| `bot_camera_stream` on another platform, a bad URL, `ws://` on Teams/Zoom, or with `agent_config_id` on Zoom | `bot_camera_stream is supported only for ...` / `... camera signaling requires wss://` / `bot_camera_stream cannot be combined with agent_config_id on Zoom` |
+| `smallest` / `smallest_streaming` with an unknown `model` | `Invalid smallest model: ...` |
+| `automatic_leave.recording_permission_denied_timeout` outside 60-600 | `recording_permission_denied_timeout must ...` |
+
+A `meeting_link` that starts with `http://` is upgraded to `https://` (not a 400).
+
+**Public addresses only.** Everything the bot or MeetStream connects to on your behalf must resolve to a public address: `callback_url` and workspace webhooks (post-call deliveries), `bot_image_url`, `send_image` / `sendimg_url` image URLs, `initial_audio.url`, and the `bot_camera_stream` signaling host. Private, loopback, link-local and cloud metadata addresses are refused at delivery or download time, usually with no 400. Use a public host or a tunnel.
+
+Full error reference: https://docs.meetstream.ai/errors
+
+---
+
 ## Common Mistakes
 
 1. **Looking for `transcript_id` in the webhook** - it's not there. The webhook only signals timing. Get the `transcript_id` from the `create_bot` response, `GET /bots/{bot_id}/detail` (`bot_details.transcript_id`), or `GET /bots/{bot_id}/transcriptions`.
@@ -1577,7 +1792,7 @@ def delete_bot_data(bot_id: str, confirmed: bool = False) -> dict:
 16. **Live video on Zoom** - not supported. Google Meet and Teams only.
 17. **`in_call_recording_timeout` under 600** - live API rejects with HTTP 400. Minimum 600 seconds.
 18. **Expecting `create_bot` to return HTTP 200** - it returns **HTTP 201 Created** (per OpenAPI and live-verified). `status` field is typically `"Active"`.
-19. **Expecting a post-call transcript from a streaming-only provider** - streaming providers (`meetstream_streaming`, `assemblyai_streaming`, `deepgram_streaming`, `jigsawstack_streaming`, `meeting_captions`) return `transcript_id: null` and never populate `bot_details.transcript_id` or `/transcriptions`. The audio is saved but no transcript exists until you manually call `POST /bots/{bot_id}/transcribe`.
+19. **Expecting a post-call transcript from a streaming-only provider** - streaming providers (`meetstream_streaming`, `assemblyai_streaming`, `deepgram_streaming`, `jigsawstack_streaming`, `smallest_streaming`, `meeting_captions`) return `transcript_id: null` and never populate `bot_details.transcript_id` or `/transcriptions`. The audio is saved but no transcript exists until you manually call `POST /bots/{bot_id}/transcribe`.
 20. **Waiting for `transcription.processed` on a streaming-only bot**: it never fires for Path B. Use `bot.done`, which fires on both paths, as the "session finished" signal.
 25. **Branching on `event == "bot.kicked"` or `"bot.notallowed"`**: those names only appear in `bot_event`. Every terminal's `event` is `bot.stopped`.
 21. **Treating `bot.error` as a fatal event** - it's only a streaming-provider warning (upstream auth issue). The bot continues recording; only live transcription is impacted.
@@ -1586,8 +1801,16 @@ def delete_bot_data(bot_id: str, confirmed: bool = False) -> dict:
 24. **Polling `/transcript/{tid}/get_transcript` without a bound** - on failure it returns HTTP 202 forever. Always check `bot_details.TranscriptStatus` (authoritative: `"Success"`/`"Failed"`/`None`) or watch for the `transcription.failed` webhook to break out.
 25. **Sharing one Teams account across concurrent signed-in bots** - Teams allows one bot per account at a time; extra bots get 409/429. Register one account per concurrent bot. Also don't expect `bot_name` / `bot_image_url` to apply on a signed-in Teams join: the Microsoft account's name and picture are used.
 26. **Using PUT or `GET /google-logins/{id}` for Google logins** - updates are PATCH (with `domain` in the body), deletes need `?domain=`, and there is no GET-by-id.
-27. **Turning video on without a layout** - the API default is `grid_view`. Whenever `video_required: true`, send `recording_config.video_layout: "speaker_view"` unless the user explicitly asked for grid or gallery view. Only `"speaker_view"` and `"grid_view"` validate; the field is ignored when video is off; Google Meet, Teams and Zoom accept both, and WhatsApp accepts only `"grid_view"`.
-28. **Setting `video_separate_streams` because it looked useful** - per-participant video is opt-in only. Never set it unless the user explicitly asked for per-participant video streams. Per-participant `audio_separate_streams` is not affected by this rule.
+27. **Turning video on without a layout** - the API default is `grid_view`. Whenever `video_required: true`, send `recording_config.video_layout: "speaker_view"` unless the user explicitly asked for grid or gallery view. `"speaker_view"` and `"grid_view"` work on Google Meet, Teams and Zoom; Google Meet and Teams also accept `"speaker_view_default"` / `"grid_view_default"` (Zoom returns 400 for them); the field is ignored when video is off; WhatsApp accepts only `"grid_view"`.
+28. **Setting `video_separate_streams` because it looked useful** - per-participant video is opt-in only. Never set it unless the user explicitly asked for per-participant video streams. Per-participant `audio_separate_streams` is not affected by this rule. On Google Meet and Teams it also needs `video_required: true`, else 400.
+29. **Sending `raise_hand` before the bot is in the meeting** - `send_command` hand commands return 409 while the bot is joining or in the lobby. Wait for `bot.inmeeting`. Read `hand_raised` from the response; it is the real state in the meeting, not an echo.
+30. **Waiting for hand events on the workspace webhook** - `participant_events.raise_hand` / `.lower_hand` go only to `recording_config.realtime_endpoints` entries that list them.
+31. **Telling the user to create a Zoom app** - Zoom needs no setup. Use `zoom.use_own_app: true` only when the user must join with their own app, and never combine `use_own_app: false` with `zak_url` / `obf_url` (400). There is no fallback when Zoom refuses the user's app.
+32. **Parsing `get_speaker_timeline` as the timeline every time** - large timelines return `{speaker_timeline_url, size_bytes, truncated}` instead. Check for `speaker_timeline_url` and download it (no API key, valid 1 hour).
+33. **Reading only `error` from an error body** - most errors are `{"message": "..."}`, and remove_bot / stop_status / transcriptions errors moved from `error` to `message`. Read `message`, then `error`, then fall back to the raw text.
+34. **Retrying `create_bot` in a tight loop on 429** - prepaid accounts get 5 creates per minute and 50 per hour. Sleep for the `Retry-After` seconds and resend with the same `Idempotency-Key` / `deduplication_key`.
+35. **Pointing `callback_url`, `bot_image_url`, image URLs or `bot_camera_stream` at a private address** - they must resolve to public addresses. Private, loopback and metadata addresses are refused at delivery or download time, usually with no 400.
+36. **Using Anthropic Claude as a transcription provider** - Claude is a MIA LLM (`model.provider: "anthropic"` in `POST /api/v1/mia`, pipeline mode). It is not a `recording_config.transcript.provider` key.
 
 ---
 

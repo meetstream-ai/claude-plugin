@@ -100,7 +100,7 @@ for name, provider in providers.items():
         "automatic_leave": {
             "waiting_room_timeout": 600, "everyone_left_timeout": 600,
             "voice_inactivity_timeout": 600, "in_call_recording_timeout": 600,
-            "recording_permission_denied_timeout": 300,
+            "recording_permission_denied_timeout": 600,
         },
     }
     code, body = req("POST", "/bots/create_bot", payload)
@@ -138,7 +138,7 @@ for name, provider in streaming.items():
         "automatic_leave": {
             "waiting_room_timeout": 600, "everyone_left_timeout": 600,
             "voice_inactivity_timeout": 600, "in_call_recording_timeout": 600,
-            "recording_permission_denied_timeout": 300,
+            "recording_permission_denied_timeout": 600,
         },
     }
     code, body = req("POST", "/bots/create_bot", payload)

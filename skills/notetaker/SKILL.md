@@ -153,7 +153,7 @@ def create_bot(meeting_link: str, callback_url: str, custom_attributes: dict) ->
             "everyone_left_timeout": 600,
             "voice_inactivity_timeout": 600,
             "in_call_recording_timeout": 14400,
-            "recording_permission_denied_timeout": 300,
+            "recording_permission_denied_timeout": 600,
         },
     })
     resp.raise_for_status()

@@ -46,7 +46,7 @@ async function createBot(meetingLink: string, callbackUrl: string): Promise<stri
       everyone_left_timeout: 600,
       voice_inactivity_timeout: 600,
       in_call_recording_timeout: 14400,
-      recording_permission_denied_timeout: 300
+      recording_permission_denied_timeout: 600
     }
   }, { headers })
 
@@ -259,7 +259,7 @@ async function createRealtimeBot(meetingLink: string, webhookUrl: string): Promi
       waiting_room_timeout: 600,
       everyone_left_timeout: 600,
       in_call_recording_timeout: 14400,
-      recording_permission_denied_timeout: 300
+      recording_permission_denied_timeout: 600
     }
   }, { headers })
 
@@ -441,7 +441,7 @@ async function createInteractiveBot(meetingLink: string, controlWsUrl: string): 
     automatic_leave: {
       waiting_room_timeout: 600,
       everyone_left_timeout: 600,
-      recording_permission_denied_timeout: 300
+      recording_permission_denied_timeout: 600
     }
   }, { headers })
   return data.bot_id
@@ -886,6 +886,27 @@ async function createPipelineAgent() {
   return data.agent_config_id as string
 }
 
+// Anthropic Claude as the LLM: pipeline mode only, key saved under model
+// integrations (provider "anthropic"). temperature 0-1; tool_choice only
+// "auto" or "none"; top_p / frequency_penalty / presence_penalty / logit_bias
+// return 400. Claude is a MIA LLM only, never a transcription provider.
+async function createClaudeAgent() {
+  const { data } = await axios.post(`${BASE_URL}/mia`, {
+    agent_name: 'Claude Assistant',
+    mode: 'pipeline',
+    model: {
+      provider: 'anthropic',
+      model: 'claude-haiku-5-5',  // fastest replies; claude-sonnet-5-5 for harder tasks
+      system_prompt: 'You are a concise meeting assistant.',
+      temperature: 0.5
+    },
+    voice: { provider: 'openai', voice_id: 'nova' },
+    transcriber: { provider: 'deepgram', model: 'nova-3', language: 'en' },
+    agent: { response_type: 'voice' }
+  }, { headers })
+  return data.agent_config_id as string
+}
+
 async function createRealtimeAgent() {
   const { data } = await axios.post(`${BASE_URL}/mia`, {
     agent_name: 'Fast Voice Agent',
@@ -1067,5 +1088,90 @@ async function addPostCallTranscriptToStreamingBot(botId: string, callbackUrl: s
   })
   // Wait for transcription.processed webhook, then use canonical getTranscript() (Pattern 1) -
   // bot_details.transcript_id will already point at the new run.
+}
+```
+
+---
+
+## Pattern 12: In-Meeting Commands, Errors and Rate Limits
+
+Raise / lower hand, `update_mia` with `wait_for_ack`, the speaker timeline download link, the uniform error body and the prepaid 429 with `Retry-After`.
+
+```typescript
+import axios, { AxiosError } from 'axios'
+
+const MEETSTREAM_API_KEY = process.env.MEETSTREAM_API_KEY!
+const BASE_URL = 'https://api.meetstream.ai/api/v1'
+const headers = { 'Authorization': `Token ${MEETSTREAM_API_KEY}`, 'Content-Type': 'application/json' }
+
+// ─── Error text: {"message"} first, then {"error"}, then a bare string ───────
+function errorText(err: unknown): string {
+  const body = (err as AxiosError)?.response?.data as any
+  if (body && typeof body === 'object') return body.message ?? body.error ?? JSON.stringify(body)
+  if (typeof body === 'string') return body
+  return String(err)
+}
+
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
+
+// ─── create_bot that honors Retry-After (prepaid: 5/min, 50/hour) ─────────────
+// Reuse the same Idempotency-Key on every attempt so a retry never makes a
+// second bot. 409 with Retry-After also means "the same key is still saving".
+async function createBotWithRetry(body: object, idempotencyKey: string, maxAttempts = 5) {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      const { data } = await axios.post(`${BASE_URL}/bots/create_bot`, body, {
+        headers: { ...headers, 'Idempotency-Key': idempotencyKey },
+        // 507 = idempotent replay of the same bot: a success, not an error
+        validateStatus: s => s === 201 || s === 507
+      })
+      return data  // { bot_id, transcript_id, meeting_url, status }
+    } catch (err) {
+      const res = (err as AxiosError).response
+      const retryAfter = Number(res?.headers?.['retry-after'])
+      if (res && (res.status === 429 || res.status === 409) && retryAfter > 0 && attempt < maxAttempts) {
+        console.warn(`create_bot ${res.status}: ${errorText(err)}; retrying in ${retryAfter}s`)
+        await sleep(retryAfter * 1000)
+        continue
+      }
+      throw new Error(`create_bot failed (${res?.status}): ${errorText(err)}`)
+    }
+  }
+}
+
+// ─── Raise / lower hand (bot must be InMeeting or Recording, else 409) ───────
+async function setHand(botId: string, raised: boolean): Promise<boolean> {
+  const { data } = await axios.post(
+    `${BASE_URL}/bots/${botId}/send_command`,
+    { command: raised ? 'raise_hand' : 'lower_hand' },
+    { headers, timeout: 15_000 }  // the bot answers within 10 s
+  )
+  // { status: "accepted", bot_id, command, hand_raised }
+  // hand_raised is the state read back from the meeting, not an echo.
+  return data.hand_raised
+}
+
+// ─── update_mia and wait for the agent to confirm ─────────────────────────────
+async function updateMiaConfirmed(botId: string, params: Record<string, string | number | boolean>) {
+  const { data } = await axios.post(
+    `${BASE_URL}/bots/${botId}/update_mia`,
+    { agent_config_params: params, wait_for_ack: true },
+    { headers }
+  )
+  // status: applied | partially_applied | failed | accepted (ack_timeout: true)
+  if (data.status === 'failed' || data.status === 'partially_applied') {
+    console.warn('update_mia errors:', data.errors)  // [{ field, reason }]
+  }
+  return data
+}
+
+// ─── Speaker timeline: inline JSON, or a download link for large timelines ───
+async function getSpeakerTimeline(botId: string) {
+  const { data } = await axios.get(`${BASE_URL}/bots/${botId}/get_speaker_timeline`, { headers })
+  if (data && typeof data === 'object' && 'speaker_timeline_url' in data) {
+    // Pre-signed, valid 1 hour, no API key. Same format as the inline body.
+    return (await axios.get(data.speaker_timeline_url)).data
+  }
+  return data
 }
 ```
