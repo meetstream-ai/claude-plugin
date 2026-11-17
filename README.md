@@ -129,8 +129,7 @@ skills/
 ├── verify-account/         ← Probe which providers are configured in your account
 ├── test-bot/               ← Send a test bot + watch webhooks live
 ├── join-meeting/           ← Send a bot to YOUR meeting (now or later)
-├── meeting-brief/          ← After the call: notes, decisions, action items, saved and remembered
-└── meeting-chat/           ← (beta) Answer questions in the meeting chat while the bot is in the call
+└── meeting-brief/          ← After the call: notes, decisions, action items, saved and remembered
 
 .mcp.json                   ← Hosted MeetStream MCP server (browser sign-in, no key to copy)
 
