@@ -64,7 +64,7 @@ curl -s -X POST "https://api.meetstream.ai/api/v1/bots/create_bot" \
       \"everyone_left_timeout\": 600,
       \"voice_inactivity_timeout\": 600,
       \"in_call_recording_timeout\": 14400,
-      \"recording_permission_denied_timeout\": 300
+      \"recording_permission_denied_timeout\": 600
     }
   }" | python3 -m json.tool
 ```

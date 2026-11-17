@@ -2,6 +2,30 @@
 
 All notable changes to the MeetStream Claude Code plugin.
 
+## [2.6.0] - 2026-11-16
+
+Brings the plugin up to MeetStream API v1.7.0 to v1.9.0.
+
+### Added
+- **Raise / lower hand.** `POST /bots/{bot_id}/send_command` with `raise_hand` / `lower_hand`: response shape (`hand_raised` is the state read back from the meeting), the bot must be `InMeeting` or `Recording` (409 otherwise), 10-second answer window, 400 on WhatsApp and Zoom RTMS, 501 outside the US region. New "In-Meeting Commands" section in the core skill, the API reference, and Node and Python helpers (Pattern 12).
+- **Participant hand events** `participant_events.raise_hand` / `participant_events.lower_hand` (Google Meet, Zoom): opt-in through `recording_config.realtime_endpoints`, never sent to workspace webhooks, transitions only.
+- **`zoom.use_own_app`** (`true` / `false` / omitted) with its 400s, the region 400, and the fact that there is no fallback when Zoom refuses the user's own app. Works on calendar schedule and scheduled-bot PATCH too.
+- **`bot_camera_stream`** (live WebRTC video/audio into the bot camera): platforms, wss rules, the Zoom `agent_config_id` conflict, public signaling host.
+- **`storage_id`** on `create_bot` (format, 400s, scheduled-bot recheck).
+- **`video_layout` values `speaker_view_default` / `grid_view_default`** for Google Meet and Teams (Zoom returns 400). House default stays `speaker_view`. Google Meet speaker view is 1600x900.
+- **Smallest AI transcription** (`smallest` post-call, `smallest_streaming` live): models, options, key location and errors. Also accepted by `/transcribe`.
+- **Anthropic Claude as a MIA LLM** (`model.provider: "anthropic"`, pipeline only) with its constraints, plus a Node and Python example. Stated that Claude is not a transcription provider.
+- **`update_mia` with `wait_for_ack`** (`applied` / `partially_applied` / `failed` / `accepted`, `errors`, `ack_timeout`).
+- **Failure reasons** `MeetingRestricted`, `SignInRequired` (now also on Teams) and `InvalidMeetingLink` (now also on Teams), read from `bot_details.ErrorReason`.
+- **"Errors, Rate Limits and Validation"** section: uniform `{"message": ...}` error body, prepaid 429 (5 per minute, 50 per hour) with `Retry-After`, the new `create_bot` 400s, and the public-address rule for webhooks, image URLs and camera signaling. Node and Python `create_bot` retry helpers honor `Retry-After` and treat 507 as success.
+- Debugger agent: catalog rows for all of the above.
+
+### Changed
+- **`get_speaker_timeline`** can return `{bot_id, speaker_timeline_url, size_bytes, truncated}` for large timelines. Documented in the core skill, API reference, Recall migration map and both code-pattern files.
+- **`recording_permission_denied_timeout`** range is 60 to 600 seconds, default 600 (was 60 to 300). Examples now send 600.
+- **`bot_image_url`** must be an https:// PNG, JPEG, GIF or WebP URL on a public host; bad values return 400 instead of being dropped.
+- Zoom `meeting_captions` works only on bots that join without the user's own Zoom app (400 with it). The platform table no longer says Zoom needs setup, and MIA agents on the no-setup Zoom bot can show images, video and an avatar.
+
 ## [2.5.1] - 2026-11-15
 
 ### Changed

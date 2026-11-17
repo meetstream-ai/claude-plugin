@@ -142,7 +142,7 @@ Specifically verified live:
 - ✅ `bot_details.transcript_id` is the canonical stateless fetch path (not in any webhook payload)
 - ✅ Streaming providers produce **no post-call** `transcription.processed` event - lifecycle ends at `audio.processed`
 - ✅ `bot.error` fires mid-meeting for streaming-provider auth issues (bot keeps recording)
-- ✅ `recording_permission_denied_timeout` range is **60–300** seconds
+- ✅ `recording_permission_denied_timeout` range is **60–600** seconds (default 600)
 - ✅ `in_call_recording_timeout` minimum is **600** seconds
 - ✅ `POST /bots/{id}/transcribe` overwrites `bot_details.transcript_id` and fires exactly one webhook (no `bot.done` follow-up)
 
