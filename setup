@@ -1,0 +1,183 @@
+#!/usr/bin/env bash
+# MeetStream plugin setup: links the skills into your agent and adds the
+# hosted MeetStream MCP server (OAuth sign-in). Safe to run again.
+#
+#   ./setup --host claude|codex|cursor|muse|hermes|openclaw|copilot [--dry-run]
+#
+# Claude Code, Codex, Copilot CLI and OpenClaw can also install the plugin
+# straight from GitHub; see INSTALL_FOR_AGENTS.md. This script is the path for
+# agents with no plugin installer (Muse Code) and the fallback for the rest.
+# Hermes and Cursor have their own MeetStream plugins; setup installs or points to those.
+set -euo pipefail
+
+MCP_NAME="meetstream"
+MCP_URL="https://mcp.meetstream.ai/mcp"
+REPO="meetstream-ai/claude-plugin"
+
+if [ -t 1 ]; then G=$'\033[32m' Y=$'\033[33m' R=$'\033[31m' B=$'\033[1m' N=$'\033[0m'; else G="" Y="" R="" B="" N=""; fi
+ok()   { echo "${G}✓${N} $*"; }
+warn() { echo "${Y}!${N} $*"; }
+err()  { echo "${R}✗${N} $*" >&2; }
+info() { echo "${B}→${N} $*"; }
+
+ROOT="$(cd "$(dirname "$0")" && pwd)"
+[ -f "$ROOT/.claude-plugin/plugin.json" ] && [ -d "$ROOT/skills/meetstream" ] || { err "Run this from the plugin repo root."; exit 1; }
+VERSION="$(sed -n 's/.*"version": *"\([^"]*\)".*/\1/p' "$ROOT/.claude-plugin/plugin.json" | head -1)"
+SKILLS=()
+for d in "$ROOT"/skills/*/; do [ -f "$d/SKILL.md" ] && SKILLS+=("$(basename "$d")"); done
+
+HOST="" TARGET="" DRY=0
+usage() {
+  cat <<EOF
+Usage: ./setup --host <agent> [options]
+
+  --host <agent>      claude | codex | cursor | muse | hermes | openclaw | copilot
+  --target-dir <dir>  Link the skills here instead of the agent's default folder
+  --mcp-url <url>     MCP server URL (default $MCP_URL)
+  --dry-run           Print what would change; change nothing
+  -h, --help          This help
+
+Skills: ${SKILLS[*]}
+EOF
+}
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --host) HOST="${2:-}"; shift 2 ;;
+    --host=*) HOST="${1#--host=}"; shift ;;
+    --target-dir) TARGET="${2:-}"; shift 2 ;;
+    --mcp-url) MCP_URL="${2:-}"; shift 2 ;;
+    --dry-run) DRY=1; shift ;;
+    -h|--help) usage; exit 0 ;;
+    *) err "Unknown option: $1"; usage; exit 1 ;;
+  esac
+done
+
+if [ -z "$HOST" ]; then
+  for h in claude codex hermes muse openclaw cursor; do
+    if command -v "$h" >/dev/null 2>&1 || { [ "$h" = cursor ] && [ -d "$HOME/.cursor" ]; }; then HOST="$h"; break; fi
+  done
+  [ -n "$HOST" ] || { err "Could not detect your agent. Pass --host."; usage; exit 1; }
+  info "Detected agent: $HOST (pass --host to choose another)"
+fi
+
+# run CMD...: run a command, or print it in --dry-run.
+run() {
+  if [ "$DRY" -eq 1 ]; then echo "  [dry-run] $*"; else "$@"; fi
+}
+
+link_skills() {
+  local dir="$1"
+  info "Linking skills into $dir"
+  run mkdir -p "$dir"
+  for s in "${SKILLS[@]}"; do
+    local src="$ROOT/skills/$s" dst="$dir/$s"
+    if [ -L "$dst" ]; then
+      if [ "$(readlink "$dst")" = "$src" ]; then ok "$s already linked"; continue; fi
+      run rm "$dst"
+    elif [ -e "$dst" ]; then
+      warn "$dst exists and is not our link; left alone"; continue
+    fi
+    run ln -s "$src" "$dst"; ok "$s linked"
+  done
+}
+
+# merge_json FILE PYTHON: edit a JSON settings file in place (backup first).
+merge_json() {
+  local file="$1" code="$2"
+  command -v python3 >/dev/null || { err "python3 is needed to edit $file. Add the MCP server by hand: $MCP_NAME = $MCP_URL"; return 1; }
+  if [ "$DRY" -eq 1 ]; then echo "  [dry-run] add '$MCP_NAME' ($MCP_URL) to $file"; return 0; fi
+  mkdir -p "$(dirname "$file")"
+  [ -f "$file" ] && cp "$file" "$file.bak.$(date +%Y%m%d%H%M%S)"
+  MCP_NAME="$MCP_NAME" MCP_URL="$MCP_URL" python3 - "$file" <<PY
+import json, os, sys
+p = sys.argv[1]
+try:
+    d = json.load(open(p))
+except FileNotFoundError:
+    d = {}
+name, url = os.environ["MCP_NAME"], os.environ["MCP_URL"]
+$code
+json.dump(d, open(p, "w"), indent=2)
+open(p, "a").write("\n")
+PY
+  ok "Added '$MCP_NAME' to $file"
+}
+
+echo "${B}MeetStream plugin v$VERSION → $HOST${N}"
+[ "$DRY" -eq 1 ] && warn "Dry run: nothing will change"
+
+LOGIN=""
+case "$HOST" in
+  claude)
+    if command -v claude >/dev/null && [ -z "$TARGET" ]; then
+      info "Installing the Claude Code plugin (skills + MCP server)"
+      run claude plugin marketplace add "$REPO" || warn "marketplace add failed; falling back to linked skills"
+      if run claude plugin install meetstream@meetstream-ai; then
+        LOGIN="Restart Claude Code, run /mcp, pick 'meetstream', then Authenticate"
+      fi
+    fi
+    if [ -z "$LOGIN" ]; then
+      link_skills "${TARGET:-$HOME/.claude/skills}"
+      run claude mcp add --transport http --scope user "$MCP_NAME" "$MCP_URL" || warn "Add it by hand: claude mcp add --transport http --scope user $MCP_NAME $MCP_URL"
+      LOGIN="Restart Claude Code, run /mcp, pick 'meetstream', then Authenticate"
+    fi
+    ;;
+  codex)
+    link_skills "${TARGET:-$HOME/.agents/skills}"
+    if command -v codex >/dev/null; then
+      if codex mcp get "$MCP_NAME" >/dev/null 2>&1; then ok "Codex already has MCP server '$MCP_NAME'"
+      else run codex mcp add "$MCP_NAME" --url "$MCP_URL"; fi
+    else warn "codex not on PATH. Later: codex mcp add $MCP_NAME --url $MCP_URL"; fi
+    LOGIN="codex mcp login $MCP_NAME"
+    ;;
+  cursor)
+    info "Cursor has its own MeetStream plugin: https://github.com/meetstream-ai/meetstream-cursor-plugin"
+    info "Install it from the Cursor marketplace (search MeetStream), or add the MCP server below."
+    merge_json "$HOME/.cursor/mcp.json" 'd.setdefault("mcpServers", {})[name] = {"url": url}'
+    LOGIN="Open Cursor Settings → MCP, then click Connect next to 'meetstream'"
+    ;;
+  muse)
+    link_skills "${TARGET:-$HOME/.agents/skills}"
+    # Muse Code keeps MCP servers under mcp_servers in ~/.config/muse/settings.json.
+    merge_json "${MUSE_SETTINGS:-$HOME/.config/muse/settings.json}" 'd.setdefault("mcp_servers", {})[name] = {"transport": "streamable_http", "url": url}'
+    LOGIN="muse mcp login $MCP_NAME"
+    ;;
+  hermes)
+    # Hermes has its own MeetStream plugin (live meeting chat through the Hermes
+    # gateway): https://github.com/meetstream-ai/hermes-meetstream
+    if command -v hermes >/dev/null; then
+      run hermes plugins install meetstream-ai/hermes-meetstream --enable
+    else
+      warn "hermes not on PATH. Later: hermes plugins install meetstream-ai/hermes-meetstream --enable"
+    fi
+    LOGIN="Paste your MeetStream API key when Hermes asks for MEETSTREAM_API_KEY (create one at https://app.meetstream.ai/api-key), then start a new Hermes session"
+    ;;
+  openclaw)
+    if command -v openclaw >/dev/null && [ -z "$TARGET" ]; then
+      info "Installing the plugin bundle (OpenClaw reads Claude plugin bundles)"
+      run openclaw plugins install meetstream --marketplace "$REPO" || { warn "bundle install failed; linking skills instead"; link_skills "$HOME/.openclaw/skills"; }
+      run openclaw mcp set "$MCP_NAME" "{\"url\":\"$MCP_URL\",\"transport\":\"streamable-http\",\"auth\":\"oauth\"}"
+    else
+      link_skills "${TARGET:-$HOME/.openclaw/skills}"
+      warn "Later: openclaw mcp set $MCP_NAME '{\"url\":\"$MCP_URL\",\"transport\":\"streamable-http\",\"auth\":\"oauth\"}'"
+    fi
+    LOGIN="openclaw mcp login $MCP_NAME"
+    ;;
+  copilot)
+    if command -v copilot >/dev/null && [ -z "$TARGET" ]; then
+      run copilot plugin install "$REPO"
+    else
+      link_skills "${TARGET:-$HOME/.copilot/skills}"
+      warn "Add the MCP server in Copilot CLI with /mcp add: $MCP_NAME, HTTP, $MCP_URL"
+    fi
+    LOGIN="In Copilot CLI, run /mcp and sign in to 'meetstream'"
+    ;;
+  *) err "Unknown host: $HOST"; usage; exit 1 ;;
+esac
+
+echo
+ok "Done. Next:"
+echo "  1. Sign in: $LOGIN"
+echo "     (a browser opens app.meetstream.ai: sign in or sign up, then click Allow)"
+echo "  2. Ask your agent: \"List my MeetStream bots\" (it should call list_bots)"
+echo "  3. Then: \"Send a bot to <meeting link> and take notes\""

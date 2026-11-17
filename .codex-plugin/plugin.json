@@ -1,0 +1,42 @@
+{
+  "name": "meetstream",
+  "version": "2.6.0",
+  "description": "Send meeting bots to Zoom, Google Meet and Microsoft Teams, then get transcripts and notes after the call; build on the MeetStream API.",
+  "author": {
+    "name": "MeetStream",
+    "email": "hello@meetstream.ai",
+    "url": "https://meetstream.ai"
+  },
+  "homepage": "https://github.com/meetstream-ai/claude-plugin",
+  "repository": "https://github.com/meetstream-ai/claude-plugin",
+  "license": "MIT",
+  "keywords": [
+    "meetstream",
+    "meeting-bot",
+    "meeting-notes",
+    "transcription",
+    "zoom",
+    "google-meet",
+    "microsoft-teams"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "MeetStream",
+    "shortDescription": "Meeting bots, transcripts and notes for Zoom, Meet and Teams",
+    "longDescription": "MeetStream sends a bot into your Zoom, Google Meet or Microsoft Teams call. After the call, Codex fetches the transcript and writes notes, decisions and action items, and remembers them. Sign in once in the browser; bots bill per hour from MeetStream credits. Also includes the MeetStream API reference and app scaffolds.",
+    "developerName": "MeetStream",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://meetstream.ai",
+    "defaultPrompt": [
+      "Send a MeetStream bot to my meeting and take notes",
+      "Get the notes from my last meeting",
+      "Build me an AI meeting notetaker"
+    ],
+    "brandColor": "#5C4EFF"
+  }
+}

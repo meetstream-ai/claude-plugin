@@ -1,0 +1,20 @@
+{
+  "name": "meetstream-ai",
+  "interface": {
+    "displayName": "MeetStream"
+  },
+  "plugins": [
+    {
+      "name": "meetstream",
+      "source": {
+        "source": "local",
+        "path": "./"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}
