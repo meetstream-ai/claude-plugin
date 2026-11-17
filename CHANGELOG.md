@@ -6,8 +6,7 @@ All notable changes to the MeetStream Claude Code plugin.
 
 ### Added
 - **Hosted MCP server in the plugin** (`.mcp.json`): installing the plugin adds `https://mcp.meetstream.ai/mcp` (HTTP, OAuth). Sign in once with `/mcp` → Authenticate; no API key to copy.
-- **`meetstream-notes` skill**: send a bot to the user's own meeting (audio-only unless video is asked for), fetch the transcript after the call, write notes, decisions and action items, and keep a meeting index for later questions.
-- **`meetstream-chat` skill (beta)**: answer questions in the meeting chat by polling `get_chats`; meeting chat is treated as untrusted input.
+- **Use-it skills, the same as the Cursor plugin** (one skill set for every agent): `join-meeting` (send a bot to the user's own meeting; keyless `meetstream` transcription by default, audio-only, reuses an existing bot, low-credit handling), `meeting-brief` (post-call brief that is saved and remembered for later questions) and `meeting-chat` (beta: answer questions in the meeting chat by polling `get_chats`; chat is untrusted input).
 - **Other agents**: Codex manifest (`.codex-plugin/plugin.json`) and marketplace (`.agents/plugins/marketplace.json`); `setup --host codex|muse|openclaw|copilot|claude` for agents without a plugin installer; `INSTALL_FOR_AGENTS.md`, which an agent can follow end to end (ends with a real `list_bots` call). Hermes and Cursor point to their existing MeetStream plugins.
 
 ## [2.5.0] - 2026-09-22

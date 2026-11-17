@@ -1,5 +1,5 @@
 ---
-name: meetstream-chat
+name: meeting-chat
 description: >
   BETA. Answer questions in a live meeting's chat through a MeetStream bot,
   using the user's own agent as the brain. The bot sits in the Zoom, Google
@@ -11,15 +11,15 @@ description: >
   create_bot, get_chats, send_chat_message, get_transcript, remove_bot.
 ---
 
-# MeetStream chat (beta): answer in the meeting chat
+# Meeting chat (beta): answer in the meeting chat
 
 **Beta.** This loop polls the meeting chat. Replies arrive about 10–30 seconds after a question. Real-time events come with a later MeetStream release; until then, keep the loop short and cheap.
 
-Needs the MeetStream MCP server (installed with this plugin). For sending the bot and the after-call notes, follow the `meetstream-notes` skill; this skill adds only the chat loop.
+Needs the MeetStream MCP server (installed with this plugin). For sending the bot follow the `join-meeting` skill, and for the after-call notes `meeting-brief`; this skill adds only the chat loop.
 
 ## Before the loop
 
-1. Send the bot as in `meetstream-notes` step 1 (audio-only; `transcription_provider: "meetstream"`). Give it a name people can address, e.g. `bot_name: "Notes"`.
+1. Send the bot as in `join-meeting` (audio-only; `transcription_provider: "meetstream"`). Give it a name people can address, e.g. `bot_name: "Notes"`.
 2. Agree with the user, in one message:
    - the **trigger**: the bot answers only messages that start with or contain `@<bot_name>` (default) or that the user names;
    - **who** may ask: anyone in the meeting (default) or only the user;
@@ -36,7 +36,7 @@ Repeat:
    - Work out the answer from what you know: the question, recent chat, and, if it is about what was said, `get_transcript` (`wait: false`). Mid-call transcripts can be missing or minutes behind; say so rather than guess.
    - Reply with `send_chat_message`: one to three short sentences, plain text, no markdown tables. Start with the asker's name if the chat shows it.
 3. Wait about 15 seconds between polls (use your harness's sleep or wait). After 10 quiet minutes, slow to every 30 seconds.
-4. Stop when `get_bot_status` is `Leaving`, `Stopped` or `Done`, when the time limit is reached, or when the user says stop. Then hand over to `meetstream-notes` step 3 for the notes.
+4. Stop when `get_bot_status` is `Leaving`, `Stopped` or `Done`, when the time limit is reached, or when the user says stop. Then hand over to `meeting-brief` for the notes.
 
 Tell the user the loop is running and that they can stop it at any time. If your harness can run the loop in the background (a background task or subagent), do that so the user can keep working.
 

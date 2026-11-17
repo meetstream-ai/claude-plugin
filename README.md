@@ -128,8 +128,9 @@ skills/
 ├── calendar-automation/    ← Google Calendar OAuth + auto-record every meeting
 ├── verify-account/         ← Probe which providers are configured in your account
 ├── test-bot/               ← Send a test bot + watch webhooks live
-├── meetstream-notes/       ← Send a bot to YOUR meeting, get notes and action items after the call
-└── meetstream-chat/        ← (beta) Answer questions in the meeting chat while the bot is in the call
+├── join-meeting/           ← Send a bot to YOUR meeting (now or later)
+├── meeting-brief/          ← After the call: notes, decisions, action items, saved and remembered
+└── meeting-chat/           ← (beta) Answer questions in the meeting chat while the bot is in the call
 
 .mcp.json                   ← Hosted MeetStream MCP server (browser sign-in, no key to copy)
 
