@@ -16,13 +16,13 @@ before writing anything. Never summarize a meeting you have not actually read.
 
 ## Fastest route to a brief
 
-1. **`get_bot_summary`** - MeetStream's own AI summary. Try this first; it is one call.
-2. **`get_transcript`** - the full transcript when you need detail, quotes, or your
-   own analysis.
-3. **`get_speaker_timeline`** - who spoke and for how long.
-4. **`get_participants`** - the attendee list.
+1. **`get_transcript`** with `wait: true` - the speaker-labelled transcript. Everything
+   in the brief comes from here.
+2. **`get_speaker_timeline`** - who spoke and for how long.
+3. **`get_participants`** - the attendee list.
 
-For a rich brief, combine 2-4. For "just tell me what happened", 1 is often enough.
+MeetStream has no built-in meeting summary (`get_bot_summary` only says so): write the
+brief yourself from the transcript.
 
 ## Reading the transcript correctly
 

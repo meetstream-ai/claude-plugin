@@ -98,4 +98,4 @@ For the complete event catalog and payloads, use the `webhook_events_guide` refe
 
 ## What to tell the client
 
-MeetStream matches Recall on the core bot lifecycle, recording, per-participant streams, real-time audio/transcript, chat + image output, calendar (Google + Outlook), scheduling, signed-in bots, retention, and now **pause/resume recording** - and adds native AI summaries (`GET /bots/{id}/summary`) and MIA voice agents. Same auth scheme, near-identical endpoints, lower price.
+MeetStream matches Recall on the core bot lifecycle, recording, per-participant streams, real-time audio/transcript, chat + image output, calendar (Google + Outlook), scheduling, signed-in bots, retention, and now **pause/resume recording** - and adds MIA voice agents. Same auth scheme, near-identical endpoints, lower price.

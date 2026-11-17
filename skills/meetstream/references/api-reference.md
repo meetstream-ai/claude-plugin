@@ -92,8 +92,8 @@ transcript_id
 
 ---
 
-### GET `/bots/{bot_id}/summary`
-Returns the generated meeting summary if a summary workflow was configured. Response shape is `BotDetailsResponse` (same as `/detail`). **Path is `/summary`, not `/get_summary`.**
+### ~~GET `/bots/{bot_id}/summary`~~ (not available)
+The API has no summary route (checked on the live route table, 2026-11-17); calls return 404. Fetch the transcript and summarize it with your own model.
 
 ---
 
