@@ -1,0 +1,36 @@
+name: validate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install Claude Code (validator only, no sign-in)
+        run: npm install -g @anthropic-ai/claude-code
+      - name: Validate the plugin and marketplace manifests
+        run: claude plugin validate .
+      - name: Validate every skill strictly
+        run: claude plugin validate --strict skills
+      - name: JSON manifests parse
+        run: |
+          for f in .claude-plugin/*.json .cursor-plugin/*.json .mcp.json mcp.json; do
+            python3 -m json.tool "$f" > /dev/null || { echo "bad JSON: $f"; exit 1; }
+          done
+      - name: Versions match across manifests
+        run: |
+          v1=$(python3 -c "import json;print(json.load(open('.claude-plugin/plugin.json'))['version'])")
+          v2=$(python3 -c "import json;print(json.load(open('.cursor-plugin/plugin.json'))['version'])")
+          [ "$v1" = "$v2" ] || { echo "version mismatch: claude $v1, cursor $v2"; exit 1; }
+      - name: setup script parses
+        run: bash -n setup

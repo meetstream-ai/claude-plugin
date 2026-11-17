@@ -1,0 +1,17 @@
+{
+  "$schema": "https://cursor.com/schemas/cursor-plugin/plugin.json",
+  "name": "meetstream",
+  "displayName": "MeetStream",
+  "version": "2.6.0",
+  "description": "Send meeting bots to Zoom, Google Meet and Microsoft Teams and get notes after the call, or build meeting intelligence with the MeetStream API. Hosted MeetStream MCP server with browser sign-in.",
+  "author": {
+    "name": "MeetStream",
+    "email": "hello@meetstream.ai"
+  },
+  "homepage": "https://meetstream.ai",
+  "repository": "https://github.com/meetstream-ai/claude-plugin",
+  "license": "MIT",
+  "keywords": ["meetstream", "meeting-bot", "meeting-notes", "transcription", "zoom", "google-meet", "microsoft-teams", "mcp"],
+  "skills": "./skills",
+  "mcpServers": "./mcp.json"
+}
