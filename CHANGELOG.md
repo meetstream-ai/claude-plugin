@@ -26,6 +26,7 @@ Brings the plugin up to MeetStream API v1.9.0, adds intake routing, and stops ag
 - **Raise / lower hand** through the REST `POST /api/v1/bots/{bot_id}/send_command` (`raise_hand` / `lower_hand`, `hand_raised` in the response, 409 before the bot is in the meeting).
 - **Participant hand events** `participant_events.raise_hand` / `participant_events.lower_hand` (Google Meet, Zoom), opt-in through `recording_config.realtime_endpoints`.
 - `bot_camera_stream`, `storage_id`, `video_layout` values `speaker_view_default` / `grid_view_default` (Google Meet, Teams), Smallest AI transcription (`smallest`, `smallest_streaming`), Anthropic Claude as a voice-agent LLM (not a transcription provider), `update_mia` with `wait_for_ack`, failure reasons `MeetingRestricted`, `SignInRequired`, `InvalidMeetingLink`.
+- **Eval suite** (`evals/`) for `claude plugin eval`, with the hosted MCP tools mocked: sign-in, joining a meeting, a brief from the transcript, Zoom with no setup, raise hand, low credits, an unavailable balance, prompt injection in the meeting chat, intake routing (after the meeting, live, voice agents and their setup order), and two cases that fail on any version-stability or pinning advice.
 - "Errors, Rate Limits and Validation": `{"message": ...}` error bodies, the prepaid 429 (5 per minute, 50 per hour) with `Retry-After`, the `create_bot` 400s and the public-address rule. `join-meeting` handles the 429.
 
 ## [2.6.0] - 2026-11-17

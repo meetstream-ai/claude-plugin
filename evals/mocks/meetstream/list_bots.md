@@ -1,0 +1,1 @@
+{"bots": [{"bot_id": "b7c1e2d4-0a11-4c55-9e10-5d2f8a3b9c01", "bot_name": "Acme Notetaker", "meeting_link": "https://meet.google.com/qrs-tuvw-xyz", "status": "Done", "created_at": "2026-11-17T16:00:12Z"}], "hasNextPage": false, "nextCursor": null}
