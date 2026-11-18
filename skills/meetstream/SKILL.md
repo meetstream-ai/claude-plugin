@@ -105,13 +105,13 @@ Per the OpenAPI `CreateBotRequest` schema, only two fields are required:
 - `meeting_link` (string) - Zoom, Google Meet, or Teams URL
 - `bot_name` (string) - the display name shown in the meeting
 
-`video_required` defaults to **`true`** in the API (the bot records video unless you opt out). **House policy: send `video_required: false` explicitly on every bot** unless the user asked to record video. Omitting the field records video. Audio only is faster to process and smaller to store, and transcripts, summaries, diarization and speaker timelines all work without video.
+`video_required` defaults to **`false`** in the API (an omitted field records audio only). **House policy: still send `video_required` explicitly on every bot** (`false` unless the user asked to record video), so the intent is visible in the request and does not depend on a default. Audio only is faster to process and smaller to store, and transcripts, summaries, diarization and speaker timelines all work without video.
 
 When the user does want video, send `recording_config.video_layout: "speaker_view"` alongside it. The API default layout is `grid_view`, so speaker view only happens if you ask for it.
 
-There is **no `audio_required` field** on `CreateBotRequest`. Audio is recorded by default. (`audio_separate_streams` is a different feature that enables per-participant audio tracks.)
+`audio_required` (bool, default **`true`**) is an optional `CreateBotRequest` field: whether the bot records the mixed meeting audio. Leave it at the default. It must be `true` when `audio_mixed_mp3` is `true`, and it also appears in calendar-scheduled `bot_config` / `default_bot_config`. (`audio_separate_streams` is a different feature that enables per-participant audio tracks.)
 
-> **Note:** `audio_required` DOES exist for **calendar-scheduled** bots - inside `bot_config` on `POST /calendar/schedule/{event_id}`, the auto-schedule `default_bot_config`, etc. The "doesn't exist" rule only applies to `create_bot`.
+> **400 rule:** A bot with `audio_required: false` and `video_required: false` and nothing else to do (no `realtime_endpoints`, live audio/video/transcription stream, `socket_connection_url`, `bot_message` or `agent_config_id`) is rejected with 400 `audio_required and video_required are both false, so the bot would record nothing.`
 
 ---
 
@@ -121,7 +121,7 @@ These three rules are product policy, not API behaviour. The API defaults differ
 
 | Setting | What you send by default | When to change it |
 |---|---|---|
-| `video_required` | `false` | Only `true` when the user explicitly asks to record video. The API default is `true`, so an omitted field records video. |
+| `video_required` | `false`, sent explicitly | Only `true` when the user explicitly asks to record video. The API default is also `false`; send it anyway so the request states the intent. |
 | `recording_config.video_layout` | `"speaker_view"` whenever video is on | Only `"grid_view"` when the user explicitly asks for grid or gallery view. The API default is `grid_view`, so speaker view must be sent. |
 | `video_separate_streams` | never set it | Only `true` when the user explicitly asks for per-participant (per-speaker) video streams. It multiplies storage and processing per participant. |
 
@@ -175,7 +175,7 @@ In all other cases, configure the right provider on `create_bot` up front. `/tra
 
 Walk the user through these questions in order. Each answer pins down one field in the final `create_bot` payload. At the end, you'll have a complete, correct request body tailored to their use case.
 
-> When the user is vague ("I want a meeting bot"), DO NOT guess defaults - actually walk them through this tree. The API defaults are not always what they want (e.g. `video_required` defaults to `true`, which burns storage for transcript-only use cases). The one thing you do not need to ask about is the recording defaults above: video off unless the user mentioned video, speaker view when video is on, per-participant video only on request.
+> When the user is vague ("I want a meeting bot"), DO NOT guess defaults - actually walk them through this tree. The API defaults are not always what they want (e.g. `video_layout` defaults to `grid_view`, and the default retention may be longer or shorter than their policy). The one thing you do not need to ask about is the recording defaults above: video off unless the user mentioned video, speaker view when video is on, per-participant video only on request.
 
 ---
 
@@ -201,8 +201,8 @@ Q1.3: Custom avatar / profile picture?
 Q1.4: Did the user ask to record the meeting VIDEO file (archive, playback)?
       ├─ Yes → "video_required": true   → continue to Q1.4a for the layout
       └─ No  → "video_required": false  (DEFAULT for everything we build)
-               • send it explicitly: the API default is true, so an omitted
-                 field records video
+               • send it explicitly (the API default is also false, but an
+                 explicit value keeps the intent visible)
                • saves storage + bandwidth; audio is still captured, and
                  transcript, summary, diarization and speaker timeline
                  all work without video
@@ -238,7 +238,7 @@ Q1.6: Did the user EXPLICITLY ask for per-participant video tracks
                Per-participant AUDIO (Q1.5) is not affected by this rule.
 ```
 
-> ❌ Do NOT add `"audio_required": true` - that field doesn't exist on `create_bot` (audio is always captured). It DOES exist in calendar-scheduled `bot_config`, which is a different schema.
+> `audio_required` exists on `create_bot` (default `true`). Do not set it to `false` unless the bot has another job: `audio_required: false` with `video_required: false` and nothing else to do returns 400 ("the bot would record nothing").
 
 ---
 
@@ -1780,9 +1780,9 @@ Full error reference: https://docs.meetstream.ai/errors
 4. **Fetching transcript before `transcription.processed`** - always wait for the webhook.
 5. **HTTP callback URL** - must be HTTPS; use ngrok / cloudflared for local dev.
 6. **Wrong calendar field names** - Calendar create requires `google_refresh_token` / `google_client_id` / `google_client_secret` (with the `google_` prefix).
-7. **Using `audio_required` on `create_bot`** - not in the OpenAPI schema. Audio is captured by default. (It DOES exist for calendar-scheduled `bot_config`.)
+7. **Turning off `audio_required` and `video_required` together** - `audio_required` (default `true`) is a real `create_bot` field. With both `false` and no other job (no `realtime_endpoints`, live stream, `socket_connection_url`, `bot_message` or `agent_config_id`), `create_bot` returns 400 because the bot would record nothing.
 8. **Skipping `bot_name`** - it's required, not optional.
-9. **Assuming `video_required` defaults to false** - it defaults to `true` in the API, so an omitted field records video. Send `"video_required": false` explicitly on every bot unless the user asked to record video.
+9. **Relying on the `video_required` default** - it defaults to `false` (audio only), but send it explicitly on every bot anyway (`false` unless the user asked to record video), so a copied example with `true` does not silently record video.
 10. **Assuming `status_code` is always 200**: it's 500 for `transcription.failed` and for failing terminals (`bot.notallowed`, `bot.denied`, most `bot.failed`). Branch on `event`, then `bot_event`.
 11. **Expecting webhook retries**: there are none. Always return 2xx and queue work asynchronously. Dedupe on `{bot_id, bot_event or event, timestamp}`.
 12. **Using `websocket_url` for live transcription** - `live_transcription_required` accepts only `webhook_url` (HTTPS POST). The `websocket_url` field is for `live_audio_required`, `live_video_required`, and `socket_connection_url`.
