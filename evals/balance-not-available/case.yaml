@@ -1,6 +1,6 @@
 schema_version: "1.1"
 name: balance-not-available
-description: get_balance answers that the balance is not available here. That is normal: the user gets the billing page, not a debugging session.
+description: "get_balance answers that the balance is not available here. That is normal: the user gets the billing page, not a debugging session."
 tags: [billing]
 runs: 2
 execution:

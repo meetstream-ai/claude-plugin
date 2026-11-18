@@ -1,6 +1,6 @@
 schema_version: "1.1"
 name: voice-agent-user-says-mia
-description: A user who knows the API name MIA still gets the voice-agent flow.
+description: "A user who knows the API name MIA still gets the voice-agent flow."
 tags: [routing, voice-agent]
 runs: 2
 execution:

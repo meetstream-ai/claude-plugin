@@ -1,6 +1,6 @@
 schema_version: "1.1"
 name: join-meeting-defaults
-description: Send a bot to a Google Meet. One create_bot call, audio only, keyless meetstream transcription, after a list_bots check.
+description: "Send a bot to a Google Meet. One create_bot call, audio only, keyless meetstream transcription, after a list_bots check."
 tags: [join-meeting]
 runs: 2
 execution:

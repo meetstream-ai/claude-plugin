@@ -1,6 +1,6 @@
 schema_version: "1.1"
 name: raise-hand-rest
-description: Raise hand has no MCP tool. The agent gives the REST send_command call and does not say it is impossible.
+description: "Raise hand has no MCP tool. The agent gives the REST send_command call and does not say it is impossible."
 tags: [in-meeting]
 runs: 2
 execution:

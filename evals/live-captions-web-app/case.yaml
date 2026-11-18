@@ -1,6 +1,6 @@
 schema_version: "1.1"
 name: live-captions-web-app
-description: Live captions into a web app: the live transcript arrives by HTTPS POST to the user's server, which forwards it to the browser.
+description: "Live captions into a web app: the live transcript arrives by HTTPS POST to the user's server, which forwards it to the browser."
 tags: [routing, live]
 runs: 2
 execution:

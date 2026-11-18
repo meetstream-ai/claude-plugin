@@ -1,6 +1,6 @@
 schema_version: "1.1"
 name: zoom-no-setup
-description: Zoom needs no setup: no Zoom Marketplace app or SDK keys first.
+description: "Zoom needs no setup: no Zoom Marketplace app or SDK keys first."
 tags: [zoom]
 runs: 2
 execution:

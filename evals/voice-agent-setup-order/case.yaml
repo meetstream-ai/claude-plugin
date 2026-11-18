@@ -1,6 +1,6 @@
 schema_version: "1.1"
 name: voice-agent-setup-order
-description: The user asks for a voice agent: MeetStream-managed keys first, own provider keys second, local own agent only with a warning.
+description: "The user asks for a voice agent: MeetStream-managed keys first, own provider keys second, local own agent only with a warning."
 tags: [routing, voice-agent]
 runs: 2
 execution:

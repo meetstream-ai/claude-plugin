@@ -1,6 +1,6 @@
 schema_version: "1.1"
 name: getting-started-signin
-description: A new user with no API key asks how to start. Browser sign-in to the hosted MCP server, the after-the-meeting-or-live question, no version advice.
+description: "A new user with no API key asks how to start. Browser sign-in to the hosted MCP server, the after-the-meeting-or-live question, no version advice."
 tags: [getting-started, version-claims, routing]
 runs: 2
 execution:

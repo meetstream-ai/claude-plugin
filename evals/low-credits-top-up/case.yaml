@@ -1,6 +1,6 @@
 schema_version: "1.1"
 name: low-credits-top-up
-description: create_bot fails with low credits. The agent gives the top-up link and does not loop on create_bot.
+description: "create_bot fails with low credits. The agent gives the top-up link and does not loop on create_bot."
 tags: [billing, join-meeting]
 runs: 2
 execution:

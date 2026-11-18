@@ -1,6 +1,6 @@
 schema_version: "1.1"
 name: meeting-brief-from-transcript
-description: Brief from the last meeting: from get_transcript, real decisions and action items, no claimed built-in summary.
+description: "Brief from the last meeting: from get_transcript, real decisions and action items, no claimed built-in summary."
 tags: [meeting-brief]
 runs: 2
 execution:
