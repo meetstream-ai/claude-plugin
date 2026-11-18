@@ -24,6 +24,7 @@ Brings the plugin up to MeetStream API v1.7.0 to v1.9.0.
 - **`get_speaker_timeline`** can return `{bot_id, speaker_timeline_url, size_bytes, truncated}` for large timelines. Documented in the core skill, API reference, Recall migration map and both code-pattern files.
 - **`recording_permission_denied_timeout`** range is 60 to 600 seconds, default 600 (was 60 to 300). Examples now send 600.
 - **`bot_image_url`** must be an https:// PNG, JPEG, GIF or WebP URL on a public host; bad values return 400 instead of being dropped.
+- **`video_required` defaults to `false` and `audio_required` is a real `create_bot` field (default `true`).** Earlier text said the API defaulted `video_required` to `true` and that `audio_required` did not exist; both were wrong. The house policy is unchanged: send `video_required` explicitly on every bot. Documented the 400 when `audio_required` and `video_required` are both `false` and the bot has nothing else to do.
 - Zoom `meeting_captions` works only on bots that join without the user's own Zoom app (400 with it). The platform table no longer says Zoom needs setup, and MIA agents on the no-setup Zoom bot can show images, video and an avatar.
 
 ## [2.5.1] - 2026-11-15

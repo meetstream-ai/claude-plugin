@@ -21,7 +21,8 @@ Creates a bot and sends it to a meeting.
 - `bot_name` (string) - name shown in the meeting
 
 **Optional fields in the schema:**
-- `video_required` (bool, **API default `true`**) - record video. **Send `false` explicitly on every bot** unless the user asked to record video; an omitted field records video. When it is `true`, pair it with `recording_config.video_layout` (below).
+- `video_required` (bool, **API default `false`**) - record video. **Send it explicitly on every bot** (`false` unless the user asked to record video). When it is `true`, pair it with `recording_config.video_layout` (below).
+- `audio_required` (bool, default `true`) - record the mixed meeting audio. Must be `true` when `audio_mixed_mp3` is `true`. Leave it at the default.
 - `zoom` (object): optional; Zoom needs no setup. `use_own_app` (bool or null): `true` requires the user's own Zoom app (400 without one), `false` joins without it, omitted/`null` uses the app when one is saved or connected and joins without one otherwise. Not echoed in bot details; no fallback when Zoom refuses the app. Authenticated joins: `{ "zak_url": "https://..." }` or `{ "obf_url": "https://..." }`, each an HTTPS endpoint on your server that returns a fresh token; neither works with `use_own_app: false` (400). `use_zoom_obf` and `zoom_oauth_connection_user_id` are rejected.
 - `storage_id` (string, `^[A-Za-z0-9_-]{1,80}$`) - one of the workspace's storage destinations (set up in the dashboard; no public API). Omitted: the workspace default destination, or MeetStream storage. Bad format: 400 `storage_id must contain 1-80 letters, numbers, underscores or hyphens`. Unknown ID or failed validation: 400 with the storage error text; 503 when validation is unavailable. Scheduled bots recheck it at join time and end `Error` / `StorageValidationFailed` on failure.
 - `bot_camera_stream` (object) - `{ "websocket_url": "wss://..." }`: publish live WebRTC video/audio INTO the bot's camera and mic. Google Meet (ws:// or wss://), Teams and Zoom (wss:// only). The signaling host must resolve to a public address. 400 on other platforms, for a bad URL, for `ws://` on Teams/Zoom, and with `agent_config_id` on Zoom. Not available on Zoom bots that join without the user's own Zoom app. Guide: https://docs.meetstream.ai/guides/websockets/bot-camera-streaming
@@ -46,7 +47,7 @@ Creates a bot and sends it to a meeting.
 - `teams` (object) - Microsoft Teams Signed-In Bots: `{ "login_required": true, "teams_login_domain": "bots.your-domain.com", "sign_in_email"?: "bot1@bots.your-domain.com", "strict_email"?: true }`. Name and avatar come from the Microsoft account (`bot_name` / `bot_image_url` are not applied). A malformed `teams` block is dropped silently (guest join).
 - For both: `login_required: true` opts in; the `*_login_domain` is required when it is set. `sign_in_email` pins one registered account. `strict_email` (default `true`): with `sign_in_email`, `true` fails if that account is busy or unhealthy, `false` falls back to any available account in the domain. See [Signed-In Bot Endpoints](#google-signed-in-bot-endpoints).
 
-> **Important:** `audio_required` is **not** in the `CreateBotRequest` schema. Audio is captured by default. The field DOES exist in calendar-scheduled `bot_config` (different schema).
+> **400 rule:** A bot with `audio_required: false` and `video_required: false` and nothing else to do (no `realtime_endpoints`, live audio/video/transcription stream, `socket_connection_url`, `bot_message` or `agent_config_id`) is rejected with 400 `audio_required and video_required are both false, so the bot would record nothing.`
 
 **Response - HTTP 201 Created** (per OpenAPI spec and live-verified) - `BotResponse`:
 ```json
