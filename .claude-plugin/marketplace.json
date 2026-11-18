@@ -10,11 +10,7 @@
     {
       "name": "meetstream",
       "description": "Build meeting intelligence with MeetStream: AI notetakers, real-time sales coaches, conversation intelligence, Google Calendar auto-recording, and AI meeting agents. Scaffolds complete apps in one prompt. Works with Zoom, Google Meet, Teams. Every endpoint live-tested, no hallucinations.",
-      "source": {
-        "source": "url",
-        "url": "https://github.com/meetstream-ai/claude-plugin.git",
-        "sha": "89b1d4aec9ca2bdc4a18a831d98371f0a41c225d"
-      },
+      "source": "./",
       "homepage": "https://meetstream.ai",
       "category": "developer-tools",
       "keywords": [

@@ -2,6 +2,16 @@
 
 All notable changes to the MeetStream Claude Code plugin.
 
+## [2.6.0] - 2026-11-17
+
+### Fixed
+- **The marketplace now installs the current plugin.** It pinned commit `89b1d4a` (2.2.3, 2026-08-06), so installs from this repo missed every later release. The plugin source is now `./`.
+
+### Added
+- **Hosted MCP server in the plugin** (`.mcp.json`): installing the plugin adds `https://mcp.meetstream.ai/mcp` (HTTP, OAuth). Sign in once with `/mcp` → Authenticate; no API key to copy.
+- **Use-it skills, the same as the Cursor plugin** (one skill set for every agent): `join-meeting` (send a bot to the user's own meeting; keyless `meetstream` transcription by default, audio-only, reuses an existing bot, low-credit handling), `meeting-brief` (post-call brief that is saved and remembered for later questions). **Merged from the Cursor plugin** so every agent has the same skills: `recordings-and-media`, `mia-voice-agents`, `realtime-streaming`, `webhooks`, `platform-setup`, `troubleshooting`; `calendar-automation` now covers both using the MCP tools from an agent (Google and Outlook) and the Google Calendar app scaffold. Cursor's `build-notetaker` is covered by `meetstream` and `notetaker`. A `.cursor-plugin` manifest ships in this repo. CI validates manifests and skills on every PR. Live answers in the meeting chat are in the Hermes plugin (`hermes-meetstream`); other agents get them with the live path later.
+- **Other agents**: Codex and Copilot CLI install this plugin from the same Claude manifests (Codex checked: skills and MCP server load); `setup --host codex|muse|openclaw|copilot|claude` for agents without a plugin installer; `INSTALL_FOR_AGENTS.md`, which an agent can follow end to end (ends with a real `list_bots` call). Hermes and Cursor point to their existing MeetStream plugins.
+
 ## [2.5.0] - 2026-09-22
 
 ### Changed

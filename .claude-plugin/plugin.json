@@ -1,7 +1,7 @@
 {
   "name": "meetstream",
-  "description": "Build meeting intelligence with the MeetStream API: AI notetakers, real-time sales coaches, conversation intelligence, Google Calendar auto-recording, and AI meeting agents. Scaffolds complete apps in one prompt. Works with Zoom, Google Meet, and Microsoft Teams, including signed-in bots. Every endpoint live-tested, no hallucinations.",
-  "version": "2.5.0",
+  "description": "Send meeting bots to Zoom, Google Meet and Microsoft Teams and get notes after the call, or build meeting intelligence with the MeetStream API: AI notetakers, real-time sales coaches, conversation intelligence, Google Calendar auto-recording, and AI meeting agents. Includes the hosted MeetStream MCP server (browser sign-in). Works with Zoom, Google Meet, and Microsoft Teams, including signed-in bots.",
+  "version": "2.6.0",
   "author": {
     "name": "MeetStream",
     "email": "hello@meetstream.ai",
@@ -49,5 +49,6 @@
     "recall-migration",
     "recall-alternative",
     "migrate-from-recall"
-  ]
+  ],
+  "mcpServers": "./.mcp.json"
 }

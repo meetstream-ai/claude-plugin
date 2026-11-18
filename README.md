@@ -125,9 +125,20 @@ skills/
 ├── meetstream/             ← Core skill: API reference, lifecycle, decision tree
 ├── notetaker/              ← Scaffold a complete AI meeting notetaker
 ├── sales-coach/            ← Scaffold a real-time AI sales coach with browser UI
-├── calendar-automation/    ← Google Calendar OAuth + auto-record every meeting
+├── calendar-automation/    ← Auto-join from Google or Outlook calendars (from your agent, or as an app scaffold)
 ├── verify-account/         ← Probe which providers are configured in your account
-└── test-bot/               ← Send a test bot + watch webhooks live
+├── test-bot/               ← Send a test bot + watch webhooks live
+├── join-meeting/           ← Send a bot to YOUR meeting (now or later)
+├── meeting-brief/          ← After the call: notes, decisions, action items, saved and remembered
+├── recordings-and-media/   ← Recordings, per-participant audio/video, retention
+├── mia-voice-agents/       ← MIA voice agents that talk in the meeting (agent_config_id)
+├── realtime-streaming/     ← Live captions, live audio and video over WebSocket
+├── webhooks/               ← Webhook events, signatures, local development
+├── platform-setup/         ← Zoom, Google Meet and Teams specifics, signed-in bots
+└── troubleshooting/        ← 401/403/202, missing transcripts, bots that never join
+
+.mcp.json, mcp.json         ← Hosted MeetStream MCP server (browser sign-in, no key to copy)
+.cursor-plugin/             ← Cursor manifest (same skills, same server)
 
 agents/
 └── meetstream-debugger     ← Subagent for diagnosing bot failures
@@ -158,14 +169,28 @@ Specifically verified live:
 /plugin install meetstream@meetstream-ai
 ```
 
+Restart Claude Code, run `/mcp`, pick `meetstream`, then **Authenticate** (sign in at app.meetstream.ai and click **Allow**). The plugin includes the hosted MeetStream MCP server, so there is no key to copy.
+
 Then in any project:
 ```
+"send a bot to <meeting link> and take notes"
+"get the notes from my last meeting"
 "verify my meetstream account"
 "build me an AI meeting notetaker"
 "build a real-time AI sales coach"
 "set up Google Calendar auto-recording for my meetings"
 "connect Google Calendar to MeetStream"
 ```
+
+### Codex, Copilot CLI, OpenClaw, Muse Code
+
+```bash
+codex plugin marketplace add meetstream-ai/claude-plugin && codex plugin add meetstream@meetstream-ai   # Codex
+copilot plugin install meetstream-ai/claude-plugin                                                      # Copilot CLI
+git clone https://github.com/meetstream-ai/claude-plugin ~/.meetstream-plugin && ~/.meetstream-plugin/setup --host muse   # Muse, OpenClaw
+```
+
+Hermes has its own plugin: [hermes-meetstream](https://github.com/meetstream-ai/hermes-meetstream). An agent can install any of these by following [`INSTALL_FOR_AGENTS.md`](INSTALL_FOR_AGENTS.md).
 
 ### Cursor / Windsurf / VS Code (Claude extension)
 

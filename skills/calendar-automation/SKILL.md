@@ -1,27 +1,118 @@
 ---
 name: calendar-automation
 description: >
-  Build Google Calendar-driven meeting automation on MeetStream - connect a
-  Google Calendar once and a bot auto-joins every upcoming meeting, records,
-  transcribes, and triggers your post-meeting workflow. Use when the user says
-  "auto-record my Google Calendar meetings", "connect Google Calendar to
-  MeetStream", "Google Calendar bot integration", "calendar automation for
-  meetings", "join every meeting on my calendar automatically", "scheduled
-  meeting bot", "recurring meeting notetaker", "Google Calendar meeting
-  intelligence", or "OAuth calendar bot setup". Walks through Google Cloud
-  OAuth setup, connects the calendar to MeetStream, enables auto-scheduling
-  with a default bot config, and shows how to handle recurring events.
+  Have MeetStream bots join calendar meetings automatically, from the user's
+  agent or in an app they build. Use when the user says "auto-join my
+  meetings", "join every meeting on my calendar", "connect my calendar",
+  "Google Calendar integration", "Outlook integration", "schedule a bot for
+  this event", "recurring meetings", "auto-record my Google Calendar
+  meetings", "scheduled meeting bot", "recurring meeting notetaker", or "OAuth
+  calendar bot setup". Covers the MCP tools (list_calendar_events,
+  schedule_calendar_bot), the REST calendar endpoints for Google and Outlook,
+  and a full Google Calendar scaffold with OAuth setup and recurring events.
 ---
 
-# Calendar Automation Scaffold (Google Calendar → MeetStream)
+# Calendar automation
+
+Two paths, one skill:
+
+- **From the user's agent, now:** the MCP tools `list_calendar_events` and `schedule_calendar_bot`, plus a few REST calls (next section). Works for Google and Outlook.
+- **Inside an app the user builds:** the Google Calendar scaffold further down.
+
+## From your agent (MCP tools + REST)
+
+Two MCP tools cover the day-to-day: **`list_calendar_events`** and
+**`schedule_calendar_bot`**. Everything else (connecting a calendar, auto-schedule,
+disconnect) is REST only.
+
+### The flow
+
+1. **Connect** the calendar once, with OAuth credentials (REST).
+2. **Sync/list** upcoming events - `list_calendar_events` (MCP tool).
+3. Either **schedule per event** - `schedule_calendar_bot` (MCP tool) - or
+   **turn on auto-schedule** so every meeting with a join link gets a bot (REST).
+
+### Connecting
+
+Google: `POST /api/v1/calendar/create_calendar` with `google_client_id`,
+`google_client_secret`, `google_refresh_token`.
+
+Outlook / Microsoft 365: `POST /api/v1/calendar/create_outlook_calendar` with the
+Microsoft equivalents.
+
+Getting the refresh token is the hard part and it is a one-time setup:
+
+- **Google**: create an OAuth client in Google Cloud Console, add the calendar scopes
+  (`calendar.readonly` and `calendar.events.readonly` are the usual minimum), run the
+  consent flow once, keep the refresh token.
+- **Microsoft**: register an app in Azure Portal, create a client secret, add the
+  Microsoft Graph calendar permissions (admin consent may be required), then run the
+  OAuth flow.
+
+Walk the user through these interactively and ask them to paste back the values. Do not
+guess client ids or invent scopes. Verify with `GET /api/v1/calendar`, which lists the
+connected calendars.
+
+### Auto-join every meeting
+
+```
+POST /api/v1/calendar/auto-schedule/enable
+POST /api/v1/calendar/auto-schedule/disable
+GET  /api/v1/calendar/auto-schedule/settings
+```
+
+With this on, any event carrying a meeting link gets a bot at its start time, including
+newly added ones. This is what people mean by "just join all my meetings".
+
+There is **no** `/calendar/setup-cron` or `/calendar/disable-cron` endpoint. Docs pages
+titled "Setup Cron" describe the auto-schedule endpoints above.
+
+### Per-event scheduling
+
+Use the `schedule_calendar_bot` MCP tool, or `POST /api/v1/calendar/schedule/{event_id}`
+with a `bot_config`. Unschedule with `DELETE` on the same path.
+
+Scheduling the same event twice returns **HTTP 409** with the existing bot id. Treat
+that as "already scheduled", not an error.
+
+Note `bot_config` is a different schema from `create_bot`: it accepts `audio_required`
+and puts the transcription provider under a top-level `transcription` key.
+
+### Managing scheduled bots
+
+```
+GET    /api/v1/calendar/scheduled_bots            list them
+PATCH  /api/v1/calendar/scheduled_bots/{bot_id}   move it - body { "scheduled_join_time": "<ISO>" }
+DELETE /api/v1/calendar/scheduled_bots/{bot_id}   cancel it
+```
+
+The reschedule field is **`scheduled_join_time`**, not `join_at`. (`join_at` is the
+`create_bot` field. They are different endpoints with different names.)
+
+### Recurring meetings
+
+`POST /api/v1/calendar/toggle-recurrence` controls whether a recurring series keeps
+getting bots automatically. Be explicit with the user about whether they mean the whole
+series or one occurrence - getting this wrong either spams every standup or misses them.
+
+### Disconnecting
+
+`POST /api/v1/calendar/disconnect`. This is destructive: it stops sync, cancels pending
+schedules, and removes stored credentials. Show the user what will be lost and confirm
+before calling it. There is no per-account `/calendar/connections/...` path; scope the
+disconnect via the request body.
+
+---
+
+## Build it into an app: Google Calendar scaffold
 
 Build a hands-free meeting bot that auto-joins every Google Calendar meeting. Connect once, then forget - MeetStream watches the calendar, schedules bots 1 minute before each meeting, and runs your post-meeting pipeline.
 
-## Step 0: Auth check (DO THIS FIRST)
+### Step 0: Auth check (DO THIS FIRST)
 
 If `MEETSTREAM_API_KEY` is missing or invalid, **invoke the `getting-started` skill first.** Walks the user through signup at https://app.meetstream.ai → API key → env var. Resume calendar setup once validated.
 
-## What this scaffolds
+### What this scaffolds
 
 - Google Cloud OAuth client setup (one-time)
 - `POST /calendar/create_calendar` - connect a Google account to MeetStream
@@ -31,7 +122,7 @@ If `MEETSTREAM_API_KEY` is missing or invalid, **invoke the `getting-started` sk
 
 All endpoint paths and field names are verified against `docs.meetstream.ai`.
 
-## Step 1: Requirements (ask in one message)
+### Step 1: Requirements (ask in one message)
 
 ```
 I'll set up Google Calendar auto-recording with MeetStream. Quick config:
@@ -58,7 +149,7 @@ I'll set up Google Calendar auto-recording with MeetStream. Quick config:
    [default: a]
 ```
 
-## Step 2: Google Cloud OAuth setup (one-time, walk user through)
+### Step 2: Google Cloud OAuth setup (one-time, walk user through)
 
 The user needs three things to give MeetStream:
 1. `google_client_id`
@@ -96,7 +187,7 @@ print("REFRESH TOKEN:", creds.refresh_token)
 print("(Store this in MEETSTREAM env vars. It's long-lived.)")
 ```
 
-## Step 3: Connect the calendar to MeetStream
+### Step 3: Connect the calendar to MeetStream
 
 ```python
 import os, requests
@@ -122,7 +213,7 @@ def connect_calendar():
 
 **Field names matter:** all three keys MUST use the `google_` prefix. Plain `refresh_token` / `client_id` / `client_secret` will be rejected.
 
-## Step 4: Enable hands-free auto-scheduling
+### Step 4: Enable hands-free auto-scheduling
 
 ```python
 def enable_auto_schedule(callback_url: str):
@@ -166,7 +257,7 @@ def get_auto_schedule_settings():
     return resp.json()  # {auto_schedule_enabled, default_bot_config}
 ```
 
-## Step 5: List + manage scheduled bots
+### Step 5: List + manage scheduled bots
 
 ```python
 def list_calendars():
@@ -200,7 +291,7 @@ def delete_scheduled_bot(bot_id: str):
     return requests.delete(f"{BASE}/calendar/scheduled_bots/{bot_id}", headers=HEADERS).json()
 ```
 
-## Step 6: Per-event manual schedule (override default)
+### Step 6: Per-event manual schedule (override default)
 
 If you want different config for one specific meeting (e.g. video on for a presentation), schedule it manually with a custom `bot_config`:
 
@@ -232,7 +323,7 @@ def unschedule_event(event_id: str, cancel_all_occurrences: bool = False):
     return resp.json()
 ```
 
-## Step 7: Recurring events
+### Step 7: Recurring events
 
 ```python
 def toggle_recurring(event_id: str, enabled: bool):
@@ -260,7 +351,7 @@ def trigger_auto_reschedule(user_id: str, event_id: str, recurrence_rule: str):
     return resp.json()
 ```
 
-## Step 8: Disconnect (irreversible)
+### Step 8: Disconnect (irreversible)
 
 ```python
 def disconnect_calendar():
@@ -276,7 +367,7 @@ def disconnect_calendar():
 
 > ⚠ This is a destructive operation. Require explicit user confirmation before calling. (The OpenAPI spec shows POST for this - that's a quirk; the docs guide, cURL example, and response example all use DELETE.)
 
-## How auto-scheduling actually works (live behavior, not just docs)
+### How auto-scheduling actually works (live behavior, not just docs)
 
 - **Job cadence:** Every 24h at midnight UTC. The job picks up the next 24h of events with valid meeting links.
 - **Pre-join window:** Bots are scheduled to join **1 minute before** the meeting's start time.
@@ -285,7 +376,7 @@ def disconnect_calendar():
 - **Watch channel renewal:** Daily background job renews any watch channel expiring within 2 days. Your real-time sync stays active indefinitely with zero maintenance.
 - **Cancelled meetings:** Detected via Google watch → EventBridge schedule deleted, bot marked Cancelled. No bot is ever created for a cancelled meeting.
 
-## End-to-end checklist
+### End-to-end checklist
 
 ```
 ✅ Calendar automation scaffolded.
@@ -301,7 +392,7 @@ Next steps:
 🔧 To debug a failed scheduled bot, use the `meetstream-debugger` subagent.
 ```
 
-## Common gotchas (live-verified)
+### Common gotchas (live-verified)
 
 - **Field name prefixes:** `create_calendar` requires `google_refresh_token` / `google_client_id` / `google_client_secret`. Without the `google_` prefix, the API rejects.
 - **bot_config schema differs from create_bot:** calendar `bot_config` uses `transcription` (not `recording_config.transcript`), and supports `no_one_joined_timeout` (which doesn't exist on `create_bot`). The docs guide is authoritative here.
@@ -309,3 +400,10 @@ Next steps:
 - **`toggle-recurrence` returns 400** if you call it on a non-recurring event.
 - **Disconnect is DELETE**, not POST (despite OpenAPI). Follow the docs guide.
 - **Personal Gmail accounts work** - you don't need Google Workspace for this integration.
+
+
+## Reference
+
+- [Google Calendar OAuth setup](https://docs.meetstream.ai/guides/calendar-integrations/google-calendar-oauth-setup)
+- [Outlook Calendar setup](https://docs.meetstream.ai/guides/calendar-integrations/outlook-calendar-setup)
+- [Scheduling bots](https://docs.meetstream.ai/guides/features/scheduling-bots)

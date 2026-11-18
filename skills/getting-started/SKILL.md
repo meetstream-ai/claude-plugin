@@ -16,6 +16,11 @@ allowed-tools: Bash, Read, Write, Edit
 
 This skill is the **mandatory Step 0** for any MeetStream integration. If the user doesn't have an account or API key, no other skill can succeed. Walk them through it before scaffolding anything.
 
+## Two ways in: pick by what the user wants
+
+- **Use MeetStream from this agent** (send bots, get notes): no key needed. This plugin includes the hosted MeetStream MCP server. Sign in once: Claude Code `/mcp` → `meetstream` → **Authenticate**; Codex `codex mcp login meetstream`; Cursor Settings → MCP → **Connect**. The browser opens app.meetstream.ai; the user signs in or signs up and clicks **Allow**. Check with the `list_bots` tool, then hand over to `join-meeting`. New accounts start with $5 of credit.
+- **Build an app on the API** (code, servers, CI): the code needs an API key. Follow the steps below.
+
 ## When to invoke this skill
 
 **Always** invoke this skill first if any of these are true:

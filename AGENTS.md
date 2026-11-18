@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Guidance for AI coding agents working in this repository. This repo is the **MeetStream plugin for Claude Code** - skills and a debugger agent, distributed through the Claude Code marketplace. It does not include the MCP server; install that separately as shown below.
+Guidance for AI coding agents working in this repository. This repo is the **MeetStream plugin for Claude Code** - skills and a debugger agent, distributed through the Claude Code marketplace. Since 2.6.0 it also declares the hosted MeetStream MCP server (`.mcp.json`), so installing the plugin adds the server too.
 
 ## Always use the MeetStream MCP
 
@@ -21,7 +21,7 @@ claude mcp add --transport http meetstream https://mcp.meetstream.ai/mcp
 
 With a key instead: add `--header "Authorization: Bearer $MEETSTREAM_API_KEY"`.
 
-The [MeetStream Claude plugin](https://github.com/meetstream-ai/claude-plugin) is a separate, complementary install. It ships **skills only** and does not include the MCP server, so install both:
+The [MeetStream Claude plugin](https://github.com/meetstream-ai/claude-plugin) installs the skills and, since 2.6.0, this MCP server in one step:
 
 ```sh
 /plugin marketplace add meetstream-ai/claude-plugin
