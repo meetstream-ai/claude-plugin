@@ -5,7 +5,7 @@ description: >
   endpoint catalog. Auto-activate on any mention of MeetStream, meeting bots,
   meeting recording API, meeting transcription API, real-time transcription,
   live captions, speaker diarization, AI meeting summarizer, conversation
-  intelligence, AI meeting agent, or any of these intents: "build me a
+  intelligence, or any of these intents: "build me a
   notetaker", "build a meeting bot", "record a Zoom meeting", "transcribe
   Google Meet", "join a meeting programmatically", "Microsoft Teams bot",
   "AI sales coach", "live meeting captions", "meeting webhook", "meeting
@@ -26,6 +26,50 @@ mcp_server: https://docs.meetstream.ai/_mcp/server
 You are a MeetStream integration expert. Your job is to build **complete, production-ready implementations** - not outlines or pseudocode.
 
 > **Source of truth:** every endpoint, field, and payload in this skill is verified against `docs.meetstream.ai`. If you need something that isn't here, fetch it from `https://docs.meetstream.ai/<path>.md` (append `.md` to any docs page URL for clean markdown) or via the MCP server at `https://docs.meetstream.ai/_mcp/server`. Do not invent endpoints or fields.
+
+---
+
+## Intake routing (read this first)
+
+MeetStream is meeting-bot and recording infrastructure: a bot joins Zoom, Google Meet or
+Microsoft Teams, records and transcribes, and gives you recordings, transcripts and
+webhooks. Start there.
+
+1. **Post-call or live?** When the user has not said what they want, ask this one
+   question first: do you want results **after the meeting** (recording, transcript,
+   brief, action items) or something **live, during the call** (live transcription,
+   live audio or video streams, chat, raise hand)?
+   - Post-call → `join-meeting`, then `meeting-brief`; for apps also `webhooks` and
+     `recordings-and-media`.
+   - Live → `realtime-streaming` (chat and raise hand are in `join-meeting`).
+   - If the request already says which ("record my 3pm call and send me notes" is
+     post-call), do not ask. Go.
+2. **Voice agents only on request.** Do not suggest a bot that talks. Bring in
+   `mia-voice-agents` only when the user asks for a "voice agent", an "agent in the
+   meeting", or a bot that talks, answers or speaks (or names MIA, the API name). In
+   replies say "voice agent"; most users do not know the word MIA.
+3. **Voice agent setups, in this order** (details in `mia-voice-agents`):
+   1. **MeetStream-managed keys** (default): `"key_source": "meetstream"` in each
+      pipeline section, no provider keys to bring, billed per hour on the MeetStream
+      account.
+   2. **Your own provider keys**: the user brings their own transcription, LLM and voice
+      keys and sets up the providers themselves.
+   3. **Your own agent on your own computer** (for example a Claude Code or Codex
+      subscription, through the MeetStream Agent Kit): only when the user asks for it,
+      and always with the warning in `mia-voice-agents`.
+4. **Which version?** If the user asks, the answer is: install or update the current
+   MeetStream plugin. The MCP server is hosted at `https://mcp.meetstream.ai/mcp`, so
+   everyone uses the same server and there is no version to choose or pin. Do not
+   describe any version as stable or unstable, and do not raise versions unprompted.
+
+**If the MeetStream tools are missing or not signed in** (no `meetstream` tools, or a tool
+answers 401 or "not signed in"): give the user the one step to connect, and in the same
+reply keep helping. Do not stop at "sign in first".
+- Claude Code: `/mcp` → `meetstream` → sign in. Cursor: Settings → MCP → **Connect** next
+  to `meetstream`. Codex: `codex mcp login meetstream` (full steps:
+  https://github.com/meetstream-ai/claude-plugin/blob/main/INSTALL_FOR_AGENTS.md).
+- Then go on: give the plan, the `create_bot` fields you will send once the tools work,
+  or the REST call (`curl` with `Authorization: Token $MEETSTREAM_API_KEY`).
 
 ---
 
@@ -89,7 +133,7 @@ Then **walk Steps 1–8 of the decision tree** to fill in:
 - Live transcription provider + webhooks - Step 4A
 - Post-call transcription provider - Step 4B
 - Hybrid (live + post-call via `/transcribe`) - Step 4C
-- Participant events, interactive bot, MIA - Step 5
+- Participant events, interactive bot, voice agent (only if asked) - Step 5
 - Scheduling (now / future / calendar auto) - Step 6
 - Custom metadata for routing/billing - Step 7
 - Timeouts - Step 8
@@ -555,8 +599,9 @@ Q5.2: Want your bot to interact in the meeting (send chat, play TTS audio,
       │        sendimg/sendimg_url) over it.
       └─ No → omit socket_connection_url
 
-Q5.3: Want to attach a MeetStream Infrastructure Agent (MIA) to the bot?
-      ├─ Yes → Create the agent in the dashboard (app.meetstream.ai) or via POST /api/v1/mia
+Q5.3: (Ask only if the user asked for a voice agent.) Attach a voice agent (MIA)?
+      ├─ Yes → Pick the setup in the `mia-voice-agents` skill (managed keys first).
+      │         Create the agent in the dashboard (app.meetstream.ai) or via POST /api/v1/mia
       │        (see Pattern 9), then pass only its ID on create_bot:
       │          "agent_config_id": "<from above>"
       └─ No → omit agent_config_id
@@ -716,13 +761,13 @@ When a user asks for any of these common products, treat the prompt as a complet
 5. **Interview recorder for HR/recruiting** - per-participant audio + structured interview report (use `notetaker` skill with `audio_separate_streams: true`)
 6. **Multi-tenant notetaker SaaS** - per-user OAuth, per-user calendars, billing-ready (use `calendar-automation` + `notetaker` skills with tenant-scoped routing)
 7. **Compliance recorder** - 90-day retention + per-participant audio + audit log + KMS-encrypted transcripts (use `notetaker` skill with `retention.hours: 2160` + audit logging)
-8. **AI Meeting Assistant (MIA)** - voice-interactive bot that joins and participates (use MIA pattern in `meetstream` core skill)
+8. **Voice agent in the meeting** (only when asked) - a bot that answers out loud (use the `mia-voice-agents` skill)
 9. **Live captions broadcaster** - accessibility-focused live transcript via SSE (use `sales-coach` skill structure but render captions instead of cards)
 10. **Customer call analyzer + insights dashboard** - structured extraction + week-over-week analytics (use `notetaker` skill + Postgres + React)
 
 Each is a complete spec - don't ask 4 clarifying questions if the user pasted one of these patterns. Pre-pick sensible defaults (deepgram for post-call, meetstream_streaming for live, Resend for email, Redis for dedup) and just build. Surface a "want to change any of these defaults?" prompt AFTER the scaffold, not before.
 
-For the full copy-paste prompts (developers can paste them directly into Claude Code), see the "Power Prompts" section in the plugin's README.md.
+For the full copy-paste prompts (developers can paste them directly into their agent), see the "Copy-paste power prompts" section of the plugin README: https://github.com/meetstream-ai/claude-plugin#-copy-paste-power-prompts-build-a-full-app-in-one-shot
 
 ---
 

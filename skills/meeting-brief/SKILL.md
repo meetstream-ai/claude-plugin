@@ -14,6 +14,19 @@ description: >
 You have the MeetStream MCP server connected. Pull the real data with its tools
 before writing anything. Never summarize a meeting you have not actually read.
 
+This is the post-call path. Build the brief from the transcript; MeetStream has no
+built-in summary (`get_bot_summary` only says so). Do not offer a voice agent unless the
+user asks for one.
+
+**If the MeetStream tools are missing or not signed in** (no `meetstream` tools, or a tool
+answers 401 or "not signed in"): give the user the one step to connect, and in the same
+reply keep helping. Do not stop at "sign in first".
+- Claude Code: `/mcp` → `meetstream` → sign in. Cursor: Settings → MCP → **Connect** next
+  to `meetstream`. Codex: `codex mcp login meetstream` (full steps:
+  https://github.com/meetstream-ai/claude-plugin/blob/main/INSTALL_FOR_AGENTS.md).
+- Then go on: give the plan, the `create_bot` fields you will send once the tools work,
+  or the REST call (`curl` with `Authorization: Token $MEETSTREAM_API_KEY`).
+
 ## Fastest route to a brief
 
 1. **`get_transcript`** with `wait: true` - the speaker-labelled transcript. Everything
@@ -98,7 +111,7 @@ Set this on `create_bot` via the transcription provider option:
 | Smallest AI (REST provider key) | `smallest` post-call (`model` `pulse` or `pulse-pro`), `smallest_streaming` live (`pulse` or `pulse-2`); needs a Smallest AI key in the dashboard (voice integrations) |
 | Live captions during the call | any `*_streaming` provider |
 
-Anthropic Claude is not a transcription provider. It is an LLM for MIA voice agents (see
+Anthropic Claude is not a transcription provider. It is an LLM for voice agents (MIA; see
 `mia-voice-agents`).
 
 Post-call providers give you a transcript to fetch afterwards. Streaming providers

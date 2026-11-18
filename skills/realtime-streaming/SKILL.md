@@ -11,6 +11,19 @@ description: >
 
 # Real-time streaming
 
+This is the live path: data during the call. For results after the call, use
+`join-meeting` and `meeting-brief`.
+
+## Live captions into your app (start here for "live transcript")
+
+Live transcripts arrive as **HTTPS POSTs to your server**, one per transcript update:
+set `live_transcription_required.webhook_url` on `create_bot` and pick a streaming
+provider (for example `meetstream_streaming`). To show captions in a web app, your
+server forwards each update to the browser over Server-Sent Events or a WebSocket that
+you host. MeetStream does not stream transcripts to the browser directly, and the API key
+must never reach the browser. If you would rather run your own speech-to-text, take the
+raw audio over the `live_audio_required` WebSocket instead (below).
+
 Four separate channels, often confused with each other. Pick by what the user
 actually needs.
 
@@ -23,7 +36,7 @@ actually needs.
 | Live video/audio INTO the bot camera and mic | `bot_camera_stream.websocket_url` | WebSocket signaling + WebRTC |
 | Participant join/leave and raise/lower hand | `recording_config.realtime_endpoints` | HTTPS POST, per event |
 
-All of these point at **your own** server. They are not used for MIA agents, which run
+All of these point at **your own** server. They are not used for voice agents (MIA), which run
 on MeetStream's hosted bridge and need only `agent_config_id`.
 
 ## Live transcription
@@ -104,10 +117,11 @@ queue stays fed without running away. Cancel your local send loop when you issue
 Before building a WebSocket server, check whether the REST path is enough:
 
 - Just posting a message? Use the **`send_chat_message`** MCP tool.
-- Raising the bot's hand? Use REST `POST /api/v1/bots/{bot_id}/send_command` with
-  `{"command": "raise_hand"}` / `{"command": "lower_hand"}` (see `join-meeting`).
+- Raising the bot's hand? There is no MCP tool, but the REST call works:
+  `POST /api/v1/bots/{bot_id}/send_command` with `{"command": "raise_hand"}` /
+  `{"command": "lower_hand"}` (bot must be in the meeting, else 409; see `join-meeting`).
 - Just showing an image? Use the **`send_image`** MCP tool (public URL, not base64).
-- Want a talking agent? Use **MIA** (`agent_config_id`) and host nothing.
+- Only if the user asks for a bot that talks or answers: use a voice agent (`mia-voice-agents`, `agent_config_id`) and host nothing.
 
 Reach for WebSockets when you need raw media or custom real-time logic, not for
 one-off actions.

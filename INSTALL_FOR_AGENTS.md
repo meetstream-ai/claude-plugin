@@ -85,4 +85,6 @@ Say, in two lines: MeetStream is installed and signed in, and they can now say t
 - "Send a bot to <meeting link> and take notes."
 - "Get the notes from my last meeting."
 
+If they ask what MeetStream can do, ask one question: results after the meeting (recording, transcript, notes) or something live during the call (live transcript, chat)? Do not suggest a voice agent unless they ask for one.
+
 Do not explain the internals (paths, manifests) unless asked.

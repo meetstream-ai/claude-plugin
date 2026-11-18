@@ -15,6 +15,19 @@ description: >
 You have the MeetStream MCP server connected. Use its tools directly. Do not
 write API client code unless the user explicitly asks for a script.
 
+This is the post-call path (record now, transcript and brief after) plus chat and
+raise hand during the call. Do not offer a voice agent unless the user asks for one.
+If the user wants live transcription or live streams, use `realtime-streaming`.
+
+**If the MeetStream tools are missing or not signed in** (no `meetstream` tools, or a tool
+answers 401 or "not signed in"): give the user the one step to connect, and in the same
+reply keep helping. Do not stop at "sign in first".
+- Claude Code: `/mcp` → `meetstream` → sign in. Cursor: Settings → MCP → **Connect** next
+  to `meetstream`. Codex: `codex mcp login meetstream` (full steps:
+  https://github.com/meetstream-ai/claude-plugin/blob/main/INSTALL_FOR_AGENTS.md).
+- Then go on: give the plan, the `create_bot` fields you will send once the tools work,
+  or the REST call (`curl` with `Authorization: Token $MEETSTREAM_API_KEY`).
+
 ## The short path
 
 1. **`create_bot`** with `meeting_link` and a `bot_name`.
@@ -60,10 +73,14 @@ If `create_bot` fails:
 
 | Error | What to do |
 |---|---|
-| `Low credits please recharge` (403) | Call `top_up_link` if the server has it, else send the user to `https://app.meetstream.ai/billing`. Do not retry. |
+| `Low credits please recharge` (403) | Call the `top_up_link` tool and give the user its link (`https://app.meetstream.ai/billing`). Do not retry `create_bot` until they say they added credits. |
 | 401 / not signed in | Sign in to the `meetstream` MCP server again (Cursor: Settings → MCP → Connect; Claude Code: `/mcp` → Authenticate; Codex: `codex mcp login meetstream`), then retry once. |
 | 400 with a field message | Fix that one field and retry once. |
 | 429 `rate_limit_exceeded` | Prepaid accounts may create 5 bots per minute and 50 per hour. Wait the `Retry-After` seconds, then retry once. |
+
+`get_balance` can answer that the balance is not available here and give the billing
+link. That is normal, not an error to debug: give the user `https://app.meetstream.ai/billing`
+(or the `top_up_link` result) and go on.
 
 If the user wants the bot to arrive at a future time, pass `join_at` as an ISO 8601
 timestamp rather than sleeping and creating it later.
@@ -93,7 +110,8 @@ Poll with a sensible interval (5-10s) and a cap. Do not busy-loop.
 - **`send_image`** - show an image or GIF as the bot's video frame. The URL must be
   publicly reachable and resolve to a public address; MeetStream fetches it server side,
   so local paths, private hosts and `data:` URIs will not work.
-- **Raise / lower hand** - REST only, no MCP tool: `POST /api/v1/bots/{bot_id}/send_command`
+- **Raise / lower hand** - there is no MCP tool for this, but the bot can do it. Give the
+  user (or run, when an API key is set) the REST call `POST /api/v1/bots/{bot_id}/send_command`
   with `{"command": "raise_hand"}` or `{"command": "lower_hand"}` (Google Meet, Zoom,
   Teams). The bot must be `InMeeting` or `Recording`, otherwise 409. Response:
   `{"status": "accepted", "bot_id": "...", "command": "raise_hand", "hand_raised": true}`,

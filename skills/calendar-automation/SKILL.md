@@ -390,7 +390,7 @@ Next steps:
   5. Your webhook server (callback_url from step 3) will receive lifecycle events for each meeting
 
 📚 For the post-meeting workflow (transcript fetch → AI summary → delivery), use the `notetaker` skill.
-🔧 To debug a failed scheduled bot, use the `meetstream-debugger` subagent.
+🔧 To debug a failed scheduled bot, use the `troubleshooting` skill (in Claude Code, also the `meetstream-debugger` subagent).
 ```
 
 ### Common gotchas (live-verified)

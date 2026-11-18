@@ -18,8 +18,50 @@ This skill is the **mandatory Step 0** for any MeetStream integration. If the us
 
 ## Two ways in: pick by what the user wants
 
-- **Use MeetStream from this agent** (send bots, get notes): no key needed. This plugin includes the hosted MeetStream MCP server. Sign in once: Claude Code `/mcp` → `meetstream` → **Authenticate**; Codex `codex mcp login meetstream`; Cursor Settings → MCP → **Connect**. The browser opens app.meetstream.ai; the user signs in or signs up and clicks **Allow**. Check with the `list_bots` tool, then hand over to `join-meeting`. New accounts start with $5 of credit.
+- **Use MeetStream from this agent** (send bots, get notes): no key needed. This plugin includes the hosted MeetStream MCP server. Sign in once: Claude Code `/mcp` → `meetstream` → **Authenticate**; Codex `codex mcp login meetstream`; Cursor Settings → MCP → **Connect**. The browser opens app.meetstream.ai; the user signs in or signs up and clicks **Allow**. Check with the `list_bots` tool, then ask the routing question below (after the meeting or live?) and hand over to `join-meeting` or `realtime-streaming`. New accounts start with $5 of credit.
 - **Build an app on the API** (code, servers, CI): the code needs an API key. Follow the steps below.
+
+## Intake routing (read this first)
+
+MeetStream is meeting-bot and recording infrastructure: a bot joins Zoom, Google Meet or
+Microsoft Teams, records and transcribes, and gives you recordings, transcripts and
+webhooks. Start there.
+
+1. **Post-call or live?** When the user has not said what they want, ask this one
+   question first: do you want results **after the meeting** (recording, transcript,
+   brief, action items) or something **live, during the call** (live transcription,
+   live audio or video streams, chat, raise hand)?
+   - Post-call → `join-meeting`, then `meeting-brief`; for apps also `webhooks` and
+     `recordings-and-media`.
+   - Live → `realtime-streaming` (chat and raise hand are in `join-meeting`).
+   - If the request already says which ("record my 3pm call and send me notes" is
+     post-call), do not ask. Go.
+2. **Voice agents only on request.** Do not suggest a bot that talks. Bring in
+   `mia-voice-agents` only when the user asks for a "voice agent", an "agent in the
+   meeting", or a bot that talks, answers or speaks (or names MIA, the API name). In
+   replies say "voice agent"; most users do not know the word MIA.
+3. **Voice agent setups, in this order** (details in `mia-voice-agents`):
+   1. **MeetStream-managed keys** (default): `"key_source": "meetstream"` in each
+      pipeline section, no provider keys to bring, billed per hour on the MeetStream
+      account.
+   2. **Your own provider keys**: the user brings their own transcription, LLM and voice
+      keys and sets up the providers themselves.
+   3. **Your own agent on your own computer** (for example a Claude Code or Codex
+      subscription, through the MeetStream Agent Kit): only when the user asks for it,
+      and always with the warning in `mia-voice-agents`.
+4. **Which version?** If the user asks, the answer is: install or update the current
+   MeetStream plugin. The MCP server is hosted at `https://mcp.meetstream.ai/mcp`, so
+   everyone uses the same server and there is no version to choose or pin. Do not
+   describe any version as stable or unstable, and do not raise versions unprompted.
+
+**If the MeetStream tools are missing or not signed in** (no `meetstream` tools, or a tool
+answers 401 or "not signed in"): give the user the one step to connect, and in the same
+reply keep helping. Do not stop at "sign in first".
+- Claude Code: `/mcp` → `meetstream` → sign in. Cursor: Settings → MCP → **Connect** next
+  to `meetstream`. Codex: `codex mcp login meetstream` (full steps:
+  https://github.com/meetstream-ai/claude-plugin/blob/main/INSTALL_FOR_AGENTS.md).
+- Then go on: give the plan, the `create_bot` fields you will send once the tools work,
+  or the REST call (`curl` with `Authorization: Token $MEETSTREAM_API_KEY`).
 
 ## When to invoke this skill
 
