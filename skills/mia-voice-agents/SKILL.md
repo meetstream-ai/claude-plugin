@@ -64,7 +64,34 @@ lives inside `model`.
 
 Other operations: `GET /mia` (list, or one via `?agent_config_id=`),
 `PUT /mia` (update, body includes `agent_config_id`),
-`DELETE /mia?agent_config_id=...`.
+`DELETE /mia?agent_config_id=...`. `GET` masks secrets (`****` + last four characters);
+sending the mask back on `PUT` keeps the stored value.
+
+### Anthropic Claude as the LLM
+
+Pipeline mode only: `"model": { "provider": "anthropic", "model": "claude-haiku-5-5", ... }`
+(`claude-haiku-5-5` for the fastest replies, `claude-sonnet-5-5` or `claude-opus-5-5` for
+harder tasks). The Anthropic key is saved in the dashboard under model integrations
+(provider `anthropic`).
+
+- `temperature` must be 0 to 1. `reasoning_effort` is optional (`"low"` when omitted).
+- `tool_choice` may only be `"auto"` or `"none"`.
+- `top_p`, `frequency_penalty`, `presence_penalty` and `logit_bias` return 400
+  `Anthropic models do not support: ...`.
+- Claude is an LLM for MIA only, not a transcription provider and not a `create_bot` field.
+
+### Changing a running agent
+
+`POST /api/v1/bots/{bot_id}/update_mia` (REST) with at least one of `agent_config_params`
+(merged), `system_prompt` (replaces the instructions), `wake_word_enabled`, `wake_words`.
+A plain 200 `{"status": "accepted"}` means accepted for delivery, not applied. Add
+`"wait_for_ack": true` to get the agent's answer: `status` is `applied`,
+`partially_applied`, `failed` (with `errors: [{field, reason}]`) or `accepted` with
+`ack_timeout: true` (the update may still apply). A non-boolean `wait_for_ack` returns 400.
+
+To have the agent wait its turn, raise the bot's hand first:
+`POST /api/v1/bots/{bot_id}/send_command` `{"command": "raise_hand"}`, then `lower_hand`
+after it speaks (see `join-meeting`).
 
 ## Things worth configuring that people miss
 
@@ -80,6 +107,7 @@ Other operations: `GET /mia` (list, or one via `?agent_config_id=`),
   bot is an AI participant.
 - **`Avatar`** (`provider`, `enabled`, `avatar_id`) gives the agent a face in the meeting
   video rather than a static tile. Confirmed working end to end, so it is safe to offer.
+  It also works on Zoom bots that join without the user's own Zoom app.
 
 ## Wake-word agents
 

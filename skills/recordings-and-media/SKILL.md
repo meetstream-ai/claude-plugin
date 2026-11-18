@@ -5,8 +5,8 @@ description: >
   streams, screenshots - and control recording and retention. Use when the
   user says "download the recording", "get the audio", "per-participant
   audio", "separate speaker tracks", "screenshots", "pause recording",
-  "how long are recordings kept", "delete the recording", or "store
-  recordings in my own S3 bucket".
+  "how long are recordings kept", "delete the recording", "store
+  recordings in my own S3 bucket", "storage_id", or "grid_view_default".
 ---
 
 # Recordings and media
@@ -49,8 +49,11 @@ video. Audio only is faster to process and smaller to store, and transcripts, su
 diarization and speaker timelines all work without it.
 
 The surfaces differ. The MCP `create_bot` tool records **audio only** unless you pass
-`record_video: true`. The REST API's `video_required` **defaults to `true`**, so send
-`"video_required": false` explicitly; an omitted field records video.
+`record_video: true`. The REST API's `video_required` also **defaults to `false`**; send
+`"video_required": false` explicitly anyway so the request states the intent.
+`audio_required` (default `true`) records the mixed audio; `audio_required: false` with
+`video_required: false` and nothing else to do (no live stream, `realtime_endpoints`,
+`socket_connection_url`, `bot_message` or `agent_config_id`) returns 400.
 
 ### Layout: send `speaker_view` when video is on
 
@@ -58,14 +61,21 @@ The surfaces differ. The MCP `create_bot` tool records **audio only** unless you
 |---|---|---|
 | Layout | `video_layout: "speaker_view"` | `recording_config: { "video_layout": "speaker_view" }` |
 
-- Values are exactly `"speaker_view"` or `"grid_view"`. Nothing else validates.
+- `"speaker_view"` and `"grid_view"` work on Google Meet, Teams and Zoom. Google Meet
+  and Teams also accept `"speaker_view_default"` and `"grid_view_default"`: the bot
+  records the platform's own speaker or grid view in the call as one finished file
+  (Teams `grid_view_default` shows at most 9 tiles). Zoom returns 400 for the `_default`
+  values. Any other value returns 400 `invalid video_layout value. Allowed values: ...`.
 - **The REST API defaults to `"grid_view"`**, so `"speaker_view"` has to be sent
-  explicitly. Only use `"grid_view"` when the user asks for grid or gallery view.
+  explicitly. Only use `"grid_view"` when the user asks for grid or gallery view, and a
+  `_default` value only when they ask for the platform's own layout.
 - Ignored when video is off: an audio-only bot never runs the compositor.
-- Google Meet, Teams and Zoom accept both values. WhatsApp accepts only `"grid_view"`,
-  and any other platform rejects the field.
+- WhatsApp accepts only `"grid_view"`, and any other platform rejects the field.
 - Speaker view follows the active speaker, which is what people want for review and
-  clipping. Grid view is a composited mosaic of everyone.
+  clipping. Grid view is a composited mosaic of everyone. Google Meet speaker view
+  recordings are 1600x900; do not hard-code 1280x720.
+- On Google Meet and Teams, `video_separate_streams: true` needs `video_required: true`,
+  otherwise `create_bot` returns 400.
 
 ## Pausing mid-meeting
 
@@ -119,10 +129,27 @@ Two things to tell the user before they run it:
 
 Objects land under `{prefix}/{bot_id}_<file>`.
 
+### Picking a destination per bot: `storage_id`
+
+A workspace can save up to 10 storage destinations in the dashboard. Pick one per bot with
+`storage_id` on the REST `create_bot` body:
+
+```json
+{ "meeting_link": "...", "bot_name": "Recorder", "storage_id": "eu-archive" }
+```
+
+- 1-80 letters, numbers, underscores or hyphens, else 400
+  `storage_id must contain 1-80 letters, numbers, underscores or hyphens`.
+- Omitted: the workspace default destination, or MeetStream storage when none is set.
+- Unknown ID, another workspace's ID, or a destination that fails validation: 400 with
+  the storage error text (503 when validation is temporarily unavailable).
+- Scheduled bots recheck the destination at join time and end `Error` /
+  `StorageValidationFailed` if it no longer passes.
+
 ## Reference
 
 - [Retrieve recordings](https://docs.meetstream.ai/guides/transcription-recordings/retrieve-recordings)
 - [Per-participant audio](https://docs.meetstream.ai/guides/transcription-recordings/per-participant-audio) · [Per-participant video](https://docs.meetstream.ai/guides/transcription-recordings/per-participant-video)
 - [Pause and resume recording](https://docs.meetstream.ai/guides/features/pause-resume-recording)
 - [Usage and retention](https://docs.meetstream.ai/guides/features/usage-and-retention)
-- [Custom storage configurations](https://docs.meetstream.ai/guides/features/custom-storage-configurations/amazon-s3)
+- [Custom storage configurations](https://docs.meetstream.ai/guides/features/custom-storage-configurations/overview)

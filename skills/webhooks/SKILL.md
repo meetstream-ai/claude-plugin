@@ -42,6 +42,19 @@ You may also see `bot.scheduled`, `bot.uploading`, `bot.transcriptionready`,
 `audio.skipped`, `manifest.skipped` and `participant_events.join` / `.leave`. On Zoom,
 `bot.recording_permission_allowed` / `_denied` can fire before `bot.recording`.
 
+**Participant hand events** (`participant_events.raise_hand` / `participant_events.lower_hand`,
+Google Meet and Zoom) are opt-in per bot: list them in
+`recording_config.realtime_endpoints[].events` on the REST `create_bot`. They go **only**
+to those endpoints, never to `callback_url` or workspace webhooks. Same nested shape as
+`participant_events.join` (`data.data.action` is `raise_hand` / `lower_hand`, bot id at
+`data.bot.id`). Transitions only; the bot's own hand is never reported; a participant who
+leaves with a hand up gets no `lower_hand`.
+
+A `bot.failed` terminal carries a reason in `bot_details.ErrorReason` (and, on Google
+Meet, `failure_reason` in the webhook), for example `MeetingRestricted` /
+`meeting_restricted`, `SignInRequired` / `sign_in_required` or `InvalidMeetingLink`.
+See the `platform-setup` skill.
+
 Four things that break handlers:
 
 1. **Terminals are two-layer.** Every ending arrives once with `event: "bot.stopped"`.
@@ -84,7 +97,11 @@ as trusted input.
 
 ## Local development
 
-`callback_url` must be a **public HTTPS URL**. Localhost will never receive anything.
+`callback_url` must be a **public HTTPS URL** that resolves to a public address.
+Localhost will never receive anything. Post-call webhooks (`audio.processed`,
+`transcription.*`, `video.processed` and the rest) are delivered only to public
+addresses, on every redirect hop; a URL that resolves to a private, loopback or metadata
+address is dropped. Every delivery sends `User-Agent: MeetStream-Webhook/1.0`.
 
 ```bash
 ngrok http 3000          # then use the https URL + your path
@@ -100,7 +117,8 @@ Two failure modes to check before debugging your code:
 
 | Symptom | Likely cause |
 |---|---|
-| No events at all | `callback_url` not public HTTPS, or not set on that bot |
+| No events at all | `callback_url` not public HTTPS, resolves to a private address, or not set on that bot |
+| No hand events | `participant_events.raise_hand` / `.lower_hand` not listed in `realtime_endpoints`; they never reach `callback_url` |
 | No `transcription.processed` | Streaming-only provider: the transcript was live, there is no post-call one |
 | Kicks treated as normal exits | Branching on `bot_status` instead of `bot_event` |
 | Bot never joined | `bot.stopped` with `bot_event` `bot.notallowed` or `bot.denied` |

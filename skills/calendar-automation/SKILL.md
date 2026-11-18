@@ -75,8 +75,9 @@ with a `bot_config`. Unschedule with `DELETE` on the same path.
 Scheduling the same event twice returns **HTTP 409** with the existing bot id. Treat
 that as "already scheduled", not an error.
 
-Note `bot_config` is a different schema from `create_bot`: it accepts `audio_required`
-and puts the transcription provider under a top-level `transcription` key.
+Note `bot_config` is a different schema from `create_bot`: it puts the transcription
+provider under a top-level `transcription` key. Like `create_bot`, it accepts
+`audio_required`.
 
 ### Managing scheduled bots
 
