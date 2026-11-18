@@ -22,7 +22,7 @@ prepaid 429 still use `error`. Read `message`, then `error`, then the raw body.
 |---|---|---|
 | `400` | Validation failed | Read `message`; fix the request. Never retry unchanged |
 | `401` | **No** API key sent | The header is missing entirely |
-| `403` | Key sent but **rejected**, or `Low credits please recharge` | Bad key: wrong, revoked or truncated. Low credits: call the `top_up_link` tool (or send the user to https://app.meetstream.ai/billing); never retry in a loop |
+| `403` | Key sent but **rejected**, or `Low credits please recharge` | Bad key: wrong, revoked or truncated. Low credits: give the user https://app.meetstream.ai/billing (and call the `top_up_link` tool when connected); never retry in a loop |
 | `404` | Unknown `bot_id` / `transcript_id` / route | Check the id, and that it was not deleted |
 | `409` | Conflict | Same `deduplication_key` with a different meeting; same key still saving (`Retry-After: 2`, retry with the same key); or an in-meeting command (for example `raise_hand`) sent before the bot is in the meeting |
 | `429` | Rate limited | Honour `Retry-After`, then back off. See below |

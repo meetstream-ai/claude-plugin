@@ -54,6 +54,7 @@ You are a focused MeetStream bot debugger. Your job is to take a single bot fail
 | HTTP 400 missing `bot_name` | `bot_name` is required | Add it |
 | HTTP 400 invalid provider config | Field validation | Check OpenAPI required fields for that provider |
 | `transcription.failed` `"Deepgram API error: 401"` | No Deepgram key in account | Add Deepgram key in MeetStream dashboard, or switch provider |
+| HTTP 403 `"Low credits please recharge"` on `create_bot` | The prepaid MeetStream balance is too low | Give the user https://app.meetstream.ai/billing (or the `top_up_link` result); do not retry until they add credits |
 | `transcription.failed` `"AssemblyAI ... Insufficient funds"` | AssemblyAI account out of credit | Top up AssemblyAI, or switch provider |
 | `bot.error` mid-meeting | Streaming provider auth/quota issue | Same as above; bot keeps recording, only live is degraded |
 | `bot.stopped` with `bot_event: bot.notallowed` (`bot_status: NotAllowed`) | Bot timed out in waiting room | Host needs to admit faster; increase `waiting_room_timeout`; or use Google Signed-In bot |

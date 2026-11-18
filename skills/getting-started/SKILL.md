@@ -5,7 +5,9 @@ description: >
   signup, API key creation, environment configuration, and a validation ping.
   MUST be invoked before any other MeetStream skill (notetaker, sales-coach,
   calendar-automation, etc.) if MEETSTREAM_API_KEY is missing. Auto-trigger
-  when user says "set up MeetStream", "I don't have a MeetStream account",
+  when user says "get started", "help me get started with MeetStream", "help
+  me use MeetStream", "how do I use MeetStream", "what can MeetStream do",
+  "set up MeetStream", "I don't have a MeetStream account",
   "first time using MeetStream", "MeetStream onboarding", "create MeetStream
   API key", "MeetStream signup", "how do I start with MeetStream", or when a
   user invokes any other MeetStream skill without MEETSTREAM_API_KEY set.
@@ -15,6 +17,16 @@ allowed-tools: Bash, Read, Write, Edit
 # MeetStream Getting Started - First-Time Setup
 
 This skill is the **mandatory Step 0** for any MeetStream integration. If the user doesn't have an account or API key, no other skill can succeed. Walk them through it before scaffolding anything.
+
+## Your first reply
+
+1. If the MeetStream tools are missing or not signed in, give the one step to connect
+   (see below) and keep going in the same reply.
+2. Ask one question first: do you want results **after the meeting** (recording,
+   transcript, notes) or something **live, during the call** (live transcript, live
+   audio or video, chat, raise hand)? Do not lead with a voice agent.
+3. Then follow the answer: after the meeting → `join-meeting` and `meeting-brief`; live →
+   `realtime-streaming`. If they will write code, the API key steps below apply.
 
 ## Two ways in: pick by what the user wants
 
@@ -47,8 +59,8 @@ webhooks. Start there.
    2. **Your own provider keys**: the user brings their own transcription, LLM and voice
       keys and sets up the providers themselves.
    3. **Your own agent on your own computer** (for example a Claude Code or Codex
-      subscription, through the MeetStream Agent Kit): only when the user asks for it,
-      and always with the warning in `mia-voice-agents`.
+      subscription, through the MeetStream Agent Kit): only when the user asks for it.
+      Warn first, in the same answer: anyone in the meeting can try to make that agent run commands or read files on the user's computer (prompt injection); use the lowest access level (read-only) and the activation code, and keep the computer, the bridge and the tunnel running for the whole meeting.
 4. **Which version?** If the user asks, the answer is: install or update the current
    MeetStream plugin. The MCP server is hosted at `https://mcp.meetstream.ai/mcp`, so
    everyone uses the same server and there is no version to choose or pin. Do not

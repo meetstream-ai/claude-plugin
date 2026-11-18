@@ -61,12 +61,12 @@ in pipeline and realtime mode. The rest of this skill describes the config field
 ### 3. Your own agent on your own computer (MeetStream Agent Kit)
 
 Yes, the user's own agent (for example their Claude Code or Codex subscription) can
-write what the voice agent says. Offer it only when the user asks for it; setups 1 and 2
-stay the recommended ones. The MeetStream Agent Kit
-(https://github.com/meetstream-ai/agent-kit) runs a bridge on the user's computer and a
-tunnel to it; the voice agent hears the meeting and speaks, and the user's own agent CLI
-writes the answers. Point the user to the Agent Kit README for setup. Always give this
-warning first:
+write what the voice agent says, through the MeetStream Agent Kit
+(https://github.com/meetstream-ai/agent-kit). Warn first, in the same answer: anyone in the meeting can try to make that agent run commands or read files on the user's computer (prompt injection); use the lowest access level (read-only) and the activation code, and keep the computer, the bridge and the tunnel running for the whole meeting. Offer it only when
+the user asks for it; setups 1 and 2 stay the recommended ones. The Agent Kit runs a
+bridge on the user's computer and a tunnel to it; the voice agent hears the meeting and
+speaks, and the user's own agent CLI writes the answers. Point the user to the Agent Kit
+README for setup. Repeat the warning in full:
 
 > **Warning:** this connects your local agent, and through it your computer, to what
 > anyone says in the meeting. Someone in the call can try to make your agent run

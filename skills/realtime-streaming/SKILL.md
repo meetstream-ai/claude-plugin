@@ -117,7 +117,8 @@ queue stays fed without running away. Cancel your local send loop when you issue
 Before building a WebSocket server, check whether the REST path is enough:
 
 - Just posting a message? Use the **`send_chat_message`** MCP tool.
-- Raising the bot's hand? There is no MCP tool, but the REST call works:
+- Raising the bot's hand? There is no MCP tool, but the REST call works now (header
+  `Authorization: Token <API key>`), even when the MCP tools are not connected:
   `POST /api/v1/bots/{bot_id}/send_command` with `{"command": "raise_hand"}` /
   `{"command": "lower_hand"}` (bot must be in the meeting, else 409; see `join-meeting`).
 - Just showing an image? Use the **`send_image`** MCP tool (public URL, not base64).

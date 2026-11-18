@@ -110,8 +110,15 @@ Poll with a sensible interval (5-10s) and a cap. Do not busy-loop.
 - **`send_image`** - show an image or GIF as the bot's video frame. The URL must be
   publicly reachable and resolve to a public address; MeetStream fetches it server side,
   so local paths, private hosts and `data:` URIs will not work.
-- **Raise / lower hand** - there is no MCP tool for this, but the bot can do it. Give the
-  user (or run, when an API key is set) the REST call `POST /api/v1/bots/{bot_id}/send_command`
+- **Raise / lower hand** - there is no MCP tool for this, but the bot can do it now with
+  REST, even when the MCP tools are not connected. Give the user (or run, when
+  `MEETSTREAM_API_KEY` is set) this call, with the connect step only as a side note:
+  ```bash
+  curl -X POST "https://api.meetstream.ai/api/v1/bots/<bot_id>/send_command" \
+    -H "Authorization: Token $MEETSTREAM_API_KEY" -H "Content-Type: application/json" \
+    -d '{"command": "raise_hand"}'
+  ```
+  It is `POST /api/v1/bots/{bot_id}/send_command`
   with `{"command": "raise_hand"}` or `{"command": "lower_hand"}` (Google Meet, Zoom,
   Teams). The bot must be `InMeeting` or `Recording`, otherwise 409. Response:
   `{"status": "accepted", "bot_id": "...", "command": "raise_hand", "hand_raised": true}`,

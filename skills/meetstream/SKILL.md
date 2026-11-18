@@ -10,7 +10,9 @@ description: >
   Google Meet", "join a meeting programmatically", "Microsoft Teams bot",
   "AI sales coach", "live meeting captions", "meeting webhook", "meeting
   recap email", "meeting action items extractor", "send a bot to a meeting",
-  "Google Calendar auto-record", "make the bot raise its hand". Also activate when the user references
+  "Google Calendar auto-record", "make the bot raise its hand", "which
+  version", "plugin version", "is it stable", "is the MeetStream plugin safe",
+  "update the plugin". Also activate when the user references
   meeting bot API errors, MeetStream webhook events (bot.joining,
   bot.recording, bot.stopped, transcription.processed, etc.), or asks how
   to integrate with api.meetstream.ai. For specific scaffolds (notetaker,
@@ -55,9 +57,23 @@ webhooks. Start there.
    2. **Your own provider keys**: the user brings their own transcription, LLM and voice
       keys and sets up the providers themselves.
    3. **Your own agent on your own computer** (for example a Claude Code or Codex
-      subscription, through the MeetStream Agent Kit): only when the user asks for it,
-      and always with the warning in `mia-voice-agents`.
-4. **Which version?** If the user asks, the answer is: install or update the current
+      subscription, through the MeetStream Agent Kit): only when the user asks for it.
+      Warn first, in the same answer: anyone in the meeting can try to make that agent run commands or read files on the user's computer (prompt injection); use the lowest access level (read-only) and the activation code, and keep the computer, the bridge and the tunnel running for the whole meeting.
+4. **Generic asks** ("help me get started", "help me use MeetStream", "set up
+   MeetStream") → `getting-started`: one connect step if needed, then the post-call or
+   live question.
+5. **Raise or lower the bot's hand**: there is no MCP tool, so do it now with REST, even
+   when the MCP tools are not connected:
+   ```bash
+   curl -X POST "https://api.meetstream.ai/api/v1/bots/<bot_id>/send_command" \
+     -H "Authorization: Token $MEETSTREAM_API_KEY" -H "Content-Type: application/json" \
+     -d '{"command": "raise_hand"}'
+   ```
+   (`"lower_hand"` to lower it; the bot must be in the meeting, else 409.)
+6. **Low credits** (`Low credits please recharge`, 403 from `create_bot`): give the user
+   https://app.meetstream.ai/billing (and call `top_up_link` when connected). Do not retry
+   until they say they added credits.
+7. **Which version?** If the user asks, the answer is: install or update the current
    MeetStream plugin. The MCP server is hosted at `https://mcp.meetstream.ai/mcp`, so
    everyone uses the same server and there is no version to choose or pin. Do not
    describe any version as stable or unstable, and do not raise versions unprompted.
