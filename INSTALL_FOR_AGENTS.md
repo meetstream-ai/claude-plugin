@@ -24,7 +24,7 @@ codex plugin marketplace add meetstream-ai/claude-plugin
 codex plugin add meetstream@meetstream-ai
 ```
 
-If `codex plugin` is not available in this Codex version, clone the repo (below) and run `./setup --host codex`.
+If `codex plugin` is not available, clone the repo (below) and run `./setup --host codex`.
 
 **Copilot CLI**
 
@@ -84,6 +84,5 @@ Say, in two lines: MeetStream is installed and signed in, and they can now say t
 
 - "Send a bot to <meeting link> and take notes."
 - "Get the notes from my last meeting."
-- "Answer questions in the meeting chat" (beta).
 
 Do not explain the internals (paths, manifests) unless asked.

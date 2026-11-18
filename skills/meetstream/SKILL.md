@@ -193,8 +193,7 @@ Q1.3: Custom avatar / profile picture?
       ├─ Yes → "bot_image_url": "https://your-cdn.com/avatar.png"
       │        • MUST be a public https:// URL to a PNG, JPEG, GIF or WebP
       │          (no auth, no signed URLs, must resolve to a public address)
-      │        • http:// and data: URIs return HTTP 400 (no longer dropped
-      │          silently)
+      │        • http:// and data: URIs return HTTP 400
       │        • Host it on S3 / Cloudflare R2 / public CDN
       └─ No  → omit bot_image_url
 
@@ -1350,7 +1349,7 @@ Custom profile picture must be a **publicly accessible URL** - MeetStream fetche
 ```
 
 - Must be `https://` and point to a PNG, JPEG, GIF or WebP image. A URL without one of those extensions is accepted only up to 2048 characters.
-- `http://`, `data:` URIs and other unusable values return **400** `bot_image_url must be an https:// URL to a PNG, JPEG, GIF or WebP image; ...`. They used to be dropped silently, so old code that sent a bad URL now fails.
+- `http://`, `data:` URIs and other unusable values return **400** `bot_image_url must be an https:// URL to a PNG, JPEG, GIF or WebP image; ...`.
 - The host must resolve to a public address on every redirect hop. A private, loopback or metadata address is refused when the bot downloads the image (no 400; the bot just has no avatar).
 
 ---
@@ -1452,7 +1451,7 @@ Then, on `create_bot`, pass the `google_meet` block:
 - `sign_in_email` (optional) pins one registered account. `strict_email` (optional, default `true`): with `sign_in_email`, `true` fails if that account is busy or unhealthy; `false` falls back to any available account in the domain.
 - Concurrency: a Google account can serve many meetings at once, but add logins as you scale (rule of thumb from the guide: one login per ~20 concurrent Meet sessions). MeetStream distributes bots across them.
 - `google_meet` is not in the OpenAPI `CreateBotRequest` schema; the guide above is canonical.
-- CLI: `meetstream logins google ...` and `meetstream bot create <link> --google-login-domain <d>` (CLI 0.4.0+). MCP: `create_bot`'s `google_login_domain` param (MCP server 0.3.2+). Account management is REST / CLI / SDK only.
+- CLI: `meetstream logins google ...` and `meetstream bot create <link> --google-login-domain <d>` MCP: `create_bot`'s `google_login_domain` param. Account management is REST / CLI / SDK only.
 
 ### Microsoft Teams Signed-In Bots
 
@@ -1499,7 +1498,7 @@ Login object: `{ login_id, domain, email, is_active, lease_status, last_session_
 - **One concurrent bot per account.** Teams merges same-email sign-ins into one attendee. For N concurrent signed-in Teams bots, register N accounts.
 - **Name and avatar come from the Microsoft account.** `bot_name` and `bot_image_url` are not applied on a signed-in join.
 - A malformed `teams` block is dropped silently and the bot joins as a guest. If a signed-in bot shows up as `(Guest)`, check that `login_required: true` is inside `teams`.
-- CLI: `meetstream logins teams ...` and `meetstream bot create <link> --teams-login-domain <d>` (CLI 0.4.0+). MCP: `create_bot`'s `teams_login_domain` param (MCP server 0.3.2+). Account management is REST / CLI / SDK only.
+- CLI: `meetstream logins teams ...` and `meetstream bot create <link> --teams-login-domain <d>` MCP: `create_bot`'s `teams_login_domain` param. Account management is REST / CLI / SDK only.
 
 **Errors on `create_bot`:**
 
@@ -1621,7 +1620,7 @@ Specified under `recording_config.transcript.provider`. Use **exactly one** prov
 | `FAILED` / `ERROR` / `Failed` | `bot.stopped` (`bot_event: bot.failed`) | Unexpected error. Casing varies, so match `bot_event` instead |
 | `Done` | `bot.done` | All processing complete - **terminal** |
 
-### `*.failed` events DO exist (skill previously claimed they didn't)
+### `*.failed` events
 
 Live-verified: `transcription.failed` is a real event with `status_code: 500`, `transcript_status: "Failed"`, and `message` carrying the upstream error (e.g. provider auth failure). Handle these in your router:
 
@@ -1725,7 +1724,7 @@ def delete_bot_data(bot_id: str, confirmed: bool = False) -> dict:
 
 ## Errors, Rate Limits and Validation
 
-**Error body.** Most errors return `{"message": "..."}`. On the bot data endpoints (`get_audio`, `get_video`, `get_speaker_timeline`, `get_chats`, `get_participants`, screenshots), an error that used to be a bare JSON string is now `{"message": "..."}`. On `remove_bot`, `stop_status` and `GET /bots/{bot_id}/transcriptions`, `{"error": "..."}` became `{"message": "..."}`. A few endpoints (in-meeting commands, the credit check, the 429 below) still send `error`. Read all shapes:
+**Error body.** Most errors return `{"message": "..."}`. On the bot data endpoints (`get_audio`, `get_video`, `get_speaker_timeline`, `get_chats`, `get_participants`, screenshots), errors are `{"message": "..."}`, and so are errors from `remove_bot`, `stop_status` and `GET /bots/{bot_id}/transcriptions`. A few endpoints (in-meeting commands, the credit check, the 429 below) still send `error`. Read all shapes:
 
 ```python
 def error_text(resp) -> str:
@@ -1735,7 +1734,7 @@ def error_text(resp) -> str:
         return resp.text
     if isinstance(body, dict):
         return body.get("message") or body.get("error") or str(body)
-    return str(body)  # older bare-string bodies
+    return str(body)  # bare-string body
 ```
 
 **Prepaid rate limit (429).** Prepaid (pay-as-you-go) accounts can create **5 bots per rolling minute and 50 per rolling hour**. Invoice accounts are not limited. Not counted: bots with `join_at` 10 minutes or more ahead, calendar bots for meetings 10+ minutes away, the scheduled join itself, and idempotent replays. Over the limit, no bot is created and the API returns:
@@ -1749,7 +1748,7 @@ Retry-After: 37
 
 Sleep for `Retry-After` seconds, then resend the same request (same `Idempotency-Key` or `deduplication_key` if you use one). Concurrent creates with the same key make one bot; a loser can get 409 with `Retry-After: 2` while the first request is still saving, so retry that 409 with the same key too. Code: Pattern 12 in `references/code-patterns-node.md` and `references/code-patterns-python.md`.
 
-**`create_bot` requests that now return 400** (they used to pass or were silently changed):
+**`create_bot` requests that return 400:**
 
 | Request | 400 message starts with |
 |---|---|

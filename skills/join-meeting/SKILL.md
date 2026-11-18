@@ -47,7 +47,7 @@ Ask for the meeting link if the user has not given one. Sensible defaults:
   A provider whose key is missing fails after the call with no transcript. See the
   `meeting-brief` skill for other languages and diarization.
 - `bot_image_url` (REST) - a public `https://` PNG, JPEG, GIF or WebP URL. `http://` and
-  `data:` URIs now return 400 instead of being dropped.
+  `data:` URIs return 400.
 - Zoom needs no setup. On REST, `zoom.use_own_app` picks the join (`true` = the user's own
   Zoom app, `false` = without it, omitted = the app if one is saved). See `platform-setup`.
 - `storage_id` (REST) - one of the workspace's storage destinations from the dashboard

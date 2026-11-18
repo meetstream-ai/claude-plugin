@@ -97,8 +97,8 @@ scheduled-bot PATCH; optional):
 With your own app, development mode restricts bots to meetings hosted by the app owner;
 joining other accounts' meetings with your app needs Zoom's review and a ZAK or OBF token.
 
-- `use_zoom_obf` and `zoom_oauth_connection_user_id` are **rejected** by the API, and the
-  old `/zoom/oauth/*` connection endpoints are no longer documented. Do not use them.
+- `use_zoom_obf` and `zoom_oauth_connection_user_id` are **rejected** by the API. Do not use them
+  or the `/zoom/oauth/*` connection endpoints.
 
 Optional app walkthrough: https://docs.meetstream.ai/guides/app-integrations/zoom-marketplace-app-setup
 
@@ -109,8 +109,7 @@ the lobby. The fix is a **signed-in bot**: the bot authenticates as a real Googl
 Workspace user before joining.
 
 Setup is a one-time Workspace configuration. The `google_meet` block below goes on the
-REST `create_bot` request; over MCP, use `create_bot`'s `google_login_domain` param (MCP
-server 0.3.2+). Account management is REST/CLI/SDK only:
+REST `create_bot` request; over MCP, use `create_bot`'s `google_login_domain` param. Account management is REST/CLI/SDK only:
 
 1. Configure a SAML SSO profile in Google Workspace Admin.
 2. Generate a certificate pair:
@@ -146,7 +145,7 @@ that is their admin's decision.
 
 If the organiser disabled anonymous join, a guest bot hits a sign-in wall. A **signed-in
 bot** joins as a real Microsoft 365 account instead. Over MCP, use `create_bot`'s
-`teams_login_domain` param (MCP server 0.3.2+); account management is REST/CLI/SDK only.
+`teams_login_domain` param; account management is REST/CLI/SDK only.
 
 1. Use a **dedicated M365 tenant** (Business Basic or higher), not production. Create one
    standard, non-admin, Teams-licensed user per bot account. In Entra ID, disable security

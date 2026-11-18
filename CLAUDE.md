@@ -13,7 +13,7 @@ claude mcp add --transport http meetstream https://mcp.meetstream.ai/mcp
 # then /mcp -> Authenticate, sign in at app.meetstream.ai and click Allow
 ```
 
-Separately, the [MeetStream Claude plugin](https://github.com/meetstream-ai/claude-plugin) adds skills for notetakers, sales coaching, calendar automation and scaffolding. Since 2.6.0 it also declares this MCP server, so installing the plugin is enough:
+Separately, the [MeetStream Claude plugin](https://github.com/meetstream-ai/claude-plugin) adds skills for notetakers, sales coaching, calendar automation and scaffolding. It also declares this MCP server, so installing the plugin is enough:
 
 ```sh
 /plugin marketplace add meetstream-ai/claude-plugin

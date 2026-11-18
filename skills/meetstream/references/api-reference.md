@@ -29,7 +29,7 @@ Creates a bot and sends it to a meeting.
 - `audio_separate_streams` (bool) - per-participant audio tracks (Google Meet + Zoom only). Can also be set under `recording_config`.
 - `video_separate_streams` (bool) - per-participant video tracks (all 3 platforms). Can also be set under `recording_config`. **Opt-in only: never set it unless the user explicitly asked for per-participant video.** Per-participant audio is not affected by that rule.
 - `bot_message` (string) - initial chat message posted on join.
-- `bot_image_url` (string) - bot avatar URL. Must be a public `https://` URL to a PNG, JPEG, GIF or WebP image (a URL without one of those extensions: at most 2048 characters). `http://`, `data:` and other unusable values return 400 (they used to be dropped silently). The host must resolve to a public address.
+- `bot_image_url` (string) - bot avatar URL. Must be a public `https://` URL to a PNG, JPEG, GIF or WebP image (a URL without one of those extensions: at most 2048 characters). `http://`, `data:` and other unusable values return 400. The host must resolve to a public address.
 - `callback_url` (string) - HTTPS endpoint for lifecycle webhook events.
 - `join_at` (string, ISO-8601) - schedule future join.
 - `agent_config_id` (string) - MIA agent configuration ID (see MIA section).
@@ -447,7 +447,7 @@ List connected calendars (live from Google API). Returns `{ total, user_id, cale
 ---
 
 ### GET `/calendar`
-List connected calendars (alternate path from older docs). Same shape as above.
+List connected calendars (alternate path). Same shape as above.
 
 ---
 
@@ -1130,7 +1130,7 @@ All values in seconds. Use these defaults unless you have a specific reason to d
 
 ## Errors and Rate Limits
 
-**Error body:** most errors are `{"message": "..."}`. Bot data endpoints (`get_audio`, `get_video`, `get_speaker_timeline`, `get_chats`, `get_participants`, screenshots) used to return a bare JSON string and now return `{"message": "..."}`. `remove_bot`, `stop_status` and `GET /bots/{bot_id}/transcriptions` moved from `{"error": "..."}` to `{"message": "..."}`. In-meeting commands, the credit check and the 429 below still use `error`. Read `message`, then `error`, then the raw body.
+**Error body:** most errors are `{"message": "..."}`. So do the bot data endpoints (`get_audio`, `get_video`, `get_speaker_timeline`, `get_chats`, `get_participants`, screenshots), `remove_bot`, `stop_status` and `GET /bots/{bot_id}/transcriptions`. In-meeting commands, the credit check and the 429 below use `error`. Read `message`, then `error`, then the raw body.
 
 **Prepaid rate limit:** prepaid (pay-as-you-go) accounts can create 5 bots per rolling minute and 50 per rolling hour (invoice accounts are not limited). Not counted: `join_at` 10+ minutes ahead, calendar bots for meetings 10+ minutes away, the scheduled join itself, idempotent replays. Over the limit: no bot is created, and
 
@@ -1143,9 +1143,9 @@ Retry-After: 37
 
 `window` is `"minute"` or `"hour"`. Wait `Retry-After` seconds and resend. Concurrent creates with the same `Idempotency-Key` or `deduplication_key` make one bot; a loser may get 409 with `Retry-After: 2` while the first is still saving.
 
-**New 400s on `create_bot`:** a bot with `audio_required: false` and `video_required: false` and no other job; Google Meet / Teams `video_separate_streams: true` without `video_required: true`; a `bot_image_url` that is not an https:// image URL; a Zoom link with no meeting number (`invalid_meeting_link: ...`); Zoom `meeting_captions` on a bot that uses the user's own Zoom app; bad `zoom.use_own_app`, `storage_id`, `bot_camera_stream` or Smallest `model` values; `recording_permission_denied_timeout` outside 60–600. A `meeting_link` with `http://` is upgraded to `https://`.
+**400s on `create_bot`:** a bot with `audio_required: false` and `video_required: false` and no other job; Google Meet / Teams `video_separate_streams: true` without `video_required: true`; a `bot_image_url` that is not an https:// image URL; a Zoom link with no meeting number (`invalid_meeting_link: ...`); Zoom `meeting_captions` on a bot that uses the user's own Zoom app; bad `zoom.use_own_app`, `storage_id`, `bot_camera_stream` or Smallest `model` values; `recording_permission_denied_timeout` outside 60–600. A `meeting_link` with `http://` is upgraded to `https://`.
 
-**Failure reasons on bots:** `bot_details.ErrorReason` on `/detail` (and `failure_reason` on Google Meet `bot.failed` webhooks). New or newly used: `MeetingRestricted` / `meeting_restricted` (Google Meet, Teams: the meeting admits only the organization or invitees), `SignInRequired` / `sign_in_required` (now also on Teams), `InvalidMeetingLink` (now also on Teams). Reference: https://docs.meetstream.ai/guides/reference/bot-status-and-error-codes
+**Failure reasons on bots:** `bot_details.ErrorReason` on `/detail` (and `failure_reason` on Google Meet `bot.failed` webhooks). `MeetingRestricted` / `meeting_restricted` (Google Meet, Teams: the meeting admits only the organization or invitees), `SignInRequired` / `sign_in_required` (now also on Teams), `InvalidMeetingLink` (now also on Teams). Reference: https://docs.meetstream.ai/guides/reference/bot-status-and-error-codes
 
 Full error reference: https://docs.meetstream.ai/errors
 
@@ -1186,10 +1186,10 @@ POST'd to `live_transcription_required.webhook_url`. **Live-captured shape** (fr
 - `transcript` - current buffer (may be partial / interim)
 - `utterance` - empty in `meetstream_streaming`; populated by some providers
 - `words[]` - per-word breakdown with `start` / `end` (seconds), `confidence`, `speaker`, `punctuated_word`, `speech_confidence`. **Note: `confidence` and `speech_confidence` are 0 from `meetstream_streaming`** - only Deepgram/AssemblyAI populate these meaningfully.
-- `is_final` - top-level boolean: false for interim, true for final committed text. **Live-verified - not previously documented**.
+- `is_final` - top-level boolean: false for interim, true for final committed text. Live-verified.
 - `end_of_turn` - true when speaker stops talking; useful for committing UI segments
 - `turn_is_formatted` - true after punctuation/formatting pass applied
-- `transcription_mode` - observed value `"raw"` from `meetstream_streaming` (was previously documented as `"word_level"` which was wrong for this provider)
+- `transcription_mode` - observed value `"raw"` from `meetstream_streaming`
 - `custom_attributes` - echoed from create_bot payload
 - `timestamp` - ISO-8601 of when this chunk was generated
 

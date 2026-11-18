@@ -2,8 +2,8 @@
 name: migrate-from-recall
 description: >
   Migrate an existing Recall.ai integration to MeetStream - rewrite base URLs,
-  endpoints, request fields, and webhook handlers. MeetStream is now essentially
-  one-to-one with Recall (cheaper, plus native AI summaries and MIA voice agents).
+  endpoints, request fields, and webhook handlers. MeetStream is essentially
+  one-to-one with Recall, at a lower price.
   Use when the user says "migrate from Recall", "move off recall.ai", "switch from
   Recall to MeetStream", "port my Recall bot", "Recall alternative migration", or
   points you at a codebase that calls recall.ai. Offers an automated CLI path and a
@@ -12,7 +12,7 @@ description: >
 
 # Migrate from Recall.ai → MeetStream
 
-MeetStream is a near drop-in replacement for Recall.ai at a lower price point, with native AI summaries and MIA voice agents that Recall lacks. As of v2.2 the migration is essentially **1:1** - the only feature still on the roadmap is **full live video output into the call** (static frames via `send_image` and audio via the WebSocket bridge are supported today).
+MeetStream is a near drop-in replacement for Recall.ai at a lower price point. The migration is essentially **1:1**.
 
 Pick the path that fits the user.
 
@@ -34,7 +34,7 @@ npx @meetstream/migrate /path/to/recall-project
 npx @meetstream/migrate test --api-key YOUR_MEETSTREAM_API_KEY
 ```
 
-Python projects: `pip install meetstream-migrate` then `meetstream-migrate migrate <path>`. The Node CLI is the reference implementation and edits files in place regardless of language, so prefer it when the PyPI build lags.
+Python projects: `pip install meetstream-migrate` then `meetstream-migrate migrate <path>`. The Node CLI edits files in place regardless of language, so it works on Python projects too.
 
 After it runs, walk the user through the **Post-migration checklist** below - the migrator flags anything that needs a human.
 
@@ -98,4 +98,4 @@ For the complete event catalog and payloads, use the `webhook_events_guide` refe
 
 ## What to tell the client
 
-MeetStream matches Recall on the core bot lifecycle, recording, per-participant streams, real-time audio/transcript, chat + image output, calendar (Google + Outlook), scheduling, signed-in bots, retention, and now **pause/resume recording** - and adds MIA voice agents. Same auth scheme, near-identical endpoints, lower price.
+MeetStream matches Recall on the core bot lifecycle, recording, per-participant streams, real-time audio/transcript, chat + image output, calendar (Google + Outlook), scheduling, signed-in bots, retention, and **pause/resume recording**. Same auth scheme, near-identical endpoints, lower price.

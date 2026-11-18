@@ -12,9 +12,8 @@ description: >
 
 Most error responses are `{"message": "..."}`. Read it and show it to the user - it
 usually names the exact problem. The bot data endpoints (audio, video, speaker timeline,
-chats, participants, screenshots) used to return a bare JSON string and now return
-`{"message": ...}`; `remove_bot`, `stop_status` and `/transcriptions` moved from
-`{"error": ...}` to `{"message": ...}`. In-meeting commands, the credit check and the
+chats, participants, screenshots), `remove_bot`, `stop_status` and `/transcriptions`
+also return `{"message": ...}`. In-meeting commands, the credit check and the
 prepaid 429 still use `error`. Read `message`, then `error`, then the raw body.
 
 ## Status codes
@@ -72,7 +71,7 @@ bots, set `join_at` 10 or more minutes ahead.
 | streaming provider required | Set `live_transcription_required.webhook_url` without a `*_streaming` provider |
 | `audio_required and video_required are both false, so the bot would record nothing. ...` | No recording and no other job (live stream, `realtime_endpoints`, `bot_message`, `agent_config_id`) |
 | `video_separate_streams=true requires video_required=true for Google Meet and Microsoft Teams. ...` | Per-participant video on an audio-only Meet/Teams bot |
-| `bot_image_url must be an https:// URL to a PNG, JPEG, GIF or WebP image; ...` | `http://`, `data:` or non-image URL (used to be dropped silently) |
+| `bot_image_url must be an https:// URL to a PNG, JPEG, GIF or WebP image; ...` | `http://`, `data:` or non-image URL |
 | `invalid_meeting_link: this Zoom link has no meeting number, ...` | Zoom personal (`/my/`) or vanity link |
 | `meeting_captions is not supported on Zoom. ...` | Bot uses your own Zoom app |
 | `zoom.use_own_app must be true or false` / `zoom.zak_url and zoom.obf_url cannot be used with zoom.use_own_app set to false` | Bad Zoom join options |

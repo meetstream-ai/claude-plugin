@@ -1,14 +1,14 @@
 # AGENTS.md
 
-Guidance for AI coding agents working in this repository. This repo is the **MeetStream plugin for Claude Code** - skills and a debugger agent, distributed through the Claude Code marketplace. Since 2.6.0 it also declares the hosted MeetStream MCP server (`.mcp.json`), so installing the plugin adds the server too.
+Guidance for AI coding agents working in this repository. This repo is the **MeetStream plugin for Claude Code** - skills and a debugger agent, distributed through the Claude Code marketplace. It also declares the hosted MeetStream MCP server (`.mcp.json`), so installing the plugin adds the server too.
 
 ## Always use the MeetStream MCP
 
 When building anything against the MeetStream API, install and use the MeetStream MCP. It is the current source of truth for endpoints, request and response fields, webhook events, provider names and bot behaviour.
 
-Do not treat the files in this repository as authoritative for MeetStream API behaviour. They can lag the API. If local code and the MCP disagree, the MCP wins unless the user says otherwise.
+Do not treat the files in this repository as authoritative for MeetStream API behaviour. If local code and the MCP disagree, the MCP wins unless the user says otherwise.
 
-Server name: `meetstream`. URL: `https://mcp.meetstream.ai/mcp`. MeetStream hosts it; there is no local install. Do not use `npx @meetstream/mcp`: that npm package is the old Node server, frozen at 0.3.0, and it predates the current defaults.
+Server name: `meetstream`. URL: `https://mcp.meetstream.ai/mcp`. MeetStream hosts it; there is no local install. Do not install an MCP server from npm; use the hosted URL.
 
 Add the URL with **no key** and sign in: the client opens app.meetstream.ai, the user clicks Allow, and the dashboard creates an API key for that connection (delete it on the API keys page to disconnect). Use an API key header only when the client cannot do OAuth.
 
@@ -21,7 +21,7 @@ claude mcp add --transport http meetstream https://mcp.meetstream.ai/mcp
 
 With a key instead: add `--header "Authorization: Bearer $MEETSTREAM_API_KEY"`.
 
-The [MeetStream Claude plugin](https://github.com/meetstream-ai/claude-plugin) installs the skills and, since 2.6.0, this MCP server in one step:
+The [MeetStream Claude plugin](https://github.com/meetstream-ai/claude-plugin) installs the skills and this MCP server in one step:
 
 ```sh
 /plugin marketplace add meetstream-ai/claude-plugin

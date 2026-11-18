@@ -2,6 +2,29 @@
 
 All notable changes to the MeetStream Claude Code plugin.
 
+## [2.7.0] - 2026-11-18
+
+Brings the plugin up to MeetStream API v1.9.0, adds intake routing, and stops agents from giving version-stability advice. Replaces the open 2.5.1 and API v1.7.0-v1.9.0 changes, re-applied on top of 2.6.0.
+
+### Fixed
+- **No version-stability advice.** Skills described per-version gates ("MCP server 0.3.2+", "CLI 0.4.0+"), an "old Node server frozen at 0.3.0", a migrator build that "lags", "as of v2.2" and "used to / now" history. Agents turned these into unprompted claims that one version is stable and another might break. Skills now describe current behaviour only: everyone uses the hosted MCP at `https://mcp.meetstream.ai/mcp`. The README badge showed 2.2.0; it now matches the manifests, and CI checks the badge and the top CHANGELOG entry.
+- `INSTALL_FOR_AGENTS.md` no longer offers "answer questions in the meeting chat": no skill in this plugin does that.
+- `migrate-from-recall` no longer claims built-in AI summaries (the API has none) or a roadmap item.
+
+### Changed
+- **Zoom needs no setup.** A Zoom bot needs only the MeetStream sign-in or API key and the meeting link. Your own Zoom app is optional (ZAK / OBF joins, per-participant camera video, live bot camera video). `zoom.use_own_app` (`true` / `false` / omitted) picks the join; there is no fallback when Zoom refuses the user's own app.
+- **`video_required` defaults to `false`** and `audio_required` is a real `create_bot` field (default `true`). Send `video_required` explicitly anyway. Both `false` with nothing else to do returns 400.
+- **`get_speaker_timeline`** can return `{bot_id, speaker_timeline_url, size_bytes, truncated}` for large timelines.
+- **`recording_permission_denied_timeout`** range is 60 to 600 seconds, default 600.
+- **`bot_image_url`** must be an https:// PNG, JPEG, GIF or WebP URL on a public host; other values return 400.
+- Zoom `meeting_captions` works only on bots that join without the user's own Zoom app. Voice agents on those bots can show images, video and an avatar.
+
+### Added
+- **Raise / lower hand** through the REST `POST /api/v1/bots/{bot_id}/send_command` (`raise_hand` / `lower_hand`, `hand_raised` in the response, 409 before the bot is in the meeting).
+- **Participant hand events** `participant_events.raise_hand` / `participant_events.lower_hand` (Google Meet, Zoom), opt-in through `recording_config.realtime_endpoints`.
+- `bot_camera_stream`, `storage_id`, `video_layout` values `speaker_view_default` / `grid_view_default` (Google Meet, Teams), Smallest AI transcription (`smallest`, `smallest_streaming`), Anthropic Claude as a voice-agent LLM (not a transcription provider), `update_mia` with `wait_for_ack`, failure reasons `MeetingRestricted`, `SignInRequired`, `InvalidMeetingLink`.
+- "Errors, Rate Limits and Validation": `{"message": ...}` error bodies, the prepaid 429 (5 per minute, 50 per hour) with `Retry-After`, the `create_bot` 400s and the public-address rule. `join-meeting` handles the 429.
+
 ## [2.6.0] - 2026-11-17
 
 ### Fixed
