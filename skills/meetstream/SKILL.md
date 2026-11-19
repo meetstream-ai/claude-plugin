@@ -11,8 +11,8 @@ description: >
   "AI sales coach", "live meeting captions", "meeting webhook", "meeting
   recap email", "meeting action items extractor", "send a bot to a meeting",
   "Google Calendar auto-record", "make the bot raise its hand", "which
-  version", "plugin version", "is it stable", "is the MeetStream plugin safe",
-  "update the plugin". Also activate when the user references
+  version", "plugin version", "is the MeetStream plugin safe", "update the
+  plugin". Also activate when the user references
   meeting bot API errors, MeetStream webhook events (bot.joining,
   bot.recording, bot.stopped, transcription.processed, etc.), or asks how
   to integrate with api.meetstream.ai. For specific scaffolds (notetaker,
@@ -44,6 +44,8 @@ webhooks. Start there.
    - Post-call → `join-meeting`, then `meeting-brief`; for apps also `webhooks` and
      `recordings-and-media`.
    - Live → `realtime-streaming` (chat and raise hand are in `join-meeting`).
+   - Build requests count too: if a build request names only the trigger (a CLI, a
+     calendar, a list of links) and not the outcome, ask once.
    - If the request already says which ("record my 3pm call and send me notes" is
      post-call), do not ask. Go.
 2. **Voice agents only on request.** Do not suggest a bot that talks. Bring in
@@ -73,10 +75,10 @@ webhooks. Start there.
 6. **Low credits** (`Low credits please recharge`, 403 from `create_bot`): give the user
    https://app.meetstream.ai/billing (and call `top_up_link` when connected). Do not retry
    until they say they added credits.
-7. **Which version?** If the user asks, the answer is: install or update the current
-   MeetStream plugin. The MCP server is hosted at `https://mcp.meetstream.ai/mcp`, so
-   everyone uses the same server and there is no version to choose or pin. Do not
-   describe any version as stable or unstable, and do not raise versions unprompted.
+7. **Version questions:** tell the user to install or update to the current MeetStream
+   plugin. The MCP server is hosted at `https://mcp.meetstream.ai/mcp`, so there is
+   nothing to choose. Then continue with what they want to do. Talk about versions
+   only when the user asks.
 
 **If the MeetStream tools are missing or not signed in** (no `meetstream` tools, or a tool
 answers 401 or "not signed in"): give the user the one step to connect, and in the same
@@ -93,7 +95,7 @@ reply keep helping. Do not stop at "sign in first".
 
 **If the user asks you to BUILD, CREATE, IMPLEMENT, or SET UP a MeetStream integration:**
 
-0. If the request does not say whether the app works after the meeting or live during the call ("build me something that records my meetings" does not), ask that once first.
+0. If a build request does not state the outcome, that is whether the app works after the meeting or live during the call, ask that once first. A request that names only the trigger does not state it: "build me something that records my meetings", "build a CLI that sends bots to Zoom, Meet and Teams links", "connect my calendar".
 
 1. Invoke the `superpowers:writing-plans` skill first
 2. Create the project folder if it doesn't exist
@@ -154,6 +156,9 @@ Field names to read, so code does not guess. REST paths are under
 - `GET /bots/{bot_id}/get_speaker_timeline` → `{"chunks": [{"speakerName", "speakerId", "timestamp", "startByte", "endByte", ...}], ...}`,
   or for a large timeline `{"bot_id", "speaker_timeline_url", "size_bytes", "truncated": false}`:
   download that URL (no API key, valid 1 hour); the file has the inline format.
+- `GET /bots/{bot_id}/get_audio_streams` → a flat array, one item per segment:
+  `[{"participant": {"id", "name", ...}, "download_url", "download_url_mp3", "start_timestamp": {"absolute", "relative"}, "duration", ...}]`.
+  The speaker is `participant.name`. `get_recording_streams` adds `"type": "webcam" | "screenshare"`.
 - `GET /bots/{bot_id}/screenshots` → `{"screenshots": [{"id", "recorded_at", "url", "filename", "size_bytes"}]}`.
 - `GET /calendar/events` → `{"results": [{"id", "start_time", "end_time", "meeting_platform", "meeting_url", "bots": [...]}], "next", "has_more"}`.
   The event's link is `meeting_url`; send it to `create_bot` as `meeting_link`.
@@ -1726,7 +1731,7 @@ Only deliveries to **workspace webhook endpoints** (added in the MeetStream dash
 a signing secret) are signed. Per-bot `callback_url` deliveries are **not signed**: if you
 need signatures, add the URL as a workspace webhook endpoint. Signed requests include:
 - `X-MeetStream-Signature: sha256=<hex_digest>` - `HMAC-SHA256(secret, raw_body)`
-- `X-MeetStream-Timestamp: <iso8601>`
+- `X-MeetStream-Timestamp: <iso8601>`: an ISO 8601 UTC string such as `2026-11-19T14:30:00Z`. Parse it as a time, not as a number.
 
 Verify by computing `HMAC-SHA256(secret, raw_request_body)`, comparing against the signature (strip the `sha256=` prefix), and optionally checking the timestamp is within an acceptable replay window.
 

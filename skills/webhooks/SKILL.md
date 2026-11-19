@@ -2,11 +2,14 @@
 name: webhooks
 description: >
   Handle MeetStream webhooks correctly - the full event lifecycle, signature
-  verification, redelivery, and local tunnels. Use when the user says
-  "webhook", "callback_url", "bot events", "how do I know when the meeting
-  ended", "my webhook isn't firing", "verify the signature", "ngrok", or is
-  writing any handler that reacts to bot state. Read this before writing a
-  webhook handler.
+  verification, redelivery, and local tunnels. Use when the user says "webhook",
+  "callback_url", "bot events", "how do I know when the meeting ended", "my
+  webhook isn't firing", "verify the signature", "ngrok", or is writing any
+  handler that reacts to bot state. Read this before writing a webhook handler.
+  Signed deliveries (workspace endpoints only; callback_url is unsigned) carry
+  X-MeetStream-Signature: sha256=<hex> (HMAC-SHA256 of the raw body with the
+  endpoint secret) and X-MeetStream-Timestamp, an ISO 8601 UTC time such as
+  2026-11-19T14:30:00Z, not a number.
 ---
 
 # MeetStream webhooks
@@ -94,6 +97,30 @@ signed with an HMAC signature. Verify when you are on a workspace endpoint, and 
 you are not, protect the route another way: a secret path segment, an allowlist, or a
 shared token in the query string. Never treat an unauthenticated public webhook route
 as trusted input.
+
+Signed requests carry two headers:
+
+| Header | Value |
+|---|---|
+| `X-MeetStream-Signature` | `sha256=<hex>`: HMAC-SHA256 of the raw request body, keyed with the endpoint's signing secret |
+| `X-MeetStream-Timestamp` | The send time as an ISO 8601 UTC string, for example `2026-11-19T14:30:00Z`. It is not a Unix number |
+
+```python
+import hashlib, hmac
+from datetime import datetime, timezone
+
+def verify(raw_body: bytes, headers, secret: str, max_age_s: int = 300) -> bool:
+    sig = headers.get("X-MeetStream-Signature", "").removeprefix("sha256=")
+    expected = hmac.new(secret.encode(), raw_body, hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(sig, expected):
+        return False
+    ts = headers.get("X-MeetStream-Timestamp")
+    if ts:  # replay check: parse the ISO 8601 time
+        sent = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+        if abs((datetime.now(timezone.utc) - sent).total_seconds()) > max_age_s:
+            return False
+    return True
+```
 
 ## Local development
 

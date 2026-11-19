@@ -39,6 +39,30 @@ audio is unaffected by that rule and stays a good default suggestion.
 
 You cannot add this after the fact; the bot has to be told before it records.
 
+`GET /bots/{bot_id}/get_audio_streams` (REST) returns a **flat top-level array**, one item
+per audio segment. The speaker is `participant.name`; the file is `download_url`:
+
+```json
+[
+  {
+    "id": "<bot_id>-<stream_id>-0",
+    "created_at": "2026-11-19T14:30:05Z",
+    "is_bot": false,
+    "participant": { "id": 123456, "name": "Priya Shah", "is_host": true, "is_bot": false, "platform": "desktop", "extra_data": {} },
+    "start_timestamp": { "absolute": "2026-11-19T14:30:05Z", "relative": 4.2 },
+    "duration": 125.5,
+    "download_url": "https://...",
+    "download_url_mp3": "https://..."
+  }
+]
+```
+
+A participant can have several segments: group them by `participant.id` and order them by
+`start_timestamp.relative`. `download_url_mp3` is present only when an MP3 copy exists.
+URLs are valid for 1 hour. `GET /bots/{bot_id}/get_recording_streams` (per-participant video)
+has the same item shape plus `"type": "webcam" | "screenshare"`. Both return 202 while the
+bot is in the meeting and `[]` when nothing was recorded per participant.
+
 These endpoints return **HTTP 202 while the bot is still in the meeting**. That is
 "not finished yet", not an error. Poll with a cap.
 

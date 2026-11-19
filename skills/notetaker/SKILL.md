@@ -47,7 +47,8 @@ If the request does not already say which, ask this once before anything else: s
 app work **after the meeting** (recording, transcript, notes, summary email) or **live,
 during the call** (live transcript, live captions, coaching cards)? After the meeting →
 this skill. Live → `sales-coach` / `realtime-streaming`. "Record my meetings" alone does not
-say which. Do not suggest a voice agent unless the user asks for one.
+say which, and neither does a request that names only the trigger ("a CLI that sends bots to
+meeting links", "connect my calendar"). Do not suggest a voice agent unless the user asks for one.
 
 ## Step 1: Requirements (4 questions)
 

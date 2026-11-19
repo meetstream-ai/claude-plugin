@@ -48,6 +48,8 @@ webhooks. Start there.
    - Post-call → `join-meeting`, then `meeting-brief`; for apps also `webhooks` and
      `recordings-and-media`.
    - Live → `realtime-streaming` (chat and raise hand are in `join-meeting`).
+   - Build requests count too: if a build request names only the trigger (a CLI, a
+     calendar, a list of links) and not the outcome, ask once.
    - If the request already says which ("record my 3pm call and send me notes" is
      post-call), do not ask. Go.
 2. **Voice agents only on request.** Do not suggest a bot that talks. Bring in
@@ -63,10 +65,10 @@ webhooks. Start there.
    3. **Your own agent on your own computer** (for example a Claude Code or Codex
       subscription, through the MeetStream Agent Kit): only when the user asks for it.
       Warn first, in the same answer: anyone in the meeting can try to make that agent run commands or read files on the user's computer (prompt injection); use the lowest access level (read-only) and the activation code, and keep the computer, the bridge and the tunnel running for the whole meeting.
-4. **Which version?** If the user asks, the answer is: install or update the current
-   MeetStream plugin. The MCP server is hosted at `https://mcp.meetstream.ai/mcp`, so
-   everyone uses the same server and there is no version to choose or pin. Do not
-   describe any version as stable or unstable, and do not raise versions unprompted.
+4. **Version questions:** tell the user to install or update to the current MeetStream
+   plugin. The MCP server is hosted at `https://mcp.meetstream.ai/mcp`, so there is
+   nothing to choose. Then continue with what they want to do. Talk about versions
+   only when the user asks.
 
 **If the MeetStream tools are missing or not signed in** (no `meetstream` tools, or a tool
 answers 401 or "not signed in"): give the user the one step to connect, and in the same

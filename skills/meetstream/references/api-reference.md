@@ -111,67 +111,31 @@ Returns `{ "video_url": "<pre-signed S3 URL valid 10 minutes>", "video_info": { 
 ---
 
 ### GET `/bots/{bot_id}/get_audio_streams`
-Per-participant audio streams (when `audio_separate_streams: true`). Returns HTTP **202** with `{audio_status: "in_progress", message}` while bot is still in meeting.
+Per-participant audio (when `audio_separate_streams: true`). HTTP **202** with `{audio_status: "in_progress" | "processing", message}` while the bot is in the meeting or processing; `[]` when nothing was recorded per participant.
 
-Completed response:
+Completed response, a **flat top-level array**, one item per segment:
 ```json
-{
-  "bot_id": "...",
-  "audio_status": "Success",
-  "audio_streams_available": true,
-  "participants": [
-    {
-      "participant_name": "John Doe",
-      "streams": [{
-        "stream_id": "JohnDoe_abc123",
-        "segments": [{
-          "segment_index": 0,
-          "url": "https://s3.amazonaws.com/...",
-          "filename": "John_Doe_abc123_0.webm",
-          "duration_seconds": 125.5,
-          "sample_rate": 48000,
-          "channels": 1,
-          "codec": "opus"
-        }]
-      }]
-    }
-  ],
-  "summary": { "total_participants": 2, "total_segments": 2 }
-}
+[
+  {
+    "id": "<bot_id>-<stream_id>-0",
+    "created_at": "2026-11-19T14:30:05Z",
+    "is_bot": false,
+    "participant": { "id": 123456, "name": "John Doe", "is_host": false, "is_bot": false, "platform": "desktop",
+                     "extra_data": { "google_meet": { "static_participant_id": "..." } } },
+    "start_timestamp": { "absolute": "2026-11-19T14:30:05Z", "relative": 4.2 },
+    "duration": 125.5,
+    "download_url": "https://...",
+    "download_url_mp3": "https://..."
+  }
+]
 ```
 
-URLs in `segments[].url` are pre-signed S3, **valid 10 minutes**. File format: WebM container, Opus codec, 48 kbps, 48 kHz, mono. Up to 16 concurrent speakers. **Not supported on Microsoft Teams.**
+The speaker is `participant.name`; group by `participant.id`. URLs are pre-signed, **valid 1 hour**. `download_url_mp3` is present only when an MP3 copy exists. **Not supported on Microsoft Teams.**
 
 ---
 
 ### GET `/bots/{bot_id}/get_recording_streams`
-Per-participant video streams (when `video_separate_streams: true`). Same 202-while-processing pattern. Returns both `participants[]` and `screenshares[]` (each with the same `streams[].segments[]` shape):
-
-```json
-{
-  "bot_id": "...",
-  "video_status": "Success",
-  "recording_streams_available": true,
-  "participants": [{
-    "participant_name": "Jane",
-    "streams": [{
-      "stream_id": "user_456",
-      "segments": [{
-        "segment_index": 0,
-        "url": "https://s3.amazonaws.com/...",
-        "filename": "Jane_456_0.webm",
-        "duration_seconds": 125.5,
-        "width": 640, "height": 360,
-        "codec": "vp8"
-      }]
-    }]
-  }],
-  "screenshares": [ /* same shape as participants[] */ ],
-  "summary": { "total_participants": 2, "total_screenshares": 1, "total_segments": 3 }
-}
-```
-
-URLs **valid 10 minutes**. File format: WebM container, VP8 codec, 15 FPS, video-only. Up to 6 concurrent webcams. Supported on all 3 platforms.
+Per-participant video (when `video_separate_streams: true`). Same 202 pattern. Same flat item shape as `get_audio_streams` (without `is_bot` / `download_url_mp3`), plus `"type": "webcam" | "screenshare"`. URLs valid 1 hour. File format: WebM container, VP8 codec, 15 FPS, video-only. Supported on all 3 platforms.
 
 ---
 
@@ -1033,7 +997,7 @@ Only deliveries to **workspace webhook endpoints** (added in the MeetStream dash
 a signing secret) are signed. Per-bot `callback_url` deliveries are **not signed**: if you
 need signatures, add the URL as a workspace webhook endpoint. Signed requests include:
 - `X-MeetStream-Signature: sha256=<hex>` - `HMAC-SHA256(secret, raw_body)`
-- `X-MeetStream-Timestamp: <iso8601>`
+- `X-MeetStream-Timestamp: <iso8601>`: an ISO 8601 UTC string such as `2026-11-19T14:30:00Z`. Parse it as a time, not as a number.
 
 ### Idempotency
 
