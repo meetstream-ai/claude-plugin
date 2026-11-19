@@ -189,12 +189,12 @@ Returns `{chunks: [{chunkIndex, timestamp, sampleRate, speakerId, speakerName, s
 ---
 
 ### GET `/bots/{bot_id}/get_chats`
-In-meeting chat messages captured by the bot.
+In-meeting chat messages captured by the bot: `{"metadata": {...}, "speakers": [...], "chatMessages": [{"messageId", "deviceId", "timestamp", "text", "speakerName", "speakerDisplayName"}], "messagesBySpeaker": {...}}`.
 
 ---
 
-### GET `/bots/{bot_id}/get_screenshots`
-Screenshots captured during the meeting.
+### GET `/bots/{bot_id}/screenshots`
+Screenshots captured during the meeting: `{"screenshots": [{"id", "recorded_at", "url", "filename", "size_bytes"}]}`. One screenshot: `GET /bots/{bot_id}/screenshots/{id}`.
 
 ---
 
@@ -489,7 +489,7 @@ Same as `/calendar/events` but reads from MeetStream's local DB only (no Google 
 ### POST `/calendar/schedule/{event_id}`
 Manually schedule a bot for a specific event. `event_id` is the `id` from `/calendar/events`.
 
-**Body** (shape from the docs guide - this skill has not live-tested the calendar `bot_config` schema. Some fields like `transcription`, `no_one_joined_timeout`, `recording_config.video_recording` only appear in calendar examples in the docs and may differ from the `create_bot` `CreateBotRequest` schema. Verify against your account before relying on them.):
+**Body.** `bot_config` takes the `create_bot` fields. The transcript provider goes under `recording_config.transcript.provider`, as on `create_bot`; a top-level `transcription` key is ignored and the scheduled bot gets no transcript.
 ```json
 {
   "bot_config": {
@@ -498,9 +498,8 @@ Manually schedule a bot for a specific event. `event_id` is the `id` from `/cale
     "video_required": false,
     "bot_message": "Joining to record",
     "callback_url": "https://...",
-    "transcription": { "deepgram": { "model": "nova-3", "language": "en" } },
     "automatic_leave": { "no_one_joined_timeout": 600, "everyone_left_timeout": 600 },
-    "recording_config": { "video_recording": false }
+    "recording_config": { "transcript": { "provider": { "meetstream": { "language": "en" } } } }
   },
   "occurrence_date": "2026-04-14T10:00:00Z",
   "schedule_all_occurrences": false,
@@ -575,7 +574,7 @@ Enable hands-free auto-scheduling.
     "audio_required": true,
     "video_required": false,
     "callback_url": "https://...",
-    "transcription": { "deepgram": { "model": "nova-3", "language": "en" } },
+    "recording_config": { "transcript": { "provider": { "meetstream": { "language": "en" } } } },
     "automatic_leave": { "no_one_joined_timeout": 600, "everyone_left_timeout": 600 }
   }
 }
@@ -1030,7 +1029,9 @@ Each event fires **at most once** per bot, except `bot.joining` (up to 3× if se
 
 ### Webhook signature (optional)
 
-If a webhook secret is configured in the MeetStream dashboard, requests include:
+Only deliveries to **workspace webhook endpoints** (added in the MeetStream dashboard with
+a signing secret) are signed. Per-bot `callback_url` deliveries are **not signed**: if you
+need signatures, add the URL as a workspace webhook endpoint. Signed requests include:
 - `X-MeetStream-Signature: sha256=<hex>` - `HMAC-SHA256(secret, raw_body)`
 - `X-MeetStream-Timestamp: <iso8601>`
 

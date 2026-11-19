@@ -41,6 +41,14 @@ If the user explicitly says they have a key and want to skip onboarding, ask the
 
 When the user wants a notetaker, ask the 4 questions below, then scaffold a complete app - webhook server, bot creation, transcript fetch, LLM summary, delivery - using their tech stack of choice.
 
+## Step 0: After the meeting or live?
+
+If the request does not already say which, ask this once before anything else: should the
+app work **after the meeting** (recording, transcript, notes, summary email) or **live,
+during the call** (live transcript, live captions, coaching cards)? After the meeting →
+this skill. Live → `sales-coach` / `realtime-streaming`. "Record my meetings" alone does not
+say which. Do not suggest a voice agent unless the user asks for one.
+
 ## Step 1: Requirements (4 questions)
 
 Ask in one message, with sensible defaults pre-filled:
@@ -145,7 +153,9 @@ def create_bot(meeting_link: str, callback_url: str, custom_attributes: dict) ->
         "callback_url": callback_url,
         "custom_attributes": {k: str(v) for k, v in custom_attributes.items()},  # stringify
         "recording_config": {
-            "transcript": {"provider": {"deepgram": {"model": "nova-3", "language": "en"}}},
+            # meetstream works on every account with no provider key. Use deepgram
+            # ({"model": "nova-3", "language": "en"}) only if the user saved a Deepgram key.
+            "transcript": {"provider": {"meetstream": {"language": "en"}}},
             "retention": {"type": "timed", "hours": 168},
         },
         "automatic_leave": {

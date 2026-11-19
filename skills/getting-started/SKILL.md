@@ -1,16 +1,18 @@
 ---
 name: getting-started
 description: >
-  First-time setup for MeetStream - guides a brand-new user through account
-  signup, API key creation, environment configuration, and a validation ping.
-  MUST be invoked before any other MeetStream skill (notetaker, sales-coach,
-  calendar-automation, etc.) if MEETSTREAM_API_KEY is missing. Auto-trigger
-  when user says "get started", "help me get started with MeetStream", "help
-  me use MeetStream", "how do I use MeetStream", "what can MeetStream do",
-  "set up MeetStream", "I don't have a MeetStream account",
-  "first time using MeetStream", "MeetStream onboarding", "create MeetStream
-  API key", "MeetStream signup", "how do I start with MeetStream", or when a
-  user invokes any other MeetStream skill without MEETSTREAM_API_KEY set.
+  First ask: notes after the call, or something live during the call? (one
+  question, after the one sign-in step if the MeetStream tools are not
+  connected). First-time setup for MeetStream - guides a brand-new user through
+  account signup, API key creation, environment configuration, and a validation
+  ping. MUST be invoked before any other MeetStream skill (notetaker,
+  sales-coach, calendar-automation, etc.) if MEETSTREAM_API_KEY is missing.
+  Auto-trigger when user says "get started", "help me get started with
+  MeetStream", "help me use MeetStream", "how do I use MeetStream", "what can
+  MeetStream do", "set up MeetStream", "I don't have a MeetStream account",
+  "first time using MeetStream", "MeetStream onboarding", "create MeetStream API
+  key", "MeetStream signup", "how do I start with MeetStream", or when a user
+  invokes any other MeetStream skill without MEETSTREAM_API_KEY set.
 allowed-tools: Bash, Read, Write, Edit
 ---
 

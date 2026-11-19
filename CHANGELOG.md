@@ -12,6 +12,13 @@ Brings the plugin up to MeetStream API v1.9.0, adds intake routing, and stops ag
 - `migrate-from-recall` no longer claims built-in AI summaries (the API has none) or a roadmap item.
 
 ### Changed
+- **Response shapes inline** in the core skill for the calls apps use most (`create_bot` `bot_id`, transcript segments `speaker` / `transcript`, `get_chats` `chatMessages`, participants `displayName`, speaker timeline incl. the download URL, screenshots, calendar events `meeting_url`), so agents that cannot open `references/` do not guess.
+- **Personal Teams** (`teams.live.com`) links are accepted for guest bots; the work or school rule applies only to signed-in bots.
+- **Screenshots** route is `GET /bots/{bot_id}/screenshots` (was `get_screenshots`).
+- **Calendar `bot_config`** puts the transcript provider under `recording_config.transcript.provider`, as on `create_bot`; the top-level `transcription` key that the skill used is ignored, so scheduled bots got no transcript.
+- **Webhook signing**: only workspace webhook endpoints are signed; `callback_url` deliveries are not. The core skill and the API reference now say the same as the webhooks skill.
+- `notetaker` defaults to the keyless `meetstream` transcription provider, and an ambiguous build request is asked "after the meeting or live?" once.
+- Skill descriptions carry the must-say lines for agents that read only descriptions (billing URL, raise hand over REST, managed keys first and the Agent Kit warning, post-call or live first); `evals/check_descriptions.py` checks them in CI.
 - **Zoom needs no setup.** A Zoom bot needs only the MeetStream sign-in or API key and the meeting link. Your own Zoom app is optional (ZAK / OBF joins, per-participant camera video, live bot camera video). `zoom.use_own_app` (`true` / `false` / omitted) picks the join; there is no fallback when Zoom refuses the user's own app.
 - **`video_required` defaults to `false`** and `audio_required` is a real `create_bot` field (default `true`). Send `video_required` explicitly anyway. Both `false` with nothing else to do returns 400.
 - **`get_speaker_timeline`** can return `{bot_id, speaker_timeline_url, size_bytes, truncated}` for large timelines.

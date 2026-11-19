@@ -1,13 +1,17 @@
 ---
 name: join-meeting
 description: >
-  Send a MeetStream bot into a live Zoom, Google Meet or Microsoft Teams
-  meeting and follow it until it leaves. Use when the user says "join this
-  meeting", "send a bot to <meeting url>", "record this call", "have the bot
-  take notes on this meeting", "get a transcript of this meeting", "make the
-  bot leave", "make the bot raise its hand", or pastes a meeting link and asks
-  for anything to happen to it.
-  Covers create, status, live chat, and removal using the MeetStream MCP tools.
+  Send a MeetStream bot into a live Zoom, Google Meet or Microsoft Teams meeting
+  and follow it until it leaves. Use when the user says "join this meeting",
+  "send a bot to <meeting url>", "record this call", "have the bot take notes on
+  this meeting", "get a transcript of this meeting", "make the bot leave", "make
+  the bot raise its hand", or pastes a meeting link and asks for anything to
+  happen to it. Covers create, status, live chat, and removal using the
+  MeetStream MCP tools. Raise/lower hand: POST
+  /api/v1/bots/{bot_id}/send_command {"command": "raise_hand"} (works without
+  the MCP tools). Low credits: send the user to
+  https://app.meetstream.ai/billing (top_up_link tool when connected); never
+  retry in a loop.
 ---
 
 # Join a meeting with a MeetStream bot

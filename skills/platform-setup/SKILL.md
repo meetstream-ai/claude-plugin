@@ -162,7 +162,8 @@ bot** joins as a real Microsoft 365 account instead. Over MCP, use `create_bot`'
 
 - **One concurrent bot per account.** For N concurrent signed-in Teams bots, register N accounts.
 - The Microsoft account's display name and picture are shown; `bot_name` / `bot_image_url` are not applied.
-- Microsoft 365 work/school Teams only, not `teams.live.com`.
+- Signed-in bot accounts must be Microsoft 365 work/school accounts. Guest bots join
+  personal Teams meetings too: `teams.live.com` links are accepted.
 - Errors: 400 domain not registered; 403 domain/account owned by another MeetStream account;
   404 `sign_in_email` not in the domain; 409 pinned account busy or deactivated, or no free
   active account; 429 all accounts in use. A deactivated account (bad password) comes back

@@ -93,6 +93,8 @@ reply keep helping. Do not stop at "sign in first".
 
 **If the user asks you to BUILD, CREATE, IMPLEMENT, or SET UP a MeetStream integration:**
 
+0. If the request does not say whether the app works after the meeting or live during the call ("build me something that records my meetings" does not), ask that once first.
+
 1. Invoke the `superpowers:writing-plans` skill first
 2. Create the project folder if it doesn't exist
 3. Read `references/code-patterns-node.md` or `references/code-patterns-python.md` for the relevant patterns
@@ -131,6 +133,30 @@ Base URL: `https://api.meetstream.ai/api/v1` (no trailing slash in canonical exa
 Default language: **Python** unless the user specifies otherwise.
 
 ---
+
+## Response shapes (the calls apps use most)
+
+Field names to read, so code does not guess. REST paths are under
+`https://api.meetstream.ai/api/v1`.
+
+- `POST /bots/create_bot` → 201 `{"bot_id", "transcript_id", "meeting_url", "status"}`.
+  Keep `bot_id`; every other call takes it.
+- `GET /bots/{bot_id}/status` → `{"bot_id", "status", "custom_attributes"}`.
+  `GET /bots/{bot_id}/detail` → `{"bot_details": {"Status", "ErrorReason", "TranscriptStatus", "transcript_id", ...}}`.
+- `GET /transcript/{transcript_id}/get_transcript` → a top-level array of segments:
+  `[{"speaker": "Alice", "transcript": "the words", "start_time": 0.5, "end_time": 3.2, "words": [...]}]`.
+  The text is `transcript`, not `text`. The MCP `get_transcript` tool takes the `bot_id`
+  and returns the same `speaker` / `transcript` segments.
+- `GET /bots/{bot_id}/get_chats` → `{"metadata": {...}, "speakers": [...], "chatMessages": [{"text", "speakerName", "speakerDisplayName", "timestamp", "messageId"}], "messagesBySpeaker": {...}}`.
+  Messages are in `chatMessages`; the sender is `speakerName`.
+- `GET /bots/{bot_id}/get_participants` → a top-level array:
+  `[{"displayName", "fullName", "deviceId", "status", ...}]`.
+- `GET /bots/{bot_id}/get_speaker_timeline` → `{"chunks": [{"speakerName", "speakerId", "timestamp", "startByte", "endByte", ...}], ...}`,
+  or for a large timeline `{"bot_id", "speaker_timeline_url", "size_bytes", "truncated": false}`:
+  download that URL (no API key, valid 1 hour); the file has the inline format.
+- `GET /bots/{bot_id}/screenshots` → `{"screenshots": [{"id", "recorded_at", "url", "filename", "size_bytes"}]}`.
+- `GET /calendar/events` → `{"results": [{"id", "start_time", "end_time", "meeting_platform", "meeting_url", "bots": [...]}], "next", "has_more"}`.
+  The event's link is `meeting_url`; send it to `create_bot` as `meeting_link`.
 
 ## Gathering Requirements
 
@@ -1522,7 +1548,7 @@ By default a Teams bot joins as an anonymous guest and fails outright if the org
 1. A **dedicated Microsoft 365 tenant**, not your production one (Business Basic or higher).
 2. One **standard, non-admin user per bot account**, with a Teams license. Set its display name and profile picture: that is what participants see.
 3. In Entra ID: **disable security defaults** and set self-service password reset to **None** for these accounts (otherwise the first automated sign-in hits MFA registration).
-4. Only Microsoft 365 work/school Teams is supported. Personal Teams (`teams.live.com`) cannot be used.
+4. Signed-in bot accounts must be Microsoft 365 work/school accounts. This applies only to signed-in bots: a guest bot also joins personal Teams meetings (`teams.live.com` links are accepted).
 
 **Register the domain, then each account:**
 
@@ -1696,7 +1722,9 @@ Symmetric `audio.failed` and `video.failed` events have NOT been observed in liv
 
 ### Webhook signature verification (optional)
 
-If a webhook secret is configured in the MeetStream dashboard, requests include:
+Only deliveries to **workspace webhook endpoints** (added in the MeetStream dashboard with
+a signing secret) are signed. Per-bot `callback_url` deliveries are **not signed**: if you
+need signatures, add the URL as a workspace webhook endpoint. Signed requests include:
 - `X-MeetStream-Signature: sha256=<hex_digest>` - `HMAC-SHA256(secret, raw_body)`
 - `X-MeetStream-Timestamp: <iso8601>`
 
@@ -1722,7 +1750,7 @@ After the relevant `*.processed` event fires:
 | Per-participant recording streams | `GET /bots/{bot_id}/get_recording_streams` | Per-segment URLs **valid 10 minutes**; includes both `participants[]` and `screenshares[]` |
 | Participant list | `GET /bots/{bot_id}/get_participants` | Returns a top-level array of `{deviceId, displayName, fullName, profilePicture, status, humanized_status, streamIds[], lastUpdated, parentDeviceId?}` |
 | Session metadata | `GET /bots/{bot_id}/detail` | Returns `bot_details` with (live-verified): BotID, BotImageURL, BotMessage, BotProfile, BotUsername, CreatedAt, Duration, EndTime, LastUpdatedAt, ManifestStatus, MediaS3Bucket, MeetingLink, NativeSTT, OfferingType, Platform, PlatformCreatedAt, PlatformStatusCreatedAt, RequestPayload, StartTime, Status, StatusCreatedAt, **StatusTimeline** (per-stage `{message, status, timestamp}` map), AudioStatus, TranscriptStatus, UserID, caption_file (S3 link for native captions), participant_events, custom_attributes, **and `transcript_id`** (top-level - populated when a post-call provider is set, not enumerated in OpenAPI but returned live). |
-| Screenshots | `GET /bots/{bot_id}/get_screenshots` | |
+| Screenshots | `GET /bots/{bot_id}/screenshots` | `{"screenshots": [{"id", "recorded_at", "url", "filename", "size_bytes"}]}`; one by id: `GET /bots/{bot_id}/screenshots/{id}` |
 | Summary | not available | The API has no summary route; summarize the transcript yourself. |
 
 Bot management:

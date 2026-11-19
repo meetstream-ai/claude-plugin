@@ -1,15 +1,17 @@
 ---
 name: mia-voice-agents
 description: >
-  Voice agents: an AI participant that listens and talks in a live meeting
-  (API name MIA). Use only when the user asks for one: "voice agent", "AI
-  agent in the meeting", "agent in my meeting", "a bot that talks", "a bot
-  that answers questions", "a bot that speaks", "talking bot", "wake word
-  assistant", "AI avatar in a meeting", "use my own Claude Code / Codex as the
-  agent in the meeting", or "MIA". Covers which setup to pick (MeetStream-managed
-  keys first, then the user's own provider keys, then their own agent through
-  the MeetStream Agent Kit, with a warning), pipeline vs realtime mode, wake
-  words, interruptions, tools and MCP servers on the agent.
+  Voice agents: an AI participant that listens and talks in a live meeting (API
+  name MIA). Use only when the user asks for one: "voice agent", "AI agent in
+  the meeting", "agent in my meeting", "a bot that talks", "a bot that answers
+  questions", "a bot that speaks", "talking bot", "wake word assistant", "use my
+  own Claude Code / Codex as the agent in the meeting", or "MIA". Default to
+  MeetStream-managed keys (key_source "meetstream", no provider keys), then the
+  user's own provider keys. The user's own agent through the MeetStream Agent
+  Kit only on request, with a warning: meeting speech reaches an agent with
+  access to their computer (prompt injection), use read-only access, and the
+  computer must stay on for the whole meeting. Covers pipeline vs realtime mode,
+  wake words, interruptions, tools and MCP servers on the agent.
 ---
 
 # Voice agents (MIA)

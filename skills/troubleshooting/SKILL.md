@@ -2,10 +2,12 @@
 name: troubleshooting
 description: >
   Diagnose MeetStream errors and unexpected behaviour. Use when the user says
-  "it's not working", "401", "403", "getting a 400", "409", "429", "507", "stuck on
-  202", "transcript never arrives", "duplicate bots", "the bot never joined",
-  "rate limited", "Retry-After", or pastes an error from the API. Read this before guessing
-  at a cause.
+  "it's not working", "401", "403", "getting a 400", "409", "429", "507", "stuck
+  on 202", "transcript never arrives", "duplicate bots", "the bot never joined",
+  "rate limited", "Retry-After", or pastes an error from the API. Read this
+  before guessing at a cause. Low credits: send the user to
+  https://app.meetstream.ai/billing (top_up_link tool when connected); never
+  retry in a loop.
 ---
 
 # Troubleshooting MeetStream

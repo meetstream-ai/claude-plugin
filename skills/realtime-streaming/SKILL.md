@@ -1,12 +1,13 @@
 ---
 name: realtime-streaming
 description: >
-  Stream meeting data live while the call is happening - live transcription,
-  raw audio, live video, and two-way bot control over WebSocket. Use when the
-  user says "live transcription", "real-time captions", "stream the audio",
-  "live video from the bot", "make the bot speak", "interrupt the bot",
-  "websocket", "sendaudio", or wants anything during the meeting rather than
-  after it.
+  Stream meeting data live while the call is happening - live transcription, raw
+  audio, live video, and two-way bot control over WebSocket. Use when the user
+  says "live transcription", "real-time captions", "stream the audio", "live
+  video from the bot", "make the bot speak", "interrupt the bot", "websocket",
+  "sendaudio", or wants anything during the meeting rather than after it.
+  Raise/lower hand: POST /api/v1/bots/{bot_id}/send_command {"command":
+  "raise_hand"} (works without the MCP tools).
 ---
 
 # Real-time streaming

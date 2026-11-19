@@ -75,9 +75,10 @@ with a `bot_config`. Unschedule with `DELETE` on the same path.
 Scheduling the same event twice returns **HTTP 409** with the existing bot id. Treat
 that as "already scheduled", not an error.
 
-Note `bot_config` is a different schema from `create_bot`: it puts the transcription
-provider under a top-level `transcription` key. Like `create_bot`, it accepts
-`audio_required`.
+`bot_config` takes the `create_bot` fields. Put the transcription provider under
+`recording_config.transcript.provider` (for example `{"meetstream": {"language": "en"}}`), as
+on `create_bot`: a top-level `transcription` key is ignored and the scheduled bot gets no
+transcript.
 
 ### Managing scheduled bots
 
@@ -230,11 +231,10 @@ def enable_auto_schedule(callback_url: str):
             "audio_required": True,
             "video_required": False,  # audio only unless the user asks to record video
             "callback_url": callback_url,
-            "transcription": {
-                # NOTE: calendar bot_config uses "transcription" (not nested under recording_config).
-                # This is different from create_bot's shape.
-                "deepgram": {"model": "nova-3", "language": "en"}
-            },
+            # Same shape as create_bot: the transcript provider goes under
+            # recording_config.transcript.provider. A top-level "transcription"
+            # key is ignored, and the scheduled bot then gets no transcript.
+            "recording_config": {"transcript": {"provider": {"meetstream": {"language": "en"}}}},
             "automatic_leave": {
                 # calendar bot_config supports no_one_joined_timeout
                 "no_one_joined_timeout": 300,
