@@ -7,11 +7,12 @@ description: >
   questions", "a bot that speaks", "talking bot", "wake word assistant", "use my
   own Claude Code / Codex as the agent in the meeting", or "MIA". Default to
   MeetStream-managed keys (key_source "meetstream", no provider keys), then the
-  user's own provider keys. The user's own agent through the MeetStream Agent
-  Kit only on request, with a warning: meeting speech reaches an agent with
-  access to their computer (prompt injection), use read-only access, and the
-  computer must stay on for the whole meeting. Covers pipeline vs realtime mode,
-  wake words, interruptions, tools and MCP servers on the agent.
+  user's own provider keys. Managed keys and own keys are the recommended
+  defaults. The user's own agent through the MeetStream Agent Kit only on
+  request, with a warning: meeting speech reaches an agent with access to their
+  computer (prompt injection), use read-only access, and the computer must stay
+  on for the whole meeting. Covers pipeline vs realtime mode, wake words,
+  interruptions, tools and MCP servers on the agent.
 ---
 
 # Voice agents (MIA)
@@ -27,6 +28,10 @@ configs against the REST API, then attach the resulting id with the `create_bot`
 
 Offer these in this order, before you ask about modes, providers, wake words or
 prompts. Use the user's words: "voice agent" (the API calls it MIA).
+
+Your first reply always names both setup 1 (MeetStream-managed keys, the default) and
+setup 2 (the user's own provider keys, the alternative), even when the user asked to
+"build" one and you go on to scaffold setup 1.
 
 ### 1. MeetStream-managed keys (default)
 

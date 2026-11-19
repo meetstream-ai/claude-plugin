@@ -11,7 +11,10 @@ description: >
   /api/v1/bots/{bot_id}/send_command {"command": "raise_hand"} (works without
   the MCP tools). Low credits: send the user to
   https://app.meetstream.ai/billing (top_up_link tool when connected); never
-  retry in a loop.
+  retry in a loop. If the MeetStream tools are not connected, give the one
+  connect step (Codex: codex mcp login meetstream; Claude Code: /mcp; Cursor:
+  Settings → MCP) and offer the REST call POST /api/v1/bots/create_bot with
+  meeting_link; never say MeetStream can't record.
 ---
 
 # Join a meeting with a MeetStream bot
@@ -31,6 +34,8 @@ reply keep helping. Do not stop at "sign in first".
   https://github.com/meetstream-ai/claude-plugin/blob/main/INSTALL_FOR_AGENTS.md).
 - Then go on: give the plan, the `create_bot` fields you will send once the tools work,
   or the REST call (`curl` with `Authorization: Token $MEETSTREAM_API_KEY`).
+- Never tell the user MeetStream cannot record the meeting: it can, through the tools
+  once connected or now through REST `POST /api/v1/bots/create_bot` with `meeting_link`.
 
 ## The short path
 
