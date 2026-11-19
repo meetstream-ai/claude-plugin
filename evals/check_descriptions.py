@@ -14,12 +14,18 @@ ROOT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(os.pat
 MUST = {
     "troubleshooting": [("billing URL", r"https://app\.meetstream\.ai/billing"), ("no retry loop", r"never retry")],
     "join-meeting": [("billing URL", r"https://app\.meetstream\.ai/billing"), ("no retry loop", r"never retry"),
-                     ("raise-hand REST", r"POST /api/v1/bots/\{bot_id\}/send_command.*raise_hand")],
+                     ("raise-hand REST", r"POST /api/v1/bots/\{bot_id\}/send_command.*raise_hand"),
+                     ("connect step: Codex", r"codex mcp login meetstream"),
+                     ("connect step: Claude Code", r"/mcp"),
+                     ("connect step: Cursor", r"Settings.{0,4}MCP"),
+                     ("REST create_bot fallback", r"POST /api/v1/bots/create_bot.*meeting_link"),
+                     ("never say it cannot record", r"[Nn]ever say MeetStream can.?t record")],
     "realtime-streaming": [("raise-hand REST", r"POST /api/v1/bots/\{bot_id\}/send_command.*raise_hand")],
     "mia-voice-agents": [("managed keys first", r"[Dd]efault to MeetStream-managed keys.*key_source.*meetstream"),
                          ("own keys second", r"then the user's own (provider )?keys"),
                          ("Agent Kit warning", r"Agent Kit.*warning.*(meeting speech|what people say).*computer"),
-                         ("computer stays on", r"computer must stay on")],
+                         ("computer stays on", r"computer must stay on"),
+                         ("managed and own keys are the recommended defaults", r"(managed|own).{0,120}recommended|recommended.{0,120}(managed|own)")],
     "getting-started": [("post-call or live first", r"[Ff]irst ask.*after the call.*live")],
 }
 

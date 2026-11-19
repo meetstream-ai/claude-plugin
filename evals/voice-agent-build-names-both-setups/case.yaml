@@ -1,0 +1,22 @@
+schema_version: "1.1"
+name: voice-agent-build-names-both-setups
+description: "A build request for a voice agent names MeetStream-managed keys as the default and the user's own provider keys as the alternative."
+tags: [round3, voice-agent]
+runs: 2
+execution:
+  prompt: "Build me an AI voice agent that joins my Google Meet calls and answers questions about our product docs."
+  max_turns: 10
+  allowed_tools: [Read, Glob, Grep, Skill]
+graders:
+- name: managed-key-source
+  type: regex
+  pattern: 'key_source'
+- name: own-keys-alternative
+  type: regex
+  pattern: '(your|their|bring) own (provider |api |model )?keys?|BYOK|key_source\W{0,6}user'
+  flags: i
+- name: no-bot-without-link
+  type: tool_used
+  tool: mcp__plugin_meetstream_meetstream__create_bot
+  min: 0
+  max: 0
