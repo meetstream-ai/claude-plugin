@@ -10,11 +10,11 @@ execution:
 graders:
 - name: signature-header
   type: regex
-  pattern: 'X-MeetStream-Signature'
+  pattern: 'x[-_]meetstream[-_]signature'
   flags: i
 - name: timestamp-header
   type: regex
-  pattern: 'X-MeetStream-Timestamp'
+  pattern: 'x[-_]meetstream[-_]timestamp'
   flags: i
 - name: sha256-prefix
   type: regex

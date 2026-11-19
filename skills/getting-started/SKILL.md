@@ -65,10 +65,10 @@ webhooks. Start there.
    3. **Your own agent on your own computer** (for example a Claude Code or Codex
       subscription, through the MeetStream Agent Kit): only when the user asks for it.
       Warn first, in the same answer: anyone in the meeting can try to make that agent run commands or read files on the user's computer (prompt injection); use the lowest access level (read-only) and the activation code, and keep the computer, the bridge and the tunnel running for the whole meeting.
-4. **Version questions:** tell the user to install or update to the current MeetStream
-   plugin. The MCP server is hosted at `https://mcp.meetstream.ai/mcp`, so there is
-   nothing to choose. Then continue with what they want to do. Talk about versions
-   only when the user asks.
+4. **Version questions:** reply with these two sentences, then continue with what the
+   user wants to do: "Install or update to the current MeetStream plugin. The MCP
+   server is hosted at https://mcp.meetstream.ai/mcp, so everyone uses the same
+   server." Add nothing else about versions.
 
 **If the MeetStream tools are missing or not signed in** (no `meetstream` tools, or a tool
 answers 401 or "not signed in"): give the user the one step to connect, and in the same

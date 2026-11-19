@@ -75,10 +75,10 @@ webhooks. Start there.
 6. **Low credits** (`Low credits please recharge`, 403 from `create_bot`): give the user
    https://app.meetstream.ai/billing (and call `top_up_link` when connected). Do not retry
    until they say they added credits.
-7. **Version questions:** tell the user to install or update to the current MeetStream
-   plugin. The MCP server is hosted at `https://mcp.meetstream.ai/mcp`, so there is
-   nothing to choose. Then continue with what they want to do. Talk about versions
-   only when the user asks.
+7. **Version questions:** reply with these two sentences, then continue with what the
+   user wants to do: "Install or update to the current MeetStream plugin. The MCP
+   server is hosted at https://mcp.meetstream.ai/mcp, so everyone uses the same
+   server." Add nothing else about versions.
 
 **If the MeetStream tools are missing or not signed in** (no `meetstream` tools, or a tool
 answers 401 or "not signed in"): give the user the one step to connect, and in the same

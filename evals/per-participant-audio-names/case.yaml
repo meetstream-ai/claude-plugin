@@ -10,7 +10,7 @@ execution:
 graders:
 - name: participant-name
   type: regex
-  pattern: 'participant[\x22\x27]\]\s*\[[\x22\x27]name|participant[\x22\x27]\s*(,\s*\{\})?\)\s*\.get\(\s*[\x22\x27]name'
+  pattern: 'participant[\x22\x27]\]\s*\[[\x22\x27]name|participant[\x22\x27]\s*(,\s*\{\})?\)(\s*or\s*\{\}\))?\s*\.get\(\s*[\x22\x27]name|participant\.get\(\s*[\x22\x27]name|participant\.name'
 - name: download-url
   type: regex
   pattern: 'download_url'
