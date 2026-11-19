@@ -1,0 +1,17 @@
+schema_version: "1.1"
+name: screenshots-route
+description: "The screenshots list route is GET /api/v1/bots/{bot_id}/screenshots, not get_screenshots."
+tags: [round3, media]
+runs: 2
+execution:
+  prompt: "Give me the curl command that lists the screenshots of bot b7c1e2d4-0a11-4c55-9e10-5d2f8a3b9c01 through the MeetStream REST API. Just the command and one line on the response."
+  max_turns: 6
+  allowed_tools: [Read, Glob, Grep, Skill]
+graders:
+- name: screenshots-path
+  type: regex
+  pattern: '/api/v1/bots/[^/\s\x22\x27]+/screenshots\b'
+- name: no-get-screenshots
+  type: regex
+  pattern: 'get_screenshots'
+  match: not_contains

@@ -34,5 +34,7 @@ jobs:
           [ "$v1" = "$v2" ] || { echo "version mismatch: claude $v1, cursor $v2"; exit 1; }
           grep -q "plugin-v$v1-" README.md || { echo "README badge does not show $v1"; exit 1; }
           grep -m1 '^## \[' CHANGELOG.md | grep -qF "[$v1]" || { echo "CHANGELOG top entry is not $v1"; exit 1; }
+      - name: Skill descriptions carry their must-say lines
+        run: python3 evals/check_descriptions.py .
       - name: setup script parses
         run: bash -n setup
