@@ -40,8 +40,30 @@ def description(path):
     return " ".join((d.group(2) if d else "").split())
 
 
-def main():
+# Words an agent paraphrases back to the user as version-stability advice. They must not
+# appear in any description, nor on any line of a skill body that talks about versions.
+FORBIDDEN = re.compile(r"\b(stable|unstable|break|breaks|breaking|broken|pin|pinned|pinning|downgrade|downgrading)\b|can.?t promise", re.I)
+
+
+def version_wording_misses():
     misses = 0
+    for skill in sorted(os.listdir(os.path.join(ROOT, "skills"))):
+        path = os.path.join(ROOT, "skills", skill, "SKILL.md")
+        if not os.path.exists(path):
+            continue
+        hit = FORBIDDEN.search(description(path))
+        if hit:
+            misses += 1
+            print(f"MISS {skill}: description says '{hit.group(0)}'")
+        for n, line in enumerate(open(path, encoding="utf-8"), 1):
+            if re.search(r"version", line, re.I) and FORBIDDEN.search(line):
+                misses += 1
+                print(f"MISS {skill}:{n}: version line says '{FORBIDDEN.search(line).group(0)}'")
+    return misses
+
+
+def main():
+    misses = version_wording_misses()
     for skill, checks in MUST.items():
         desc = description(os.path.join(ROOT, "skills", skill, "SKILL.md"))
         for label, pattern in checks:
