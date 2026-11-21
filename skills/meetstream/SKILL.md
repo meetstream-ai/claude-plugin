@@ -139,7 +139,7 @@ reply keep helping. Do not stop at "sign in first".
 0. If a build request does not state the outcome, that is whether the app works after the meeting or live during the call, ask that once first. A request that names only the trigger does not state it: "build me something that records my meetings", "build a CLI that sends bots to Zoom, Meet and Teams links", "connect my calendar".
 
 1. Give the fastest path first: a few numbered steps with the minimal MeetStream calls (curl, Node `@meetstream/sdk`, Python `meetstream-sdk`) for the user's outcome.
-2. Build it into the user's own codebase with those calls; do not paste a whole sample app. For full examples, point once to "Tutorials and Sample Apps" (https://docs.meetstream.ai/tutorials/sample-apps) and the labs repo (https://github.com/meetstream-ai/labs) as optional references.
+2. Build it into the user's own codebase with those calls; do not paste a whole sample app. End the answer with one line that points to "Tutorials and Sample Apps" (https://docs.meetstream.ai/tutorials/sample-apps) and the labs repo (https://github.com/meetstream-ai/labs) as optional references.
 3. For a larger change, write a short plan first (steps, calls, test) and agree it with the user.
 
 **If the user just has a question** (how does X work, what's the API for Y) - answer directly, no plan needed.
