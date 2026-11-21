@@ -13,6 +13,10 @@ They open the core skill, getting-started, README, AGENTS.md and INSTALL_FOR_AGE
 that order, and the old a/b/c voice-agent order (inbuilt keys as the default) is gone.
 Zoom (Sid, 20 Nov 2026): no file says Zoom needs no setup or that the Zoom app is optional;
 bots join through the customer's Zoom app with OBF or ZAK.
+Signup gaps (MS-2305, 21 Nov 2026): the first-bot skills give the Zoom app step (OBF or ZAK,
+with the Zoom setup link) and admission (waiting_room_timeout, NotAllowed, Denied); voice-agent
+recipes by job and the xAI and Google realtime configs; a build-for-your-customers skill;
+WhatsApp (Beta) setup and limits; the supported platforms; no undocumented `sendchat`.
 Usage: python3 evals/check_descriptions.py [repo_root]   (exit 1 on any miss)
 """
 import os
@@ -243,8 +247,80 @@ def round6_misses():
     return misses
 
 
+def read_skill(name):
+    fp = os.path.join(ROOT, "skills", name, "SKILL.md")
+    return open(fp, encoding="utf-8").read() if os.path.exists(fp) else ""
+
+
+# skill -> list of (label, regex that must match the SKILL.md body)
+SIGNUP_BODY = {
+    "notetaker": [("Zoom app step: OBF or ZAK", r"\bOBF\b.{0,200}\bZAK\b|\bZAK\b.{0,200}\bOBF\b"),
+                  ("Zoom setup link", r"zoom-marketplace-app-setup|zoom-authenticated-bots"),
+                  ("admission: waiting_room_timeout", r"waiting_room_timeout"),
+                  ("admission: NotAllowed and Denied", r"NotAllowed.{0,600}Denied|Denied.{0,600}NotAllowed"),
+                  ("transcript language is set, not fixed to en", r"languages-and-translation"),
+                  ("invitee emails: calendar_email", r"calendar_email"),
+                  ("calendar auto-join next step", r"calendar-automation")],
+    "getting-started": [("Zoom app step: OBF or ZAK", r"\bOBF\b.{0,200}\bZAK\b|\bZAK\b.{0,200}\bOBF\b"),
+                        ("Zoom setup link", r"zoom-marketplace-app-setup|zoom-authenticated-bots"),
+                        ("admission: waiting_room_timeout", r"waiting_room_timeout"),
+                        ("admission: NotAllowed and Denied", r"NotAllowed.{0,600}Denied|Denied.{0,600}NotAllowed"),
+                        ("supported platforms, others rejected", r"Webex"),
+                        ("other bot APIs: migration note", r"MeetingBaaS|Attendee")],
+    "join-meeting": [("Zoom app step: OBF or ZAK", r"\bOBF\b.{0,200}\bZAK\b|\bZAK\b.{0,200}\bOBF\b"),
+                     ("Zoom setup link", r"zoom-marketplace-app-setup|zoom-authenticated-bots"),
+                     ("admission: waiting_room_timeout", r"waiting_room_timeout"),
+                     ("supported platforms, others rejected", r"Webex"),
+                     ("WhatsApp (Beta)", r"WhatsApp.{0,40}Beta")],
+    "troubleshooting": [("admission: waiting_room_timeout", r"waiting_room_timeout"),
+                        ("admission: NotAllowed and Denied", r"NotAllowed.{0,600}Denied|Denied.{0,600}NotAllowed"),
+                        ("admission fix: signed-in bot", r"signed-in")],
+    "mia-voice-agents": [("recipes by job", r"## Recipes"),
+                         ("recipe: wake word or name", r"speak_only_when_asked"),
+                         ("recipe: interviewer, wake word off", r"\"enabled\": false"),
+                         ("realtime xAI (Grok) config", r"\"provider\": \"xai\""),
+                         ("realtime Google (Gemini) config", r"\"provider\": \"google\""),
+                         ("other languages", r"\"language\": \"(ru|es|de|pt|multi)\"")],
+    "platform-setup": [("WhatsApp pairing step", r"Integrations > WhatsApp"),
+                       ("WhatsApp limits: deepgram only", r"WhatsApp.{0,800}deepgram")],
+    "for-your-customers": [("tenant tag", r"custom_attributes"), ("storage per customer", r"storage_id"),
+                           ("calendar per end user", r"create_calendar"), ("rate limit", r"429.{0,200}Retry-After"),
+                           ("per-speaker audio", r"audio_separate_streams")],
+    "migrate-from-recall": [("other bot APIs", r"MeetingBaaS.{0,80}Attendee|Attendee.{0,80}MeetingBaaS")],
+}
+SIGNUP_DESC = {
+    "for-your-customers": [("multi-tenant trigger", r"customers"), ("tenant tag", r"custom_attributes")],
+    "mia-voice-agents": [("Grok routes to xAI", r"Grok.{0,60}xai|xAI")],
+}
+
+
+def signup_misses():
+    misses = 0
+    for skill, checks in SIGNUP_BODY.items():
+        body = read_skill(skill)
+        for label, pattern in checks:
+            ok = bool(body) and re.search(pattern, body, re.S) is not None
+            misses += not ok
+            print(f"{'ok  ' if ok else 'MISS'} {skill} body: {label}")
+    for skill, checks in SIGNUP_DESC.items():
+        fp = os.path.join(ROOT, "skills", skill, "SKILL.md")
+        desc = description(fp) if os.path.exists(fp) else ""
+        for label, pattern in checks:
+            ok = re.search(pattern, desc, re.S) is not None
+            misses += not ok
+            print(f"{'ok  ' if ok else 'MISS'} {skill} description: {label}")
+    # `sendchat` is not a documented control command.
+    for base, _, files in os.walk(os.path.join(ROOT, "skills")):
+        for name in files:
+            fp = os.path.join(base, name)
+            if "sendchat" in open(fp, encoding="utf-8").read():
+                misses += 1
+                print(f"MISS {os.path.relpath(fp, ROOT)}: names the undocumented sendchat command")
+    return misses
+
+
 def main():
-    misses = version_wording_misses() + body_misses() + round6_misses()
+    misses = version_wording_misses() + body_misses() + round6_misses() + signup_misses()
     for skill, checks in MUST.items():
         desc = description(os.path.join(ROOT, "skills", skill, "SKILL.md"))
         for label, pattern in checks:

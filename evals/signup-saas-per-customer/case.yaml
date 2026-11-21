@@ -1,0 +1,30 @@
+schema_version: "1.1"
+name: signup-saas-per-customer
+description: "Signup prompt (anonymised): a SaaS that records and transcribes its customers' calls inside its own app. Must give the build-it-for-your-customers path: custom_attributes per tenant, webhook routing, a calendar connection per end user, a storage destination per customer (storage_id), the bot-creation rate limit (429, Retry-After, join_at 10+ minutes ahead) and the Zoom app note."
+tags: [signups, multi-tenant]
+runs: 1
+execution:
+  prompt: "our SaaS needs recording + transcripts inside our own app, with bots joining our customers' calls. how do I set this up per customer?"
+  max_turns: 10
+  allowed_tools: [Read, Glob, Grep, Skill]
+graders:
+- name: tenant-tagging
+  type: regex
+  pattern: 'custom_attributes'
+- name: per-customer-storage-or-webhook
+  type: regex
+  pattern: 'storage_id|callback_url|[Ww]orkspace webhook'
+- name: rate-limit
+  type: regex
+  pattern: '429|Retry-After|rate limit'
+  flags: i
+- name: no-zoom-no-setup-claim
+  type: regex
+  pattern: 'needs? no (Zoom )?setup|no setup (is )?(needed|required)|no Zoom app (is )?(needed|required)|Zoom app is optional|(don.t|do not) need (a|your own) Zoom app'
+  flags: i
+  match: not_contains
+- name: no-bot-sent
+  type: tool_used
+  tool: mcp__plugin_meetstream_meetstream__create_bot
+  min: 0
+  max: 0
