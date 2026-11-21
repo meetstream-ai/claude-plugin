@@ -1,0 +1,25 @@
+schema_version: "1.1"
+name: agent-no-infra-hosted
+description: "The user wants a voice agent with no infrastructure work: flow 3, the hosted Agents API (MIA) with MeetStream's inbuilt keys (OpenAI and Deepgram), the fallback to own keys when inbuilt keys are not on, and only agent_config_id on the bot."
+tags: [three-flows, voice-agent]
+runs: 1
+execution:
+  prompt: "I want a voice agent that answers questions in my Google Meet calls, but I don't want to run any servers or infrastructure, and I don't have any AI provider accounts. Just host it for me. How do I set it up?"
+  max_turns: 10
+  allowed_tools: [Read, Glob, Grep, Skill]
+graders:
+- name: inbuilt-keys
+  type: regex
+  pattern: 'key_source'
+- name: agent-config-id
+  type: regex
+  pattern: 'agent_config_id'
+- name: no-bridge-sockets-on-bot
+  type: regex
+  pattern: '\x22(socket_connection_url|live_audio_required)\x22\s*:\s*\{'
+  match: not_contains
+- name: no-bot-sent
+  type: tool_used
+  tool: mcp__plugin_meetstream_meetstream__create_bot
+  min: 0
+  max: 0

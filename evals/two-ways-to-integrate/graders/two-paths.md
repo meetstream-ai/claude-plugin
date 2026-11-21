@@ -2,5 +2,5 @@
 type: llm
 weight: 2
 ---
-PASS if the reply gives two ways to integrate and leads with the first: (1) the Bot API (meeting bots that join Zoom, Google Meet or Teams, then recordings, transcripts, participants, chat and webhooks after the call, or live data during it) as the default starting point; (2) the Agents API (voice agents, API name MIA, an agent that talks in the meeting) as the second path, for when the user wants an agent that speaks or answers in the call.
-FAIL if the reply leads with voice agents, presents the voice agent as the default, uses only the name MIA without saying "voice agent", or gives only one of the two paths.
+PASS if the reply leads with recording: (1) the Bot API (meeting bots that join Zoom, Google Meet or Teams, then recordings, transcripts, participants, chat and webhooks after the call, or live data during it) as the default starting point. For an agent that talks in the meeting it then gives, in this order: (2) the user's own stack on a bridge server (the bot streams live audio to the user's server and takes audio, chat and interrupts back; any models, including local ones; the bot price only), optionally also the user's own agent through the Agent Kit with a prompt-injection warning; and (3) the hosted Agents API (voice agents, API name MIA), where MeetStream hosts the agent.
+FAIL if the reply leads with voice agents, presents the voice agent as the default, uses only the name MIA without saying "voice agent", omits the bridge server, or lists the hosted Agents API before the bridge server.

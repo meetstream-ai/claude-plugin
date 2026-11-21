@@ -1,0 +1,28 @@
+schema_version: "1.1"
+name: agent-own-models-bridge
+description: "A voice agent on the user's own models (local Parakeet, a local LLM, a local TTS): the bridge server flow, with both bot sockets (live_audio_required.websocket_url and socket_connection_url.websocket_url), the bot price only, the bridge docs and the starter repo."
+tags: [three-flows, voice-agent]
+runs: 1
+execution:
+  prompt: "Build me a voice agent that joins my Zoom calls and runs entirely on my own models: local Parakeet for speech-to-text, a local LLM and a local TTS. How do I connect it to MeetStream, and what does MeetStream charge for it? Don't send a bot."
+  max_turns: 10
+  allowed_tools: [Read, Glob, Grep, Skill]
+graders:
+- name: live-audio-socket
+  type: regex
+  pattern: 'live_audio_required'
+- name: control-socket
+  type: regex
+  pattern: 'socket_connection_url'
+- name: bridge-docs-or-starter
+  type: regex
+  pattern: 'bridge-server-architecture|meetstream-ai/meetstream-agent'
+- name: not-the-hosted-agent-config
+  type: regex
+  pattern: '\x22key_source\x22\s*:\s*\x22meetstream\x22'
+  match: not_contains
+- name: no-bot-sent
+  type: tool_used
+  tool: mcp__plugin_meetstream_meetstream__create_bot
+  min: 0
+  max: 0

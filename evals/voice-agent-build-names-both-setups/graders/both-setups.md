@@ -2,5 +2,5 @@
 type: llm
 weight: 2
 ---
-PASS if the reply names both setups: MeetStream's inbuilt keys (also called MeetStream-managed keys) (`"key_source": "meetstream"`, no provider keys of the user's own) as the default, AND the user's own provider keys as the alternative. Mentioning the user's own agent through the Agent Kit is optional, but if mentioned it must carry a prompt-injection warning.
-FAIL if the reply offers only one of the two key setups, or starts with wake words or mode questions before the setup choice.
+PASS if the reply names both ways to run the agent, own stack first: (1) a bridge server the user runs (the bot sends live audio to it and takes audio, chat and interrupts back over a control socket; any speech-to-text, LLM and voice models, including local ones; the bot price only), and (2) the hosted Agents API (MIA), with MeetStream's inbuilt keys and the user's own provider keys as its key choices. Asking one question "your own stack (bridge) or hosted by MeetStream?" with both options described also passes. Mentioning the user's own agent through the Agent Kit is optional, but if mentioned it must carry a prompt-injection warning.
+FAIL if the reply offers only the hosted agent or only the bridge, lists the hosted agent before the bridge, or starts with wake words or mode questions before the setup choice.
