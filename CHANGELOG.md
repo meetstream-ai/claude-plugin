@@ -21,7 +21,17 @@ Closes the coverage gaps found in what new developers ask for (MS-2305).
 ### Fixed
 - `references/api-reference.md` and the core skill no longer list `sendchat`, which is not in the public docs.
 
+### Fixed from live build tests (4 harnesses, 21 Nov 2026)
+- **Transcript shape:** `get_transcript` segments are participant-keyed by default (`participant.name`, `words[].text`); the segment-list format (`speaker`, `transcript`) is read as a fallback. Examples, parsers, the core skill, `references/api-reference.md`, `notetaker`, `meeting-brief` and `troubleshooting` changed. The `meetstream` engine can add a lone "Thank you." segment on silence.
+- **Polling:** the full status list; a bot can go `InMeeting` → `MediaProcessing` → `Done` with no `Stopped` between polls; poll until a final status with a cap. Listing bots: filters (`status`, `platform`, `from`/`to`, `custom_attr`), `limit` at most 50, `nextCursor`.
+- **Bridge audio:** live Google Meet bots send `0x04` frames (`[type][rate:4 LE][channels:1]`, speaker fields at offset 6) as well as `0x01`; one decoder for both. Meet tags audio `NoSpeaker`, so echo guards use timing, not the bot name. Bridge URLs carry a secret path token.
+- **Voice agents:** pipeline agents start with a wake word on; the fastest path sets `"wake_word": {"enabled": false}`. Commands (`update_mia`, chat, `send_command`) need the bot `InMeeting` (409 or 503 before). Inbuilt keys per mode: "Pipeline: OpenAI + Deepgram. Realtime: OpenAI only."; agents read `mia_managed` from `GET /api/v1/mia` and use only what it lists, with no prices.
+- **Agent Kit:** presets agy, claude, codex, copilot, hermes, muse, openclaw; OpenCode and Cursor through `serve --command "<cli> ... {prompt}"` (readonly is not enforced for a custom command). The pairing token is saved only in the dashboard: stop and ask the user; never probe undocumented endpoints or write the token anywhere.
+- **Apps:** remove the bot on exit (`POST /api/v1/bots/{bot_id}/remove_bot`); no tunnels or long-running processes in a build unless the user asks; MCP tools to look at real bot data while building.
+- **Setup:** OpenCode (`setup --host opencode`, project `.opencode/skills` and `opencode.json`), Cursor Agent CLI (key header in `.cursor/mcp.json`; old `~/.claude` plugin can shadow skills).
+
 ### Evals
+- Six build-feedback cases (`build-transcript-live-shape`, `build-poll-until-done`, `build-bridge-meet-frames`, `voice-agent-inbuilt-per-mode`, `agent-kit-cursor-dashboard-step`, `voice-agent-silent-wake-word`); `app-response-shapes` and the transcript mock use the live shape.
 - Nine cases from anonymised signup prompts (`signup-*`). `evals/check_descriptions.py` checks the Zoom step, admission, recipes, xAI and Google configs, languages, WhatsApp, the new skill, the migration note and that no skill names `sendchat`.
 
 ## [2.9.0] - 2026-11-21

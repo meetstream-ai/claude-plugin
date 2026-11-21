@@ -131,8 +131,10 @@ In order:
    start a new run with `POST /api/v1/bots/{bot_id}/transcribe`.
 2. Right identifier? The MCP `get_transcript` tool takes the **`bot_id`**. The REST
    endpoint takes the **`transcript_id`**, not the `bot_id`.
-3. Are you reading `segment.transcript`, not `segment.text`? Wrong field looks like an
-   empty transcript.
+3. Are you reading the right fields? By default the speaker is `participant.name` and the
+   text is `words[].text` joined; only some providers return `speaker` / `transcript`.
+   Reading the wrong format looks like an empty transcript. Check one real response with
+   the MCP `get_transcript` tool (or `curl`) before you change the parser.
 4. Was it a streaming-only provider? Then there is no post-call transcript. Use
    `transcribe_audio` to generate one from the stored audio.
 
@@ -154,7 +156,10 @@ First find which of the three flows the bot uses (flow 1, recording only, has no
 - **Flow 3, hosted agent** (`agent_config_id`): the bot must carry only
   `agent_config_id`. `socket_connection_url` or `live_audio_required` on the same bot is
   the usual cause of a silent agent: remove them (a bridge is a separate bot). Then check
-  the wake word, `speak_only_when_asked`, and the keys: `MeetStream-managed keys are not
+  the wake word: pipeline agents have a wake word on by default (`"hey assistant"`,
+  `"hello bot"`), so an agent that greets and then ignores questions needs
+  `"wake_word": {"enabled": false}` (or the user says the wake word). Then
+  `speak_only_when_asked`, and the keys: `MeetStream-managed keys are not
   available` means inbuilt keys are not on for the account yet, so use your own provider
   keys; never retry in a loop. Details: `mia-voice-agents`.
 

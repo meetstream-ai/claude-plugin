@@ -41,12 +41,14 @@ brief yourself from the transcript.
 
 ## Reading the transcript correctly
 
-Transcript segments carry a **`speaker`** and a **`transcript`** field. The text is in
-`transcript`, not `text` - reading the wrong field is the single most common mistake
-and produces an empty-looking brief.
-
-Segments also carry `start_time` / `end_time`, which you need for timestamps and for
-quoting "at 14:32 they said...".
+By default each segment is participant-keyed: the speaker is **`participant.name`** and
+the text is the **`words[].text`** values joined with spaces; the start time is
+`words[0].start_timestamp.relative` (seconds), which you need for timestamps and for
+quoting "at 14:32 they said...". Some providers return the segment-list format instead
+(`speaker`, `transcript`, `start_time`, `end_time`); read both. Reading only `speaker` /
+`transcript` on a participant-keyed transcript is the most common mistake and produces an
+empty-looking brief. The `meetstream` engine can add a lone "Thank you." segment on
+silence; leave it out of the brief.
 
 If the transcript is not ready, the tool will tell you. Retry a few times with a gap.
 If the transcript run **failed** (REST `get_transcript` returns 422 with

@@ -114,13 +114,30 @@ timestamp rather than sleeping and creating it later.
 
 ## Following the bot
 
-`get_bot_status` returns one of:
+Statuses (`get_bot_status`, REST `GET /bots/{bot_id}/status`):
 
-`Joining` · `InWaitingRoom` · `InMeeting` · `Recording` · `Leaving` · `Stopped` ·
-`NotAllowed` · `Denied` · `Error` · `Done`
+- In progress: `Scheduled` · `Joining` · `InWaitingRoom` · `InMeeting` (Zoom may show
+  `RecordingPermissionAllowed`) · `Leaving` · `MediaProcessing`.
+- Ended in the meeting: `Stopped` · `Kicked`, then `MediaProcessing` → `Done`.
+- Never got in (final): `NotAllowed` · `Denied` · `Failed` / `FAILED` · `Error` / `ERROR`.
+- Other final: `Done` (post-call processing finished; fetch the transcript now) ·
+  `MediaExpired` · `Cancelled`.
 
-Three of those mean the bot never got in, and you should say so plainly rather than
-polling forever:
+A polling app must stop on any final status, not wait for `Stopped`: between two polls a
+bot can go `InMeeting` → `MediaProcessing` → `Done` and you never see `Stopped`. Poll every
+5-10 seconds with a time cap, or use the webhooks (`bot.stopped`, `transcription.processed`,
+`bot.done`). Never loop forever. `Recording` appears in the timeline and webhooks, not as
+the stored status.
+
+**Listing bots** (duplicate checks, dashboards): never page through the whole history.
+Filter: `GET /api/v1/bots?status=InMeeting&platform=GMeet&from=2026-11-21&limit=50`
+(`status`, `platform` = `GMeet` / `Zoom` / `Teams`, `from` / `to` dates, `custom_attr[key]`).
+`limit` is at most 50 (above it the API returns 400); follow `nextCursor` by sending it
+back as `cursor` while `hasNextPage` is true. For one bot per meeting, prefer a
+`deduplication_key` on `create_bot`.
+
+These mean the bot never got in, and you should say so plainly rather than polling
+forever:
 
 | Status | What actually happened | What to tell the user |
 |---|---|---|
@@ -131,6 +148,11 @@ polling forever:
 Poll with a sensible interval (5-10s) and a cap. Do not busy-loop.
 
 ## While it is in the meeting
+
+Commands (chat, image, raise hand, `send_command`, `update_mia`) need the bot to be
+`InMeeting` first. Before admission they return 409 or 503 (`no command endpoint`). Wait for
+the `bot.inmeeting` webhook or the `InMeeting` status, then send; retry a 503 two or three
+times with a few seconds' pause, never in a tight loop.
 
 - **`send_chat_message`** - post into the meeting chat, e.g. to announce the bot is
   recording. Good manners and often a legal requirement.
@@ -156,7 +178,9 @@ Poll with a sensible interval (5-10s) and a cap. Do not busy-loop.
 
 ## Ending it
 
-- **`remove_bot`** makes the bot leave now. Recorded data is kept.
+- **`remove_bot`** makes the bot leave now. Recorded data is kept. REST:
+  `POST /api/v1/bots/{bot_id}/remove_bot` (GET also works). Every app that sends a bot
+  calls it on shutdown or Ctrl-C, so the bot does not stay in the meeting.
 - **`delete_bot_data`** permanently erases the recording and transcript. This is
   irreversible - always confirm with the user before calling it, and never call it
   speculatively.

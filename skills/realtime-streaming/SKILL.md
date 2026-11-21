@@ -135,11 +135,15 @@ a hosted agent with no infrastructure work, use `mia-voice-agents` (flow 3) inst
 the user's own Claude Code or Codex as the brain, flow 2b in `mia-voice-agents`.
 
 1. Run a bridge server with two WebSocket endpoints, `/bridge/audio` (meeting audio in,
-   binary frames) and `/bridge` (JSON commands out). Start from the MeetStream Bridge
+   binary frames) and `/bridge` (JSON commands out). Put a random secret token in both
+   paths (for example `wss://host/<token>/bridge/audio`) and reject other paths: the URLs
+   are public and carry no other auth. Start from the MeetStream Bridge
    starter at https://github.com/meetstream-ai/meetstream-agent (FastAPI, OpenAI Realtime
    by default; swap in local models), or build to the bridge docs.
 2. Expose it on a public `wss://` host (a tunnel such as ngrok works for local
-   development; `localhost` is not reachable from the bot).
+   development; `localhost` is not reachable from the bot). Do not start a tunnel or a
+   long-running server in a build unless the user asked: give the commands and let the
+   user run them (Codex, for example, stops background processes at the end of each turn).
 3. Send a bot with both sockets on the same host:
    ```bash
    curl -X POST https://api.meetstream.ai/api/v1/bots/create_bot \
@@ -161,13 +165,48 @@ the user's own Claude Code or Codex as the brain, flow 2b in `mia-voice-agents`.
 4. Both sockets open with a `{"type": "ready", "bot_id": "..."}` handshake; keep one AI
    session per `bot_id`, created when the first socket connects and closed when both have
    disconnected.
-5. Audio in: frames start with a type byte. `0x01` (Google Meet, Teams) is 48 kHz mono;
-   `0x04` (Zoom) carries the sample rate and channel count in the header. Then the speaker
-   id and name (each with a 2-byte little-endian length) and PCM16 LE audio. Skip the
-   bot's own name to avoid echo, and resample to your model's rate (for example 16 kHz).
+5. Audio in: decode each frame by its type byte (`0x01` or `0x04`, on every platform,
+   including Google Meet; table and decoder below), downmix and resample to your model's
+   rate (for example 16 kHz). Echo guard: ignore input while your bridge is sending audio
+   and for a short tail after it (Google Meet tags audio `NoSpeaker`, so filtering by the
+   bot's name does not work).
 6. Reply: before the first chunk of each reply send `resume_audio`, then stream
    `sendaudio` at 48 kHz; post text with `sendmsg`. When a person talks over the agent,
    send `interrupt` and stop your send loop (barge-in).
+
+7. Shutdown: on Ctrl-C or exit, call `POST /api/v1/bots/{bot_id}/remove_bot` so the bot
+   leaves the meeting.
+
+### Audio frame format
+
+Read byte 0 first; every platform can send either audio type (live Google Meet bots send
+one `0x01` frame and then `0x04` frames):
+
+| Type | Header | Speaker fields start at |
+|---|---|---|
+| `0x01` | `[type:1]`, PCM16 LE, 48 kHz mono | offset 1 |
+| `0x04` | `[type:1][sample_rate:4, uint32 LE][channels:1]` | offset 6 |
+
+Then `sid_length` (uint16 LE), `speaker_id`, `sname_length` (uint16 LE), `speaker_name`,
+then raw PCM16 LE samples (no container). Skip any other type. Duration =
+`len(pcm) / 2 / channels / sample_rate`.
+
+```python
+import struct
+def decode(data: bytes):
+    if data[0] == 0x01:
+        rate, ch, off = 48000, 1, 1
+    elif data[0] == 0x04:
+        rate, ch, off = struct.unpack_from("<I", data, 1)[0], data[5], 6
+    else:
+        return None                      # unknown type: skip
+    n = struct.unpack_from("<H", data, off)[0]; sid = data[off+2:off+2+n].decode(); off += 2 + n
+    n = struct.unpack_from("<H", data, off)[0]; name = data[off+2:off+2+n].decode(); off += 2 + n
+    return sid, name, rate, ch, data[off:]   # downmix if ch > 1, resample for your STT
+```
+
+`speaker_name` is `"NoSpeaker"` when MeetStream cannot attribute the audio (Google Meet
+mixed audio often is), so you cannot drop the bot's own voice by name.
 
 Do not add `agent_config_id` to a bridge bot: a bridge bot and a hosted agent bot are
 separate bots.

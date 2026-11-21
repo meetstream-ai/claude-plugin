@@ -10,7 +10,7 @@ MeetStream sends a bot into the user's Zoom, Google Meet or Microsoft Teams call
 2. **Agents in meetings on your own stack (recommended first when the user asks for an agent, a voice agent or a talking bot).**
    - 2a. **Bridge server.** The bot opens two WebSockets to your server: live audio in (`live_audio_required.websocket_url`) and the control socket (`socket_connection_url.websocket_url`) to send audio, chat, images and interrupts back. Run any speech-to-text, LLM and TTS, local or hosted (for example Parakeet for local speech-to-text). Price: the bot price only, no agent infrastructure and no model tokens. [Bridge server docs](https://docs.meetstream.ai/guides/websockets/bridge-server-architecture), starter: [meetstream-ai/meetstream-agent](https://github.com/meetstream-ai/meetstream-agent).
    - 2b. **Your own agent as the brain.** Claude Code, Codex, Hermes, OpenClaw and others through `model.provider: "local_agent"` and the MeetStream Agent Kit. The bot plus $0.25 per hour for the agent infrastructure, no model tokens. Warning: meeting speech reaches an agent that has access to your computer and terminal (prompt injection); keep the computer, the agent and the bridge on for the whole call, and use the lowest access level. [Your own agent](https://docs.meetstream.ai/guides/features/mia-screen-sharing-and-custom-agents).
-3. **Managed agent infrastructure (Agents API, API name MIA).** MeetStream hosts the voice agent: MeetStream's inbuilt keys (OpenAI and Deepgram today, no provider account) or your own provider keys. The bot plus $0.25 per hour for the agent infrastructure, plus the models you pick ([pricing and keys](https://docs.meetstream.ai/guides/mia/pricing-and-keys)). A hosted agent bot takes only `agent_config_id`, never the bridge sockets.
+3. **Managed agent infrastructure (Agents API, API name MIA).** MeetStream hosts the voice agent: MeetStream's inbuilt keys (no provider account; Pipeline: OpenAI + Deepgram. Realtime: OpenAI only.) or your own provider keys. The bot plus $0.25 per hour for the agent infrastructure, plus the models you pick ([pricing and keys](https://docs.meetstream.ai/guides/mia/pricing-and-keys)). A hosted agent bot takes only `agent_config_id`, never the bridge sockets.
 
 Details: https://docs.meetstream.ai/guides/introduction/integration-paths
 
@@ -52,11 +52,52 @@ It asks for a MeetStream API key (create one at https://app.meetstream.ai/api-ke
 
 **Cursor:** install the MeetStream plugin from the Cursor marketplace ([meetstream-cursor-plugin](https://github.com/meetstream-ai/meetstream-cursor-plugin)).
 
+- **Cursor Agent CLI (`cursor-agent`):** the plugin's URL-only MCP entry needs OAuth, which
+  the CLI cannot finish (it shows `needsAuth`). In the project, add `.cursor/mcp.json` with
+  the key header (the key stays in the environment):
+
+```json
+{
+  "mcpServers": {
+    "meetstream": {
+      "url": "https://mcp.meetstream.ai/mcp",
+      "headers": { "Authorization": "Bearer ${env:MEETSTREAM_API_KEY}" }
+    }
+  }
+}
+```
+
+- An old MeetStream Claude plugin in `~/.claude/plugins` (or skills in `~/.claude/skills`)
+  can load in Cursor too and shadow the Cursor plugin's skills. Remove or update the old
+  one so only the current skills load.
+
+**OpenCode:** run `setup --host opencode` from a clone (below) in the project folder, or by
+hand: link the skills into the project's `.opencode/skills/`, and add the MCP server to the
+project's `opencode.json` (the key stays in the environment as `MEETSTREAM_API_KEY`):
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "meetstream": {
+      "type": "remote",
+      "url": "https://mcp.meetstream.ai/mcp",
+      "headers": { "Authorization": "Bearer {env:MEETSTREAM_API_KEY}" },
+      "oauth": false,
+      "enabled": true
+    }
+  }
+}
+```
+
+If OpenCode also loads a `CLAUDE.md` that conflicts with the task, start it with
+`OPENCODE_DISABLE_CLAUDE_CODE=1`.
+
 **OpenClaw, Muse Code (or any agent above as a fallback):** clone the repo once, then run `setup` for the agent:
 
 ```bash
 git clone https://github.com/meetstream-ai/claude-plugin.git ~/.meetstream-plugin
-~/.meetstream-plugin/setup --host <openclaw|muse|codex|claude|copilot>
+~/.meetstream-plugin/setup --host <openclaw|muse|codex|claude|copilot|opencode>
 ```
 
 `setup` links the skills into the agent's skills folder and adds the hosted MCP server `https://mcp.meetstream.ai/mcp` with OAuth. It is safe to run again. On Windows, run it from Git Bash or WSL.
@@ -74,7 +115,8 @@ Ask the user to sign in. A browser opens `app.meetstream.ai`; they sign in or cr
 | OpenClaw | `openclaw mcp login meetstream` |
 | Muse Code | `muse mcp login meetstream` |
 | Copilot CLI | `/mcp`, then sign in to `meetstream` |
-| Cursor | Settings → MCP → **Connect** next to `meetstream` |
+| Cursor | Settings → MCP → **Connect** next to `meetstream` (CLI: key header in `.cursor/mcp.json`, no sign-in) |
+| OpenCode | none: the key header in `opencode.json` signs in |
 
 Wait until the user says the browser shows that sign-in finished.
 

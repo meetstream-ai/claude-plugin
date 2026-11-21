@@ -59,7 +59,7 @@ MUST = {
                          ("bridge: both sockets", r"live_audio_required.{0,80}socket_connection_url"),
                          ("bridge: bot price only", r"bot price only"),
                          ("hosted (flow 3): inbuilt keys first", r"MeetStream's inbuilt keys.{0,80}key_source.{0,20}meetstream"),
-                         ("inbuilt providers", r"OpenAI and Deepgram"),
+                         ("inbuilt providers", r"OpenAI and Deepgram|Pipeline: OpenAI \+ Deepgram\. Realtime: OpenAI only"),
                          ("agent infrastructure price", r"\$0\.25 per hour"),
                          ("not-on fallback", r"not available.{0,160}own (provider )?keys"),
                          ("own keys after inbuilt keys", r"then (the user's )?own (provider )?keys"),
@@ -373,7 +373,9 @@ def build_misses():
     for rel, pattern in (("INSTALL_FOR_AGENTS.md", r"OpenCode"), ("README.md", r"OpenCode"), ("setup", r"opencode\)"),
                          ("INSTALL_FOR_AGENTS.md", r"cursor-agent"), ("INSTALL_FOR_AGENTS.md", r"OPENCODE_DISABLE_CLAUDE_CODE")):
         fp = os.path.join(ROOT, rel)
-        ok = os.path.exists(fp) and re.search(pattern, open(fp, encoding="utf-8").read()) is not None
+        if not os.path.exists(fp):
+            continue  # the Cursor repo has no setup script or INSTALL_FOR_AGENTS.md
+        ok = re.search(pattern, open(fp, encoding="utf-8").read()) is not None
         misses += not ok
         print(f"{'ok  ' if ok else 'MISS'} {rel}: {pattern}")
     return misses

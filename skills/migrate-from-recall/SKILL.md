@@ -58,7 +58,7 @@ Apply these mappings. For full field-level detail, read `references/api-referenc
 | `GET /bot/` | `GET /bots` | List |
 | `GET /bot/{id}/` | `GET /bots/{id}/detail` (or `/status`) | |
 | `DELETE /bot/{id}/` | `DELETE /bots/{id}/delete` | |
-| `POST /bot/{id}/leave_call/` | `GET /bots/{id}/remove_bot` | **POST → GET** |
+| `POST /bot/{id}/leave_call/` | `POST /bots/{id}/remove_bot` | path changes (GET also works) |
 | `GET /bot/{id}/audio/` · `video/` · `screenshots/` · `speaker_timeline/` · `participants/` · `chat_messages/` | `GET /bots/{id}/get_audio` · `get_video` · `screenshots` · `get_speaker_timeline` · `get_participants` · `get_chats` | drop the `_bot_`. A large speaker timeline comes back as `{speaker_timeline_url, size_bytes, truncated}`: download the URL |
 | `GET /bot/{id}/transcript/` | `GET /transcript/{transcript_id}/get_transcript` | **Uses `transcript_id`, not `bot_id`** - resolve via the create_bot response or `/bots/{id}/transcriptions` |
 | `POST /bot/{id}/send_chat_message/` | `POST /bots/{id}/send_message` | body `{ "message": "..." }`; drop `to`/`pin` |

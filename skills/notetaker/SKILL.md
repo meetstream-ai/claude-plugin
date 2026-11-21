@@ -58,8 +58,8 @@ https://github.com/meetstream-ai/labs."
 2. **Wait for `transcription.processed`** on that webhook (it carries `bot_id`, not the
    transcript). Return 2xx at once, then do the work.
 3. **Fetch the transcript:** `GET /bots/{bot_id}/detail` → `bot_details.transcript_id` →
-   `GET /transcript/{transcript_id}/get_transcript` (a top-level array of segments; the
-   text field is `transcript`, not `text`).
+   `GET /transcript/{transcript_id}/get_transcript` (a top-level array of segments; by
+   default the speaker is `participant.name` and the text is `words[].text` joined).
 4. **Summarize** with your own model (decisions, action items with owners, open questions)
    and **deliver** it with the channel's own SDK.
 
@@ -134,13 +134,31 @@ def on_event(event: dict) -> list | None:
     if r.status_code == 422:  # the run failed: final, show the reason, do not retry
         raise RuntimeError(r.json().get("message"))
     r.raise_for_status()
-    return r.json()  # [{"speaker", "transcript", "start_time", "end_time", "words"}, ...]
+    return lines(r.json())
+
+def lines(segments: list) -> list[str]:
+    """Default shape: {participant: {name}, words: [{text}]}; some providers: {speaker, transcript}."""
+    out = []
+    for seg in segments:
+        name = (seg.get("participant") or {}).get("name") or seg.get("speaker") or "Unknown"
+        words = seg.get("words") or []
+        text = seg.get("transcript") or " ".join(
+            (w.get("text") or w.get("punctuated_word") or w.get("word") or "").strip() for w in words)
+        if text.strip():
+            out.append(f"{name}: {text.strip()}")
+    return out  # the meetstream engine can add a lone "Thank you." on silence: filler
 ```
 
 - `transcription.failed` (or a 422 with `transcript_status: "Failed"` and the reason) is
   final. Fix the cause (for example the provider key), then re-run with
   `POST /bots/{bot_id}/transcribe`. Do not retry the same fetch.
 - 202 means still processing: poll with a cap.
+- **Polling instead of webhooks:** poll `GET /bots/{bot_id}/status` until `Done` (or a
+  final failure: `NotAllowed`, `Denied`, `Failed`, `Error`, `MediaExpired`, `Cancelled`),
+  with a time cap. Do not wait for `Stopped`: the bot can go `InMeeting` → `MediaProcessing`
+  → `Done` between polls. Full list: `join-meeting`.
+- **Shutdown:** on Ctrl-C or exit while the bot is still in the meeting, call
+  `POST /api/v1/bots/{bot_id}/remove_bot`.
 - Dedupe deliveries on `{bot_id, bot_event or event, timestamp}`; there are no
   redeliveries, so return 2xx first and queue the work. Signatures: `webhooks` skill.
 

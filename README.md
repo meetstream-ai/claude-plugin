@@ -21,7 +21,7 @@
 2. **Agents in meetings on your own stack (recommended first when the user asks for an agent, a voice agent or a talking bot).**
    - 2a. **Bridge server.** The bot opens two WebSockets to your server: live audio in (`live_audio_required.websocket_url`) and the control socket (`socket_connection_url.websocket_url`) to send audio, chat, images and interrupts back. Run any speech-to-text, LLM and TTS, local or hosted (for example Parakeet for local speech-to-text). Price: the bot price only, no agent infrastructure and no model tokens. [Bridge server docs](https://docs.meetstream.ai/guides/websockets/bridge-server-architecture), starter: [meetstream-ai/meetstream-agent](https://github.com/meetstream-ai/meetstream-agent).
    - 2b. **Your own agent as the brain.** Claude Code, Codex, Hermes, OpenClaw and others through `model.provider: "local_agent"` and the MeetStream Agent Kit. The bot plus $0.25 per hour for the agent infrastructure, no model tokens. Warning: meeting speech reaches an agent that has access to your computer and terminal (prompt injection); keep the computer, the agent and the bridge on for the whole call, and use the lowest access level. [Your own agent](https://docs.meetstream.ai/guides/features/mia-screen-sharing-and-custom-agents).
-3. **Managed agent infrastructure (Agents API, API name MIA).** MeetStream hosts the voice agent: MeetStream's inbuilt keys (OpenAI and Deepgram today, no provider account) or your own provider keys. The bot plus $0.25 per hour for the agent infrastructure, plus the models you pick ([pricing and keys](https://docs.meetstream.ai/guides/mia/pricing-and-keys)). A hosted agent bot takes only `agent_config_id`, never the bridge sockets.
+3. **Managed agent infrastructure (Agents API, API name MIA).** MeetStream hosts the voice agent: MeetStream's inbuilt keys (no provider account; Pipeline: OpenAI + Deepgram. Realtime: OpenAI only.) or your own provider keys. The bot plus $0.25 per hour for the agent infrastructure, plus the models you pick ([pricing and keys](https://docs.meetstream.ai/guides/mia/pricing-and-keys)). A hosted agent bot takes only `agent_config_id`, never the bridge sockets.
 
 Overview: [Integration paths](https://docs.meetstream.ai/guides/introduction/integration-paths).
 
@@ -145,6 +145,23 @@ Hermes has its own plugin: [hermes-meetstream](https://github.com/meetstream-ai/
 ### Cursor / Windsurf / VS Code (Claude extension)
 
 Settings → Plugins → Add marketplace `meetstream-ai/claude-plugin` → Install **meetstream** → Reload.
+
+Cursor Agent CLI (`cursor-agent`): the CLI cannot finish the MCP OAuth sign-in, so add a
+project `.cursor/mcp.json` with the key header
+(`"headers": {"Authorization": "Bearer ${env:MEETSTREAM_API_KEY}"}`). An old MeetStream
+Claude plugin in `~/.claude` can shadow the Cursor skills; remove or update it.
+
+### OpenCode
+
+From the project folder:
+
+```bash
+git clone https://github.com/meetstream-ai/claude-plugin ~/.meetstream-plugin && ~/.meetstream-plugin/setup --host opencode
+```
+
+It links the skills into `.opencode/skills/` and adds the hosted MCP server to
+`opencode.json` with `"headers": {"Authorization": "Bearer {env:MEETSTREAM_API_KEY}"}`.
+If a `CLAUDE.md` in the folder conflicts, run OpenCode with `OPENCODE_DISABLE_CLAUDE_CODE=1`.
 
 ### Update to the latest version
 
