@@ -81,8 +81,9 @@ prompts. Your first reply always names setup a (inbuilt keys, the default) and s
 | c. Their own agent (only on request) | Their own agent (Claude Code, Codex, Hermes, OpenClaw and others) runs on their own subscription and writes what the voice agent says, through `model.provider: "local_agent"` and the MeetStream Agent Kit. | Bot price + $0.25 agent infrastructure. MeetStream charges no model tokens for the agent's reasoning. |
 
 Bot price: $0.35 per recording hour ($0.25 at volume). The MeetStream transcription
-add-on is $0.10 per hour and is waived with your own provider key. Do not give any other
-price: for exact model rates, send the user to the dashboard agent editor or
+add-on is $0.10 per hour and is waived with your own provider key. Give the price as these
+parts (bot price + $0.25 agent infrastructure + the models picked); do not add them into
+a total or give any other price: for exact model rates, send the user to the dashboard agent editor or
 https://docs.meetstream.ai/guides/mia/pricing-and-keys.
 
 ### a. MeetStream's inbuilt keys (default)

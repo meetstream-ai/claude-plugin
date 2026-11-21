@@ -28,7 +28,8 @@ This skill is the **mandatory Step 0** for any MeetStream integration. If the us
    talks. Bring it in only when the user asks for a voice agent or a bot that talks
    (`mia-voice-agents`).
 
-Docs: https://docs.meetstream.ai/guides/introduction/integration-paths
+When the user asks what MeetStream offers or which API to use, name both: "Bot API" and
+"Agents API" (voice agents). Docs: https://docs.meetstream.ai/guides/introduction/integration-paths
 
 ## Your first reply
 
