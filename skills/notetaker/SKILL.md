@@ -9,9 +9,11 @@ description: >
   action items extractor", "meeting recap email", or any variant of a
   meeting-summary product. Gives the fastest path in numbered steps with the
   minimal API calls (curl, Node @meetstream/sdk, Python meetstream-sdk), the
-  create_bot body (meetstream transcription by default), and links the sample
-  apps as optional references. If the request does not say post-call or live,
-  ask that once first.
+  create_bot body (meetstream transcription by default, language set), and
+  links the sample apps as optional references. Before the first Zoom bot: the
+  bot joins through your Zoom app with an OBF or ZAK token. The host must admit
+  the bot (waiting room). Next step: calendar auto-join. If the request does
+  not say post-call or live, ask that once first.
 ---
 
 # Notetaker (post-call)
@@ -28,6 +30,23 @@ to meeting links", "connect my calendar"). Do not suggest a voice agent unless a
 
 No API key yet? Run `getting-started` first. Everything below uses
 `Authorization: Token $MEETSTREAM_API_KEY`.
+
+**Before the first bot:**
+- **Zoom:** the bot joins through your own Zoom app with an OBF token (on behalf of a user
+  who is in the meeting) or a ZAK token (a signed-in bot), the way Zoom asks Meeting SDK
+  apps to join since 2 March 2026. Set it up once before the first Zoom bot: create a
+  Zoom Meeting SDK app, save its Client ID and Secret in the dashboard under
+  Integrations > Zoom, and host the token URL (`zoom.obf_url` or `zoom.zak_url`).
+  Guides: https://docs.meetstream.ai/guides/app-integrations/zoom-marketplace-app-setup and
+  https://docs.meetstream.ai/guides/app-integrations/zoom-authenticated-bots
+  (`platform-setup` has the details). Google Meet and Teams guest bots need no app.
+- **Admission:** the bot asks to join like a guest. Someone in the meeting (on Google Meet,
+  the host or a co-host) must admit it from the waiting room or lobby. It waits
+  `automatic_leave.waiting_room_timeout` seconds (default 600; Teams 1200), then ends as
+  `NotAllowed`. `Denied` means a person declined it. Fixes: tell the host to expect the
+  bot by name, open the meeting to guests, or use a signed-in bot (`platform-setup`).
+- **Supported platforms:** Zoom, Google Meet, Microsoft Teams, and WhatsApp calls (Beta;
+  setup and limits in `platform-setup`). Links from other services return 400.
 
 ## Fastest path
 
@@ -67,6 +86,10 @@ curl -X POST https://api.meetstream.ai/api/v1/bots/create_bot \
   }'
 ```
 
+- **Language:** set `language` to the meeting's language (`"es"`, `"ru"` and so on); the
+  `meetstream` engine detects it when you send `"auto"` or omit it. Each provider has its
+  own field and codes (`language_code` with `en_us` for AssemblyAI, `en-IN` style for
+  Sarvam): https://docs.meetstream.ai/guides/transcription-recordings/languages-and-translation
 - `meetstream` transcription works on every account with no provider key (+$0.10 per
   hour). Use `deepgram` (`{"model": "nova-3", "language": "en"}`) only if the user saved
   a Deepgram key.
@@ -127,12 +150,25 @@ Join the segments as `speaker: transcript` lines and give them to the user's mod
 A good brief: decisions, action items with owners and dates, open questions. See
 `meeting-brief` for the format and talk-time.
 
+**Who gets the email.** Meeting platforms do not give the bot participants' emails. With a
+calendar connected to MeetStream, each participant the bot saw gets `calendar_email` from
+the invite in `GET /bots/{bot_id}/get_participants` after the call (null when there is no
+match). Otherwise use the invite list from your own calendar integration. MeetStream does
+not send the email; your app does, with its own provider (Resend, SendGrid, SMTP).
+
 From the user's own agent (no code): send the bot with the `create_bot` MCP tool, then
 use `get_transcript` (takes `bot_id`) and summarize in the chat.
 
+## Next step: calendar auto-join
+
+Offer this after the first bot works: connect a Google or Outlook calendar once and a bot
+joins every meeting on it with the same bot config, so nobody pastes links
+(`calendar-automation`). It also fills `calendar_email` for the summary email.
+
 ## Options
 
-- **Calendar trigger:** bots join every calendar meeting: `calendar-automation`.
+- **WhatsApp group calls (Beta):** the same flow with a WhatsApp call link, `deepgram`
+  post-call transcription only (`platform-setup`).
 - **Per-speaker audio:** `"audio_separate_streams": true`, then `get_audio_streams`
   (`recordings-and-media`).
 - **Live notes during the call:** `realtime-streaming`.
@@ -145,7 +181,7 @@ Apps" (https://docs.meetstream.ai/tutorials/sample-apps) and the labs repo
 
 - Create your first bot: https://docs.meetstream.ai/guides/get-started/create-your-first-bot
 - Post-call transcription: https://docs.meetstream.ai/guides/transcription-recordings/post-call-transcription
-- Webhooks and events: https://docs.meetstream.ai/guides/webhooks/webhooks-and-events
-- Tutorials and sample apps: https://docs.meetstream.ai/tutorials/sample-apps
+- Zoom setup (your Zoom app, OBF and ZAK): https://docs.meetstream.ai/guides/platforms/zoom
+- Calendar emails on participants: https://docs.meetstream.ai/guides/features/calendar-emails-on-participants
 
 For the latest details, fetch the page with `.md` appended, read https://docs.meetstream.ai/llms.txt, or connect the docs MCP server at https://docs.meetstream.ai/_mcp/server.

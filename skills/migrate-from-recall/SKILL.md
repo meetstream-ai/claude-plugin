@@ -7,7 +7,8 @@ description: >
   Use when the user says "migrate from Recall", "move off recall.ai", "switch from
   Recall to MeetStream", "port my Recall bot", "Recall alternative migration", or
   points you at a codebase that calls recall.ai. Offers an automated CLI path and a
-  manual guided path.
+  manual guided path. Also a short manual note for MeetingBaaS, Attendee or an
+  in-house bot (the kit covers Recall only).
 ---
 
 # Migrate from Recall.ai → MeetStream
@@ -84,6 +85,25 @@ Apply these mappings. For full field-level detail, read `references/api-referenc
 - Streaming-only providers produce no `transcription.processed`, but `bot.done` still fires on every path.
 
 For the complete event catalog and payloads, use the `webhook_events_guide` reference (via the MeetStream MCP server) or `references/api-reference.md`.
+
+## Coming from MeetingBaaS, Attendee or an in-house bot
+
+The migration kit reads Recall.ai code only. For MeetingBaaS, Attendee or your own bot,
+port by hand with the same four mappings as Path B:
+
+1. Your create-bot call → `POST https://api.meetstream.ai/api/v1/bots/create_bot` with
+   `Authorization: Token $MEETSTREAM_API_KEY`, `meeting_link`, `bot_name`, `callback_url`
+   (or workspace webhooks) and your ids in `custom_attributes`.
+2. Your status handling → the `bot.*` webhook events: branch on `bot_event` (`bot.stopped`,
+   `bot.notallowed`, `bot.denied`, `bot.kicked`, `bot.failed`).
+3. Your transcript fetch → `transcription.processed`, then `get_transcript` by
+   `transcript_id` (segments use `transcript`, not `text`). Pick the provider in
+   `recording_config.transcript.provider` (`meetstream` needs no key).
+4. Media → `get_audio`, `get_video`, `get_audio_streams` (`recordings-and-media`).
+
+Zoom bots join through your Zoom app with OBF or ZAK (`platform-setup`). For data location
+or residency questions, contact support (https://docs.meetstream.ai/guides/help/support);
+do not promise a region.
 
 ## Post-migration checklist
 

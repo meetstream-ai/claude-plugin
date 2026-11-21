@@ -47,6 +47,17 @@ reply keep helping. Do not stop at "sign in first".
 
 That is the whole flow. Everything below is detail you need when it is not that simple.
 
+**Tell the user before the first bot:**
+- **Someone must admit it.** The bot asks to join like a guest. The host (on Google Meet,
+  the host or a co-host) admits it from the waiting room or lobby. It waits
+  `automatic_leave.waiting_room_timeout` seconds (default 600 on Zoom and Google Meet,
+  1200 on Teams), then ends as `NotAllowed`; `Denied` means a person declined it.
+- **Zoom:** set up the user's Zoom app first (OBF or ZAK, below).
+- **Platforms:** Zoom, Google Meet, Microsoft Teams, and WhatsApp calls (Beta: enabled per
+  workspace, pair a number under Integrations > WhatsApp, `deepgram` post-call
+  transcription only, no chat or per-participant files; `platform-setup`). Links from
+  other services (Webex, Slack huddles and others) return 400; say they are not supported.
+
 ## Creating the bot
 
 Ask for the meeting link if the user has not given one. Sensible defaults:
@@ -74,7 +85,11 @@ Ask for the meeting link if the user has not given one. Sensible defaults:
   `data:` URIs return 400.
 - Zoom: the bot joins through the user's Zoom app with an OBF token (on behalf of a user
   in the meeting) or a ZAK token (a signed-in bot), the way Zoom asks Meeting SDK apps to
-  join since 2 March 2026. Set it up once; see `platform-setup`.
+  join since 2 March 2026. Set it up once before the first Zoom bot (Meeting SDK app
+  credentials under Integrations > Zoom, then `zoom.obf_url` or `zoom.zak_url` on REST):
+  https://docs.meetstream.ai/guides/app-integrations/zoom-marketplace-app-setup and
+  https://docs.meetstream.ai/guides/app-integrations/zoom-authenticated-bots
+  (`platform-setup`).
 - `storage_id` (REST) - one of the workspace's storage destinations from the dashboard
   (1-80 letters, numbers, `_` or `-`). Omit it for the default destination.
 
@@ -109,8 +124,8 @@ polling forever:
 
 | Status | What actually happened | What to tell the user |
 |---|---|---|
-| `NotAllowed` | Sat in the waiting room until it timed out | Nobody admitted the bot. Ask a participant to let it in, or raise the waiting-room timeout. |
-| `Denied` | A host actively rejected it | The host declined. Nothing to retry automatically. |
+| `NotAllowed` | Sat in the waiting room until `waiting_room_timeout` ran out (on Zoom and Teams, also a meeting nobody started) | Nobody admitted the bot. Ask the host to watch for it by name and admit it, raise `automatic_leave.waiting_room_timeout` (Zoom up to 1200, Google Meet 600, Teams 1800), let guests in, or use a signed-in bot (`platform-setup`). Then send a new bot. |
+| `Denied` | A host actively rejected it (on Zoom, also Zoom refusing the bot's account) | The host declined. Ask them to admit it next time; on Zoom check the meeting allows guests or join with `zoom.zak_url`. Nothing to retry automatically. |
 | `Error` / `Failed` | The join failed or the session crashed | Check `ErrorReason` in `get_bot_detail`: `MeetingRestricted` (organization or invitees only) and `SignInRequired` (no anonymous guests) need a signed-in bot; `InvalidMeetingLink` needs the full join link. Otherwise create a fresh bot. |
 
 Poll with a sensible interval (5-10s) and a cap. Do not busy-loop.

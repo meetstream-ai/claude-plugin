@@ -50,6 +50,37 @@ Docs: https://docs.meetstream.ai/guides/introduction/integration-paths
 3. Then follow the answer: after the meeting → `join-meeting` and `meeting-brief`; live →
    `realtime-streaming`. If they will write code, the API key steps below apply.
 
+## Before the first bot
+
+Say these in the first-bot steps, before the user sends a bot:
+
+- **Supported platforms:** Zoom, Google Meet and Microsoft Teams, plus WhatsApp calls in
+  Beta (enabled per workspace; `platform-setup`). Links from other services, such as Webex
+  or Slack huddles, are rejected with a 400.
+- **Zoom needs your Zoom app.** Zoom bots join through the customer's own Zoom app with an
+  OBF token (on behalf of a user who is in the meeting) or a ZAK token (a signed-in bot),
+  the way Zoom asks Meeting SDK apps to join since 2 March 2026. Before the first Zoom bot,
+  create a Zoom Meeting SDK app, save its Client ID and Secret under Integrations > Zoom
+  in the dashboard, and host the `zoom.obf_url` or `zoom.zak_url` token URL.
+  Guides: https://docs.meetstream.ai/guides/app-integrations/zoom-marketplace-app-setup and
+  https://docs.meetstream.ai/guides/app-integrations/zoom-authenticated-bots
+- **Someone must admit the bot.** The bot joins like a guest and waits in the waiting room
+  or lobby. The host (on Google Meet, the host or a co-host) admits it. It waits
+  `automatic_leave.waiting_room_timeout` seconds (Zoom and Google Meet default 600, Teams
+  1200), then ends as `NotAllowed`. `Denied` means a person declined it. Fix: tell the
+  host to expect the bot by its `bot_name`, let guests in (Teams: "Who can bypass the
+  lobby" set to Everyone), or use a signed-in bot (`platform-setup`).
+
+**Coming from another meeting-bot API** (MeetingBaaS, Attendee, an in-house bot): map your
+create call to `POST /api/v1/bots/create_bot` (`meeting_link`, `bot_name`,
+`callback_url`), your status handling to the `bot.*` webhook events, and your transcript
+fetch to `get_transcript`. The automated migration kit covers Recall.ai only
+(`migrate-from-recall`). For data location questions, contact support
+(https://docs.meetstream.ai/guides/help/support).
+
+**Building for your own customers** (bots in your customers' meetings, per-customer
+data): `for-your-customers`.
+
 ## Two ways in: pick by what the user wants
 
 - **Use MeetStream from this agent** (send bots, get notes): no key needed. This plugin includes the hosted MeetStream MCP server. Sign in once: Claude Code `/mcp` → `meetstream` → **Authenticate**; Codex `codex mcp login meetstream`; Cursor Settings → MCP → **Connect**. The browser opens app.meetstream.ai; the user signs in or signs up and clicks **Allow**. Check with the `list_bots` tool, then ask the routing question below (after the meeting or live?) and hand over to `join-meeting` or `realtime-streaming`. New accounts start with $5 of credit.
@@ -258,6 +289,8 @@ Based on what the user originally wanted, route them:
 | User originally said | Hand off to |
 |---|---|
 | "build a notetaker" | `notetaker` skill |
+| "bots in our customers' meetings", "per customer" | `for-your-customers` skill |
+| "an agent that talks", "standup bot", "AI interviewer" | `mia-voice-agents` skill (recipes by job) |
 | "build a sales coach" | `sales-coach` skill |
 | "auto-record my calendar" | `calendar-automation` skill |
 | "test a bot" | `test-bot` skill |
@@ -311,6 +344,6 @@ Direct to https://app.meetstream.ai/billing (balance and top-up). New accounts s
 - Bridge server for your own agent stack: https://docs.meetstream.ai/guides/websockets/bridge-server-architecture
 - Dashboard setup and API key: https://docs.meetstream.ai/guides/get-started/dashboard-setup
 - Create your first bot: https://docs.meetstream.ai/guides/get-started/create-your-first-bot
-- Hosted MeetStream MCP server: https://docs.meetstream.ai/build-with-ai/meetstream-mcp-server
+- Zoom bots through your Zoom app (OBF and ZAK): https://docs.meetstream.ai/guides/app-integrations/zoom-authenticated-bots
 
 For the latest details, fetch the page with `.md` appended, read https://docs.meetstream.ai/llms.txt, or connect the docs MCP server at https://docs.meetstream.ai/_mcp/server.

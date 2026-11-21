@@ -6,7 +6,7 @@
 
 **Meeting bots for Zoom, Google Meet and Microsoft Teams: recordings, transcripts and live data from your agent or your app, plus agents that talk in the meeting, on your own stack or hosted.**
 
-[![Plugin Version](https://img.shields.io/badge/plugin-v2.9.0-5C4EFF?style=for-the-badge)](https://github.com/meetstream-ai/claude-plugin)
+[![Plugin Version](https://img.shields.io/badge/plugin-v2.10.0-5C4EFF?style=for-the-badge)](https://github.com/meetstream-ai/claude-plugin)
 [![Live-Tested](https://img.shields.io/badge/endpoints-live--tested-10B981?style=for-the-badge)](https://github.com/meetstream-ai/claude-plugin/commits/main)
 [![MIT License](https://img.shields.io/badge/license-MIT-yellow?style=for-the-badge)](LICENSE)
 [![Get API Key](https://img.shields.io/badge/get%20api%20key-app.meetstream.ai-0EA5E9?style=for-the-badge)](https://app.meetstream.ai/api-keys)
@@ -56,6 +56,8 @@ The skills give the fastest path first: the shortest working request (curl, Node
 | Recordings and per-speaker audio | *"download the recording and each speaker's audio"* | `recordings-and-media` |
 | Agent on your own stack (on request) | *"build a voice agent on my own models with local Parakeet"* | `realtime-streaming` (bridge server) |
 | Hosted voice agent (on request) | *"host a voice agent that answers questions in my Zoom calls"* | `mia-voice-agents` |
+| Recording for your customers (SaaS) | *"bots join our customers' calls, recordings per customer in our app"* | `for-your-customers` |
+| Agent recipes by job (on request) | *"an agent in our standup that only talks when someone says its name"* | `mia-voice-agents` |
 | Move off Recall.ai | *"migrate this repo from Recall to MeetStream"* | `migrate-from-recall` |
 
 ---
@@ -69,13 +71,14 @@ skills/
 ├── join-meeting/           <- Send a bot to a meeting (now or later), chat, raise hand
 ├── meeting-brief/          <- After the call: notes, decisions, action items
 ├── notetaker/              <- Fastest path to a post-call notetaker in your app (API guide)
+├── for-your-customers/     <- Multi-tenant: bots in your customers' meetings, per-customer routing, storage, scale
 ├── sales-coach/            <- Fastest path to live coaching from the live transcript (API guide)
 ├── calendar-automation/    <- Auto-join from Google or Outlook calendars
 ├── realtime-streaming/     <- Live captions, audio, video, control socket, bridge server for your own agent stack
 ├── recordings-and-media/   <- Recordings, per-participant audio/video, retention
 ├── webhooks/               <- Webhook events, signatures, local development
-├── platform-setup/         <- Zoom, Google Meet and Teams specifics, signed-in bots
-├── mia-voice-agents/       <- Agents in meetings: flow picker, own agent (Agent Kit), hosted Agents API (inbuilt or own keys)
+├── platform-setup/         <- Zoom (your Zoom app, OBF or ZAK), Google Meet, Teams, WhatsApp (Beta), signed-in bots
+├── mia-voice-agents/       <- Agents in meetings: flow picker, own agent (Agent Kit), hosted Agents API, Grok and Gemini, recipes by job
 ├── migrate-from-recall/    <- Recall.ai to MeetStream
 ├── verify-account/         <- Read-only account check: key, balance, providers
 ├── test-bot/               <- Send a test bot + watch webhooks live
@@ -88,7 +91,7 @@ agents/
 └── meetstream-debugger     <- Subagent for diagnosing bot failures
 ```
 
-16 skills. Each one ends with a "Latest docs" section; when a skill and the docs differ, [the docs](https://docs.meetstream.ai) win. Agents can read https://docs.meetstream.ai/llms.txt, any page with `.md` appended, or the docs MCP server at https://docs.meetstream.ai/_mcp/server.
+17 skills. Each one ends with a "Latest docs" section; when a skill and the docs differ, [the docs](https://docs.meetstream.ai) win. Agents can read https://docs.meetstream.ai/llms.txt, any page with `.md` appended, or the docs MCP server at https://docs.meetstream.ai/_mcp/server.
 
 ## Live-tested correctness
 

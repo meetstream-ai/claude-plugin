@@ -1,11 +1,12 @@
 ---
 name: platform-setup
 description: >
-  Platform-specific setup and quirks for Zoom, Google Meet and Microsoft
-  Teams. Use when the user says "the bot can't join Zoom", "waiting room",
+  Platform-specific setup and quirks for Zoom, Google Meet, Microsoft Teams
+  and WhatsApp calls (Beta). Supported: those four; Webex, Slack huddles and
+  other services return 400. Use when the user says "the bot can't join Zoom", "waiting room",
   "the host has to admit it", "recording permission", "Zoom setup", "do I need a Zoom app", "OBF",
   "use_own_app", "signed-in bots", "the bot shows as guest", "Teams lobby",
-  "meeting access is restricted", "sign in required", or hits a
+  "meeting access is restricted", "sign in required", "WhatsApp", "webinar", or hits a
   platform-specific failure rather than an API error.
 ---
 
@@ -170,6 +171,38 @@ bot** joins as a real Microsoft 365 account instead. Over MCP, use `create_bot`'
 - A malformed `teams` block is dropped silently and the bot joins as a guest.
 
 Guide: https://docs.meetstream.ai/guides/app-integrations/teams-signed-in-bots
+
+## WhatsApp calls (Beta)
+
+WhatsApp call support is in Beta and must be enabled for your workspace. Same
+`create_bot` endpoint, with these differences:
+
+- **Setup:** pair a WhatsApp number in the dashboard under Integrations > WhatsApp. Pass
+  `whatsapp.account_id` to pick a number, or omit it and MeetStream uses a healthy
+  paired number.
+- **Links:** `https://call.whatsapp.com/video/<token>`, `https://call.whatsapp.com/voice/<token>`
+  or `https://web.whatsapp.com/call/video/<token>/`. The WhatsApp Web home page is rejected.
+- **Recording:** mixed audio and composite video (`grid_view` only). Pause and resume work.
+- **Not supported:** per-participant audio and video (the flags are ignored), chat, intro
+  messages, images, screenshots and native captions.
+- **Transcription:** post-call `deepgram` only.
+- **Leaving:** `everyone_left_timeout` is off by default. The bot leaves when call audio
+  has stopped for `call_end_grace_seconds` (10 to 300, default 30).
+
+A WhatsApp notetaker is the usual post-call flow (`notetaker`) with these limits.
+
+## Meeting scope
+
+- Supported: Zoom, Google Meet, Microsoft Teams and WhatsApp calls (Beta). Links from
+  other services (Webex, Slack huddles and others) return 400. Say they are not supported.
+- Bots join regular meetings. A Zoom webinar, or a Teams town hall, webinar or live event,
+  must be hosted as a regular meeting for the bot to join. Do not promise a webinar
+  panelist join.
+- Bots join with the meeting link, not a dial-in number. The bot stays in the main room
+  during breakout rooms.
+
+Matrix: https://docs.meetstream.ai/navigation (for Zoom, follow this skill: the bot joins
+through your Zoom app with OBF or ZAK).
 
 ## Before blaming the platform
 

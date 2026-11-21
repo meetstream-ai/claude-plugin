@@ -266,7 +266,7 @@ Response 200:
 
 **`update_mia`** - see [POST `/bots/{bot_id}/update_mia`](#post-botsbot_idupdate_mia); the same body plus `"command": "update_mia"` works here.
 
-Other commands: `screenshot` (on Zoom only for bots that join without the user's own Zoom app), `pause_recording`, `resume_recording`, `sendmsg`, `sendchat`, `sendimg`, `sendimg_url`, `interrupt`. On Zoom and Teams, chat sent while the bot is in the lobby is held and posted on admission; Google Meet returns 409.
+Other commands: `screenshot` (on Zoom only for bots that join without the user's own Zoom app), `pause_recording`, `resume_recording`, `sendmsg`, `sendimg`, `sendimg_url`, `interrupt`. On Zoom and Teams, chat sent while the bot is in the lobby is held and posted on admission; Google Meet returns 409.
 
 ---
 
@@ -1212,26 +1212,6 @@ For chunked streams: 0.5–2 second chunks, pace slightly below real-time (e.g. 
   "msg": "Hello!"
 }
 ```
-
-### `sendchat` - chat with role + streaming
-
-```json
-{
-  "command": "sendchat",
-  "bot_id": "bot_abc123",
-  "role": "assistant",
-  "text": "Here is my response...",
-  "is_final": true
-}
-```
-
-| Field | Type | Notes |
-|---|---|---|
-| `role` | string | `"assistant"` or `"user"` |
-| `text` | string | Message text |
-| `is_final` | bool | `false` for interim streaming tokens, `true` for the committed message |
-
-Streaming pattern: send `is_final: false` repeatedly with growing `text`, then `is_final: true` with the final committed text.
 
 ### `interrupt` - stop playback
 

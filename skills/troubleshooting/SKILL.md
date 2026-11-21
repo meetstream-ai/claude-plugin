@@ -100,8 +100,17 @@ cloudflared) for local development.
 Check the terminal webhook's `bot_event` (every ending arrives as `event: "bot.stopped"`),
 not the HTTP response:
 
-- `bot.notallowed` - waiting-room timeout. Nobody let it in.
-- `bot.denied` - a host refused it.
+- `bot.notallowed` (status `NotAllowed`) - nobody admitted it before
+  `automatic_leave.waiting_room_timeout` ran out (default 600 seconds on Zoom and Google
+  Meet, 1200 on Teams; on Zoom and Teams also a meeting nobody started). Fix: ask the
+  host (on Google Meet, the host or a co-host) to watch for the bot by its name and admit
+  it, let guests in (Teams: "Who can bypass the lobby" set to Everyone), raise the
+  timeout, or use a signed-in bot (`platform-setup`). Then send a new bot.
+- `bot.denied` (status `Denied`) - a person declined it (on Zoom, also Zoom refusing the
+  bot's account). Ask the host to admit it next time; on Zoom join with `zoom.zak_url` as
+  an allowed user. Do not auto-retry.
+- Zoom `Unable to join external meeting` - the meeting is outside your Zoom app's account:
+  join with `zoom.obf_url` or `zoom.zak_url` (`platform-setup`).
 - `bot.kicked` - a participant removed it.
 - `bot.failed` - read `ErrorReason`: `MeetingRestricted` (organization or invitees only),
   `SignInRequired` (no anonymous guests), `InvalidMeetingLink` (bad link). Use a
