@@ -1,6 +1,6 @@
 schema_version: "1.1"
 name: voice-agent-build-names-both-setups
-description: "A build request for a voice agent names MeetStream's inbuilt keys (also called MeetStream-managed keys) as the default and the user's own provider keys as the alternative."
+description: "A build request for a voice agent that does not say which stack: the bridge server (own stack) first, then the hosted Agents API with MeetStream's inbuilt keys and the user's own provider keys (MS-2305 three flows)."
 tags: [round3, voice-agent]
 runs: 2
 execution:
@@ -8,12 +8,13 @@ execution:
   max_turns: 10
   allowed_tools: [Read, Glob, Grep, Skill]
 graders:
-- name: managed-key-source
+- name: bridge-offered
   type: regex
-  pattern: 'key_source'
-- name: own-keys-alternative
+  pattern: 'bridge server|own stack'
+  flags: i
+- name: hosted-offered
   type: regex
-  pattern: '(your|their|bring) own (provider |api |model )?keys?|BYOK|key_source\W{0,6}user'
+  pattern: 'Agents API|MIA|host'
   flags: i
 - name: no-bot-without-link
   type: tool_used

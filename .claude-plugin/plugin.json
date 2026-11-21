@@ -1,7 +1,7 @@
 {
   "name": "meetstream",
-  "description": "Two ways to integrate: the Bot API (send meeting bots to Zoom, Google Meet and Microsoft Teams; recordings, transcripts and live data for notetakers, live coaching and calendar auto-recording) and the Agents API (voice agents in the meeting, on request). Includes the hosted MeetStream MCP server (browser sign-in). Works with Zoom, Google Meet, and Microsoft Teams, including signed-in bots.",
-  "version": "2.8.0",
+  "description": "Three flows: the Bot API (send meeting bots to Zoom, Google Meet and Microsoft Teams; recordings, transcripts and live data for notetakers, live coaching and calendar auto-recording); agents in the meeting on your own stack (a bridge server with any models, including local ones, or your own agent through the Agent Kit); and the hosted Agents API (voice agents). Includes the hosted MeetStream MCP server (browser sign-in). Works with Zoom, Google Meet, and Microsoft Teams, including signed-in bots.",
+  "version": "2.9.0",
   "author": {
     "name": "MeetStream",
     "email": "hello@meetstream.ai",

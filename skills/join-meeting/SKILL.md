@@ -72,8 +72,9 @@ Ask for the meeting link if the user has not given one. Sensible defaults:
   `meeting-brief` skill for other languages and diarization.
 - `bot_image_url` (REST) - a public `https://` PNG, JPEG, GIF or WebP URL. `http://` and
   `data:` URIs return 400.
-- Zoom needs no setup. On REST, `zoom.use_own_app` picks the join (`true` = the user's own
-  Zoom app, `false` = without it, omitted = the app if one is saved). See `platform-setup`.
+- Zoom: the bot joins through the user's Zoom app with an OBF token (on behalf of a user
+  in the meeting) or a ZAK token (a signed-in bot), the way Zoom asks Meeting SDK apps to
+  join since 2 March 2026. Set it up once; see `platform-setup`.
 - `storage_id` (REST) - one of the workspace's storage destinations from the dashboard
   (1-80 letters, numbers, `_` or `-`). Omit it for the default destination.
 

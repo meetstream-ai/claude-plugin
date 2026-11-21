@@ -1,6 +1,6 @@
 schema_version: "1.1"
 name: two-ways-to-integrate
-description: "Asked which API to start with, the reply gives the two ways to integrate: the Bot API first (default), the Agents API (voice agents) only for an agent that talks."
+description: "Asked which API to start with, the reply gives the three flows (MS-2305): recording with the Bot API first (default); for an agent in the meeting, the user's own stack on a bridge server first, then the hosted Agents API (voice agents, MIA)."
 tags: [round5, routing]
 runs: 1
 execution:
@@ -14,6 +14,10 @@ graders:
 - name: agents-api
   type: regex
   pattern: 'Agents API'
+- name: bridge-before-agents-api
+  type: regex
+  pattern: '(bridge server|own stack)[\s\S]*Agents API'
+  flags: i
 - name: no-bot-sent
   type: tool_used
   tool: mcp__plugin_meetstream_meetstream__create_bot

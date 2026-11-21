@@ -4,8 +4,15 @@ the skills and top-level docs follow the content rules.
 Some agents (for example Codex) answer from the skill descriptions without opening
 SKILL.md, so these facts must be in the description itself.
 Content rules (round 5): every skill ends with a "Latest docs" section; no sample-app
-scaffolds inside skills; the two ways to integrate open the core skill, getting-started,
-README, AGENTS.md and INSTALL_FOR_AGENTS.md; no internal details in voice-agent text.
+scaffolds inside skills; no internal details in voice-agent text.
+Three flows (MS-2305, 21 Nov 2026): 1 recording (Bot API, default); 2 agents in meetings on
+the user's own stack, recommended first when an agent is asked for (2a bridge server with
+both sockets, bot price only; 2b own agent through local_agent and the Agent Kit, with the
+warning); 3 managed agent infrastructure (Agents API, MIA: inbuilt keys, then own keys).
+They open the core skill, getting-started, README, AGENTS.md and INSTALL_FOR_AGENTS.md in
+that order, and the old a/b/c voice-agent order (inbuilt keys as the default) is gone.
+Zoom (Sid, 20 Nov 2026): no file says Zoom needs no setup or that the Zoom app is optional;
+bots join through the customer's Zoom app with OBF or ZAK.
 Usage: python3 evals/check_descriptions.py [repo_root]   (exit 1 on any miss)
 """
 import os
@@ -18,7 +25,9 @@ ROOT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(os.pat
 MUST = {
     "meetstream": [("version answer, exact two sentences (round 6)", r"Install or update to the current MeetStream plugin\. The MCP server is hosted at https://mcp\.meetstream\.ai/mcp; there is no npm package or server version to install\."),
                    ("version answer: those two sentences only, no qualifiers", r"(only|nothing else).{0,60}(no|without) (added )?qualifier"),
-                   ("two paths: Bot API", r"Bot API"), ("two paths: Agents API on request", r"Agents API.{0,200}(only|on request|when the user asks)"),
+                   ("flow 1: Bot API", r"Bot API"),
+                   ("flows in order: Bot API, then own-stack bridge, then hosted Agents API", r"Bot API.{0,400}bridge.{0,300}Agents API"),
+                   ("unspecified agent: ask own stack or hosted", r"own stack.{0,120}host"),
                    ("post-call or live question", r"after the (call|meeting).{0,80}live|post-call.{0,40}live")],
     "troubleshooting": [("billing URL", r"https://app\.meetstream\.ai/billing"), ("no retry loop", r"never retry"),
                         ("422 transcript is final", r"422.{0,120}(final|do not retry|don.t retry)")],
@@ -32,24 +41,35 @@ MUST = {
                      ("one-off link needs no calendar integration (round 6)", r"(no|never|not).{0,40}calendar integration")],
     "realtime-streaming": [("raise-hand REST", r"POST /api/v1/bots/\{bot_id\}/send_command.*raise_hand"),
                            ("live transcripts by HTTPS POST (round 6)", r"HTTPS POST.{0,60}live_transcription_required\.webhook_url"),
-                           ("server forwards to the browser (round 6)", r"forward.{0,80}browser")],
-    "mia-voice-agents": [("inbuilt keys first", r"[Dd]efault.{0,40}MeetStream's inbuilt keys.*key_source.*meetstream"),
+                           ("server forwards to the browser (round 6)", r"forward.{0,80}browser"),
+                           ("flow 2a bridge: both sockets", r"live_audio_required\.websocket_url.{0,160}socket_connection_url\.websocket_url"),
+                           ("flow 2a bridge: any models incl. local", r"local"),
+                           ("flow 2a bridge: bot price only", r"bot price only")],
+    "mia-voice-agents": [("own stack first: bridge server", r"bridge.{0,200}(first|recommended)"),
+                         ("bridge: both sockets", r"live_audio_required.{0,80}socket_connection_url"),
+                         ("bridge: bot price only", r"bot price only"),
+                         ("hosted (flow 3): inbuilt keys first", r"MeetStream's inbuilt keys.{0,80}key_source.{0,20}meetstream"),
                          ("inbuilt providers", r"OpenAI and Deepgram"),
                          ("agent infrastructure price", r"\$0\.25 per hour"),
                          ("not-on fallback", r"not available.{0,160}own (provider )?keys"),
-                         ("own keys second", r"then the user's own (provider )?keys"),
+                         ("own keys after inbuilt keys", r"then (the user's )?own (provider )?keys"),
                          ("own agent stated positively (round 6)", r"Yes: your own agent \(Claude Code, Codex, Hermes, OpenClaw.{0,40}\) can be the voice agent's brain through .{0,4}model\.provider: .{0,2}local_agent.{0,4} and the MeetStream Agent Kit"),
                          ("Agent Kit warning", r"Agent Kit.*warning.*(meeting speech|what people say).*computer"),
                          ("computer stays on", r"computer must stay on"),
-                         ("managed and own keys are the recommended defaults", r"(managed|own).{0,120}recommended|recommended.{0,120}(managed|own)")],
+                         ("hosted bot: only agent_config_id, no bridge sockets", r"only agent_config_id")],
     "getting-started": [("post-call or live first", r"[Ff]irst ask.*after the call.*live"),
-                        ("two paths", r"Bot API.{0,300}Agents API")],
+                        ("flows in order: Bot API, bridge, Agents API", r"Bot API.{0,300}bridge.{0,300}Agents API")],
 }
 
 LATEST_DOCS_LINE = re.compile(r"llms\.txt.*_mcp/server|_mcp/server.*llms\.txt")
 SCAFFOLD = re.compile(r"FastAPI\(|Flask\(|express\(\)|app\.listen\(|uvicorn\.run|requirements\.txt|package\.json|Dockerfile|[├└]── [\\w.-]+(/|\\.\\w+)")
 INTERNALS = re.compile(r"mia_managed|managed catalog", re.I)
 MAX_BLOCK = 90  # longer code blocks are app code, not an API guide
+BRIDGE_DOCS = "https://docs.meetstream.ai/guides/websockets/bridge-server-architecture"
+STARTER = "https://github.com/meetstream-ai/meetstream-agent"
+# Sid, 20 Nov 2026: Zoom bots join through the customer's Zoom app with OBF or ZAK; never say Zoom needs no setup.
+ZOOM_NO_SETUP = re.compile(r"[Zz]oom needs (NO|no) setup|needs no setup|\(no setup\)|no-setup|[Zz]oom app is \*{0,2}optional|own Zoom app \(optional\)|no Zoom (Marketplace )?app, no|none needs setup|zoom\.variant")
+STALE_ORDER = re.compile(r"\bsetups? [abc]\b|\(only on request\)|inbuilt keys\W{0,4}\(default\)|[Tt]wo ways to integrate")
 
 
 def body_misses():
@@ -107,7 +127,8 @@ def body_misses():
     if not re.search(r"docs are the source of truth", core):
         misses += 1
         print("MISS meetstream: does not say the docs are the source of truth when they differ")
-    # Two ways to integrate open the core skill, getting-started and the top-level docs.
+    # The three flows open the core skill, getting-started and the top-level docs, in order:
+    # Bot API, then the own-stack bridge, then the hosted Agents API.
     tops = [os.path.join("skills", "meetstream", "SKILL.md"), os.path.join("skills", "getting-started", "SKILL.md"),
             "README.md", "AGENTS.md", "INSTALL_FOR_AGENTS.md"]
     for rel in tops:
@@ -117,9 +138,42 @@ def body_misses():
         text = open(fp, encoding="utf-8").read()
         text = re.sub(r"^---\n.*?\n---\n", "", text, flags=re.S)
         head = "\n".join(text.split("\n")[:60])
-        if not ("Bot API" in head and "Agents API" in head and head.index("Bot API") < head.index("Agents API")):
+        idx = [head.find(k) for k in ("Bot API", "bridge", "Agents API")]
+        if min(idx) < 0 or not idx[0] < idx[1] < idx[2]:
             misses += 1
-            print(f"MISS {rel}: the first 60 lines do not give the two ways (Bot API, then Agents API)")
+            print(f"MISS {rel}: the first 60 lines do not give the three flows in order (Bot API, bridge, Agents API)")
+    # Every file that routes agents links the bridge docs; the bridge recipe owners also link the starter.
+    for rel in tops + [os.path.join("skills", s, "SKILL.md") for s in ("mia-voice-agents", "realtime-streaming", "troubleshooting")]:
+        fp = os.path.join(ROOT, rel)
+        if os.path.exists(fp) and BRIDGE_DOCS not in open(fp, encoding="utf-8").read():
+            misses += 1
+            print(f"MISS {rel}: no link to the bridge server docs ({BRIDGE_DOCS})")
+    for rel in [os.path.join("skills", s, "SKILL.md") for s in ("meetstream", "mia-voice-agents", "realtime-streaming")]:
+        if STARTER not in open(os.path.join(ROOT, rel), encoding="utf-8").read():
+            misses += 1
+            print(f"MISS {rel}: no link to the bridge starter repo ({STARTER})")
+    # realtime-streaming owns the bridge recipe: both sockets and the control commands from the public docs.
+    rt = open(os.path.join(skills_dir, "realtime-streaming", "SKILL.md"), encoding="utf-8").read()
+    for cmd in ("sendaudio", "sendmsg", "interrupt", "resume_audio", "sendimg"):
+        if f'"command": "{cmd}"' not in rt and f"`{cmd}`" not in rt:
+            misses += 1
+            print(f"MISS realtime-streaming: bridge recipe does not give the control command {cmd}")
+    # The old voice-agent order (a/b/c with inbuilt keys as the default, own agent only on request) is gone.
+    for base, _, files in os.walk(ROOT):
+        if "/.git" in base or "/evals" in base:
+            continue
+        for name in files:
+            if name.endswith(".md"):
+                fp = os.path.join(base, name)
+                for n, line in enumerate(open(fp, encoding="utf-8"), 1):
+                    hit = STALE_ORDER.search(line)
+                    if hit and not name == "CHANGELOG.md":
+                        misses += 1
+                        print(f"MISS {os.path.relpath(fp, ROOT)}:{n}: old voice-agent order '{hit.group(0)}'")
+                    hit = ZOOM_NO_SETUP.search(line)
+                    if hit and not name == "CHANGELOG.md" and "Never" not in line and "Do not tell" not in line:
+                        misses += 1
+                        print(f"MISS {os.path.relpath(fp, ROOT)}:{n}: Zoom no-setup claim '{hit.group(0)}'")
     return misses
 
 

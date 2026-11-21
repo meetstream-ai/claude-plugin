@@ -127,6 +127,28 @@ In order:
 4. Was it a streaming-only provider? Then there is no post-call transcript. Use
    `transcribe_audio` to generate one from the stored audio.
 
+## "The agent in the meeting is silent"
+
+First find which of the three flows the bot uses (flow 1, recording only, has no agent):
+
+- **Flow 2a, bridge server** (the bot has `live_audio_required` and
+  `socket_connection_url`, no `agent_config_id`): both `wss://` URLs must be public (a
+  tunnel for local development) and on your server; check that both sockets got the
+  `ready` handshake. Send `resume_audio` before the first `sendaudio` of each reply: on
+  Zoom and Teams audio stays held after an `interrupt` until you do. Google Meet plays
+  `sendaudio` at 48 kHz only. Docs:
+  https://docs.meetstream.ai/guides/websockets/bridge-server-architecture
+- **Flow 2b, your own agent** (`model.provider: "local_agent"`): the computer, the agent
+  and the Agent Kit bridge must be running; test with
+  `GET /api/v1/mia?agent_config_id=<id>&check=local_agent`; on Google Meet the owner
+  pastes the activation code in the chat.
+- **Flow 3, hosted agent** (`agent_config_id`): the bot must carry only
+  `agent_config_id`. `socket_connection_url` or `live_audio_required` on the same bot is
+  the usual cause of a silent agent: remove them (a bridge is a separate bot). Then check
+  the wake word, `speak_only_when_asked`, and the keys: `MeetStream-managed keys are not
+  available` means inbuilt keys are not on for the account yet, so use your own provider
+  keys; never retry in a loop. Details: `mia-voice-agents`.
+
 ## "I'm getting duplicate bots"
 
 You are retrying `create_bot` without an `Idempotency-Key`. Add one - generate the UUID

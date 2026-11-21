@@ -1,0 +1,23 @@
+schema_version: "1.1"
+name: zoom-joins-through-your-app
+description: "Zoom setup (Sid, 20 Nov 2026): bots join through the customer's Zoom app with an OBF or ZAK token, the way Zoom asks Meeting SDK apps to join since 2 March 2026. Never says Zoom needs no setup or that the Zoom app is optional. Replaces zoom-no-setup."
+tags: [zoom]
+runs: 2
+execution:
+  prompt: "What do I need to set up before a MeetStream bot can join my Zoom meetings? Just tell me, don't send a bot yet."
+  max_turns: 8
+  allowed_tools: [Read, Glob, Grep, Skill]
+graders:
+- name: obf-or-zak-named
+  type: regex
+  pattern: '\bOBF\b|\bZAK\b|obf_url|zak_url'
+- name: no-no-setup-claim
+  type: regex
+  pattern: 'needs? no (Zoom )?setup|no setup (is )?(needed|required)|no Zoom app (is )?(needed|required)|Zoom app is optional|(don.t|do not) need (a|your own) Zoom app'
+  flags: i
+  match: not_contains
+- name: no-bot-sent
+  type: tool_used
+  tool: mcp__plugin_meetstream_meetstream__create_bot
+  min: 0
+  max: 0

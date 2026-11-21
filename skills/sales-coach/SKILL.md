@@ -13,7 +13,8 @@ description: >
   streaming provider (meetstream_streaming, no key) and
   live_transcription_required.webhook_url; links the sample apps as optional
   references. A coach that talks in the meeting is a voice agent: only on
-  request (mia-voice-agents).
+  request (bridge server in realtime-streaming first, or hosted in
+  mia-voice-agents).
 ---
 
 # Sales coach (live)

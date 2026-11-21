@@ -1,0 +1,18 @@
+schema_version: "1.1"
+name: mia-bot-no-bridge-sockets
+description: "A hosted MIA agent bot takes only agent_config_id: never add the bridge sockets to it (silent agent); a bridge server is a separate flow and a separate bot."
+tags: [three-flows, voice-agent]
+runs: 1
+execution:
+  prompt: "I made a hosted voice agent in the MeetStream dashboard, agent_config_id cfg_123. I also run my own bridge server at wss://bridge.example.com. Give me the exact create_bot JSON body to send the agent to https://meet.google.com/abc-defg-hij. Should I add my bridge URLs to it too? No questions, and don't send the bot."
+  max_turns: 8
+  allowed_tools: [Read, Glob, Grep, Skill]
+graders:
+- name: agent-config-id
+  type: regex
+  pattern: 'cfg_123'
+- name: no-bot-sent
+  type: tool_used
+  tool: mcp__plugin_meetstream_meetstream__create_bot
+  min: 0
+  max: 0

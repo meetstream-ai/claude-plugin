@@ -74,14 +74,16 @@ You are a focused MeetStream bot debugger. Your job is to take a single bot fail
 | `hand_raised` not what was asked | The host (or, on Google Meet, the meeting after that person spoke) lowered it; `hand_raised` is the real meeting state | Send `lower_hand` first if the state is unknown |
 | No `participant_events.raise_hand` / `.lower_hand` deliveries | Events not listed in `recording_config.realtime_endpoints[].events`, or you watch the workspace webhook (never receives them) | Add both event names to a `realtime_endpoints` entry |
 | `update_mia` returned `accepted` but nothing changed | Plain 200 means "accepted for delivery" | Send `"wait_for_ack": true` and read `status` / `errors` |
+| Hosted agent (`agent_config_id`) joins but never speaks | `socket_connection_url` or `live_audio_required` was added to the hosted agent bot | Send only `agent_config_id`. A bridge server (your own stack) is a separate bot with both sockets and no `agent_config_id` |
+| Bridge server bot (`live_audio_required` + `socket_connection_url`) is silent on Zoom or Teams after an interrupt | Zoom and Teams hold audio after `interrupt` until `resume_audio` | Send `resume_audio` before the first `sendaudio` of each reply (Google Meet ignores it). See https://docs.meetstream.ai/guides/websockets/bridge-server-architecture |
 | HTTP 400 `"bot_image_url must be an https:// URL to a PNG, JPEG, GIF or WebP image; ..."` | `http://`, `data:` or non-image URL | Host a PNG/JPEG/GIF/WebP on a public https URL |
 | HTTP 400 `"audio_required and video_required are both false, so the bot would record nothing. ..."` | Bot has no job | Record audio, or add a live stream, `realtime_endpoints`, `bot_message` or `agent_config_id` |
 | HTTP 400 `"video_separate_streams=true requires video_required=true for Google Meet and Microsoft Teams. ..."` | Per-participant video on an audio-only Meet/Teams bot | Set `video_required: true`, or drop `video_separate_streams` |
 | HTTP 400 `"invalid_meeting_link: this Zoom link has no meeting number, ..."` | Zoom personal (`/my/`) or vanity link | Use the `zoom.us/j/<number>` link from the invite |
-| HTTP 400 `"meeting_captions is not supported on Zoom. ..."` | Bot uses the user's own Zoom app | Use another provider, or `zoom.use_own_app: false` |
+| HTTP 400 `"meeting_captions is not supported on Zoom. ..."` | Bot uses the user's own Zoom app | Use another live transcription provider |
 | HTTP 400 `"zoom.zak_url and zoom.obf_url cannot be used with zoom.use_own_app set to false"` | Conflicting Zoom options | Drop `use_own_app: false` (ZAK/OBF need the user's own Zoom app) |
-| HTTP 400 `"Zoom bots are not available in this region right now"` | The no-setup Zoom join is not offered for the account's region | Save the user's own Zoom app and send `zoom.use_own_app: true` |
-| Zoom bot fails with the user's own app and does not retry | No fallback from a refused app | Fix the app, or send `zoom.use_own_app: false` |
+| HTTP 400 `"Zoom bots are not available in this region right now"` | Joining without the user's Zoom app is not offered for the account's region | Save the user's own Zoom app and send `zoom.use_own_app: true` |
+| Zoom bot fails with the user's own app and does not retry | No fallback from a refused app | Fix the app (credentials, Meeting SDK on) and send the bot again |
 | HTTP 400 `"storage_id must contain 1-80 letters, numbers, underscores or hyphens"` or a storage error | Bad or unknown storage destination | Copy the ID from the dashboard; fix the destination's credentials |
 | HTTP 400 `"SmallestAPIKey not configured in user profile"` | `smallest` / `smallest_streaming` without a Smallest AI key | Save the key in the dashboard (voice integrations, Smallest AI) |
 | HTTP 400 `"Anthropic models do not support: ..."` on `/api/v1/mia` | `top_p` / penalties / `logit_bias` with `provider: "anthropic"` | Remove them; keep `temperature` 0-1 and `tool_choice` `auto` / `none` |

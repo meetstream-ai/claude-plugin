@@ -1,15 +1,15 @@
 ---
 name: meetstream
 description: >
-  Core MeetStream API guide. Two ways to integrate: the Bot API (default:
-  meeting bots; recordings, transcripts and webhooks after the call, or live
-  data during it) and the Agents API (voice agents, API name MIA) only when
-  the user asks for an agent that talks. If unclear, ask once: results after
-  the call, or something live during the call? Use on any mention of
-  MeetStream, meeting bots, meeting recording or transcription API, live
-  captions, "build me a notetaker", "record a Zoom meeting", "send a bot to a
-  meeting", "which version", "plugin version", "is the MeetStream plugin
-  safe", "update the plugin", MeetStream webhook events or API errors. Version
+  MeetStream API guide. Three flows: 1) Bot API (default: recordings,
+  transcripts, webhooks after the call, or live data); agents in the meeting:
+  2) own stack first, a bridge server (both bot sockets, any models incl.
+  local, bot price only) or your own agent via the Agent Kit (warn: prompt
+  injection); 3) hosted Agents API (voice agents, MIA). Agent wanted, stack
+  unsaid: ask own stack or hosted? Unclear goal: ask results after the call,
+  or live during it? Use on any mention of MeetStream, meeting bots, "send a
+  bot to a meeting", "which version", "plugin version", "is the MeetStream
+  plugin safe", "update the plugin", webhook events or API errors. Version
   questions (answer with only these two sentences, no added qualifiers):
   "Install or update to the current MeetStream plugin. The MCP server is
   hosted at https://mcp.meetstream.ai/mcp; there is no npm package or server
@@ -24,12 +24,15 @@ You are a MeetStream integration expert. Teach the MeetStream API, the hosted MC
 
 > **The docs are the source of truth.** When https://docs.meetstream.ai and this skill differ, the docs are the source of truth and win. Fetch any page with `.md` appended, read https://docs.meetstream.ai/llms.txt, or connect the docs MCP server at https://docs.meetstream.ai/_mcp/server. Do not invent endpoints or fields.
 
-## Two ways to integrate
+## Three flows
 
-1. **Bot API: meeting bots and recording (default).** Send a bot to Zoom, Google Meet or Microsoft Teams. Then get recordings, transcripts, participants, chat and webhooks after the call, or live data during the call. Use this for every request that does not ask for an agent that talks.
-2. **Agents API: voice agents in the meeting (only on request).** A voice agent (API name MIA) on the bot listens and talks. Use it only when the user asks for a voice agent, an AI agent in the call, a bot that talks, answers or speaks, or names MIA. Details: `mia-voice-agents`.
+1. **Recording only (Bot API, default).** Send a bot to Zoom, Google Meet or Microsoft Teams. Then get recordings, transcripts, participants, chat and webhooks after the call, or live data during the call. Use this for every request that does not ask for an agent in the meeting.
+2. **Agents in meetings on your own stack (recommended first when the user asks for an agent, a voice agent or a talking bot).**
+   - 2a. **Bridge server.** The bot opens two WebSockets to the user's server: live audio in (`live_audio_required.websocket_url`, for example `wss://host/bridge/audio`) and the control socket (`socket_connection_url.websocket_url`, for example `wss://host/bridge`) to send audio, chat, images and interrupts back. The user runs any speech-to-text, LLM and TTS, local or hosted (for example Parakeet for local speech-to-text). Price: the bot price only, no agent infrastructure and no model tokens. Recipe: `realtime-streaming`. Docs: https://docs.meetstream.ai/guides/websockets/bridge-server-architecture . Starter: https://github.com/meetstream-ai/meetstream-agent
+   - 2b. **Your own agent as the brain.** Claude Code, Codex, Hermes, OpenClaw and others through `model.provider: "local_agent"` and the MeetStream Agent Kit. Bot price + $0.25 per hour agent infrastructure, no model tokens. Always with the warning (see intake routing). Details: `mia-voice-agents`.
+3. **Managed agent infrastructure (Agents API, API name MIA).** MeetStream hosts the agent: 3a MeetStream's inbuilt keys (OpenAI and Deepgram today, `"key_source": "meetstream"`), 3b the user's own provider keys. Bot price + $0.25 per hour agent infrastructure + the models picked. Details: `mia-voice-agents`.
 
-When the user asks what MeetStream offers or which API to start with, name both by their names, "Bot API" and "Agents API" (voice agents), and lead with the Bot API.
+When the user asks what MeetStream offers or which API to start with, name them by their names, lead with the "Bot API", then for agents the bridge server (own stack) before the hosted "Agents API" (voice agents). Say "voice agent" or "agent in the meeting" to users, and give "MIA" once as the API name.
 
 Overview page: https://docs.meetstream.ai/guides/introduction/integration-paths (new; until it is live, see https://docs.meetstream.ai/guides/introduction/how-bots-work and https://docs.meetstream.ai/guides/mia/what-is-mia).
 
@@ -76,28 +79,35 @@ webhooks. Start there.
      calendar, a list of links) and not the outcome, ask once.
    - If the request already says which ("record my 3pm call and send me notes" is
      post-call), do not ask. Go.
-2. **Voice agents only on request.** Do not suggest a bot that talks. Bring in
-   `mia-voice-agents` only when the user asks for a "voice agent", an "agent in the
-   meeting", or a bot that talks, answers or speaks (or names MIA, the API name). In
-   replies say "voice agent"; most users do not know the word MIA.
-3. **Voice agent setups, in this order** (details in `mia-voice-agents`). Every setup
-   costs the bot price plus $0.25 per hour for the agent infrastructure:
-   - a. **MeetStream's inbuilt keys** (default): `"key_source": "meetstream"` in each
-     pipeline section, no provider keys to bring. Inbuilt keys cover OpenAI and Deepgram
-     today. Add the per-hour price of the models picked; the dashboard agent editor shows
-     it before the bot runs. If the API answers `MeetStream-managed keys are not available
-     for <section>. Use your own key.`, inbuilt keys are not on for the account yet: go on
-     with setup b. Never retry in a loop.
-   - b. **Your own provider keys**: the user adds their own keys (OpenAI, Anthropic,
-     Deepgram, ElevenLabs and others) and picks any supported model; the provider bills
-     model usage.
-   - c. **Their own agent** (Claude Code, Codex, Hermes, OpenClaw and others, through
-     `model.provider: "local_agent"` and the MeetStream Agent Kit): only when the user asks
-     for it. Warn first, in the same answer: meeting speech reaches an agent that has access
-     to the user's computer and terminal (prompt injection); use the lowest access level
-     (`readonly`) and the activation code; the computer, the agent and the bridge must stay
-     on for the whole call. If the API says `local_agent` is not available, it is not on for
-     the account yet: offer setups a and b.
+2. **Agents only on request.** Do not suggest a bot that talks. Bring in agents only when
+   the user asks for a "voice agent", an "agent in the meeting", or a bot that talks,
+   answers or speaks (or names MIA, the API name). In replies say "voice agent"; most
+   users do not know the word MIA.
+3. **Agent flows, in this order** (details in `realtime-streaming` and `mia-voice-agents`).
+   If the user wants an agent but does not say how, ask one question: run your own stack
+   (a bridge server, any models, including local ones) or let MeetStream host it (the
+   Agents API)? If they want no infrastructure work, flow 3 is the answer. In every
+   answer, table or comparison, list the bridge server first and the hosted Agents API
+   last, even for a build request.
+   - 2a. **Bridge server** (recommended first): both sockets on one bot
+     (`live_audio_required.websocket_url` and `socket_connection_url.websocket_url`), the
+     user's own speech-to-text, LLM and TTS, local or hosted. The bot price only.
+   - 2b. **Their own agent** (Claude Code, Codex, Hermes, OpenClaw and others, through
+     `model.provider: "local_agent"` and the MeetStream Agent Kit). Bot price + $0.25 per
+     hour agent infrastructure. Warn in the same answer: meeting speech reaches an agent
+     that has access to the user's computer and terminal (prompt injection); use the
+     lowest access level (`readonly`) and the activation code; the computer, the agent and
+     the bridge must stay on for the whole call. If the API says `local_agent` is not
+     available, it is not on for the account yet: offer flow 2a or flow 3.
+   - 3. **Hosted Agents API (MIA)**: bot price + $0.25 per hour agent infrastructure + the
+     models picked. 3a MeetStream's inbuilt keys: `"key_source": "meetstream"` in each
+     pipeline section, no provider keys to bring; OpenAI and Deepgram today; the dashboard
+     agent editor shows the model price before the bot runs. If the API answers
+     `MeetStream-managed keys are not available for <section>. Use your own key.`, inbuilt
+     keys are not on for the account yet: go on with 3b. Never retry in a loop. 3b the
+     user's own provider keys (OpenAI, Anthropic, Deepgram, ElevenLabs and others); the
+     provider bills model usage. A hosted agent bot takes only `agent_config_id`, never
+     the bridge sockets: flows 2a and 3 are separate bots.
 4. **Generic asks** ("help me get started", "help me use MeetStream", "set up
    MeetStream") → `getting-started`: one connect step if needed, then the post-call or
    live question.
@@ -211,7 +221,7 @@ Start with the fastest path. When the user builds a production config, **walk th
 
 Quick top-level questions to start with:
 1. **API key** - if not provided, ask. Link: https://app.meetstream.ai/api-keys
-2. **Platform** - Google Meet, Teams, Zoom, or all? (none needs setup; see Platform Notes for optional Zoom configuration)
+2. **Platform** - Google Meet, Teams, Zoom, or all? (Zoom bots join through the user's Zoom app with OBF or ZAK; see Platform Notes)
 3. **Language** - Python or Node.js/TypeScript?
 4. **Use case** - match to one of the patterns below
 
@@ -222,7 +232,7 @@ Then **walk Steps 1–8 of the decision tree** to fill in:
 - Live transcription provider + webhooks - Step 4A
 - Post-call transcription provider - Step 4B
 - Hybrid (live + post-call via `/transcribe`) - Step 4C
-- Participant events, interactive bot, voice agent (only if asked) - Step 5
+- Participant events, interactive bot, agent in the meeting (only if asked) - Step 5
 - Scheduling (now / future / calendar auto) - Step 6
 - Custom metadata for routing/billing - Step 7
 - Timeouts - Step 8
@@ -397,7 +407,11 @@ Q2.2: (Google Meet) Does the meeting require a signed-in Google identity?
       │        Bots section. Without this setup the bot will fail to join.
       └─ No  → omit google_meet (works for public Meet rooms)
 
-Q2.3: (Zoom) Does the bot need an authenticated join or the user's own Zoom app?
+Q2.3: (Zoom) How does the bot join through the user's Zoom app?
+      Zoom bots join through the user's Zoom app with an OBF or a ZAK token,
+      the way Zoom asks Meeting SDK apps to join since 2 March 2026. The user
+      saves their Zoom Meeting SDK app in Dashboard > Integrations > Zoom (or
+      connects their Zoom app and users) once.
       ├─ Joining as a signed-in Zoom user (ZAK)
       │  → "zoom": { "zak_url": "https://you.example.com/zoom/zak" }
       ├─ Joining On Behalf Of a user already in the meeting (OBF)
@@ -405,18 +419,11 @@ Q2.3: (Zoom) Does the bot need an authenticated join or the user's own Zoom app?
       │     Both URLs are HTTPS endpoints on YOUR server that return a fresh
       │     token when MeetStream calls them. Guide:
       │     https://docs.meetstream.ai/guides/app-integrations/zoom-authenticated-bots
-      ├─ Must the bot join with the user's own Zoom app (they saved one)?
-      │  → "zoom": { "use_own_app": true }   (400 if no app is configured)
-      ├─ Must the bot join WITHOUT the user's Zoom app, even if one is saved?
-      │  → "zoom": { "use_own_app": false }
-      └─ No (the default) → omit the zoom field
-         Zoom needs NO setup: the meeting link and the MeetStream API key are
-         enough. No Zoom Marketplace app, no SDK keys, no OAuth, no tokens.
-         Never tell the user to create a Zoom app before their first bot.
-         With use_own_app omitted, the bot uses the user's Zoom app when one
-         is saved or connected, and joins without one otherwise.
-         ⚠ zak_url and obf_url need the user's own Zoom app (optional), and
-           cannot be combined with "use_own_app": false (HTTP 400).
+      └─ Force the user's Zoom app → "zoom": { "use_own_app": true }
+         (400 if no app is configured)
+         Never write that Zoom needs no setup or that no Zoom app is needed.
+         ⚠ zak_url and obf_url need the user's Zoom app, and cannot be
+           combined with "use_own_app": false (HTTP 400).
          ⚠ Zoom links with no meeting number (for example /my/ personal
            links) return HTTP 400 invalid_meeting_link.
          ⚠ use_zoom_obf and zoom_oauth_connection_user_id are rejected by the
@@ -684,16 +691,19 @@ Q5.2: Want your bot to interact in the meeting (send chat, play TTS audio,
       change its video frame)?
       ├─ Yes → "socket_connection_url": { "websocket_url": "wss://you/control" }
       │        See Pattern 3 - bot opens a WS to your server; you send the
-      │        5 documented commands (sendaudio, sendmsg, sendchat, interrupt,
+      │        documented commands (sendaudio, sendmsg, interrupt, resume_audio,
       │        sendimg/sendimg_url) over it.
       └─ No → omit socket_connection_url
 
-Q5.3: (Ask only if the user asked for a voice agent.) Attach a voice agent (MIA)?
-      ├─ Yes → Pick the setup in the `mia-voice-agents` skill (inbuilt keys first).
-      │         Create the agent in the dashboard (app.meetstream.ai) or via POST /api/v1/mia
-      │        (see Pattern 9), then pass only its ID on create_bot:
+Q5.3: (Ask only if the user asked for an agent.) Own stack or hosted by MeetStream?
+      ├─ Own stack (flow 2a, recommended first) → bridge server: both
+      │        "live_audio_required" and "socket_connection_url" on this bot,
+      │        no agent_config_id (see `realtime-streaming`). Bot price only.
+      ├─ Hosted (flow 3, MIA) → create the agent in the dashboard (app.meetstream.ai)
+      │        or via POST /api/v1/mia (see Pattern 9; inbuilt keys, then own keys),
+      │        then pass only its ID on create_bot, with no bridge sockets:
       │          "agent_config_id": "<from above>"
-      └─ No → omit agent_config_id
+      └─ No agent → omit agent_config_id
 
 Q5.4: Want to publish live video/audio INTO the bot's camera and mic (WebRTC)?
       ├─ Yes → "bot_camera_stream": { "websocket_url": "wss://you/camera" }
@@ -1036,15 +1046,15 @@ On join the bot sends a JSON handshake:
 { "type": "ready", "bot_id": "...", "message": "Ready to receive messages" }
 ```
 
-Then you push **JSON commands** over that WebSocket. There are five documented commands:
+Then you push **JSON commands** over that WebSocket (each carries `bot_id`). The documented commands:
 
 | Command | Purpose |
 |---|---|
 | `sendaudio` | Play raw PCM16 LE audio (48 kHz mono, base64-encoded) through the bot's mic |
 | `sendmsg` | Post a chat message (requires BOTH `message` AND `msg` fields with the same value, for cross-platform compat) |
-| `sendchat` | Chat with role tagging + streaming support (`role`, `text`, `is_final`) |
-| `interrupt` | Stop bot audio playback (`{action: "clear_audio_queue"}`) - Google Meet only; Zoom/Teams accept but don't clear |
-| `sendimg` / `sendimg_url` | Set bot's **video frame** to an image (base64 via `img`, or URL via `img_url`) |
+| `interrupt` | Stop bot audio playback and clear the queue (`{action: "clear_audio_queue"}`). On Zoom and Teams it then holds further audio until `resume_audio` |
+| `resume_audio` | Allow audio again after an interrupt (`resume_id`, any string). Google Meet ignores it, so send it before each new reply on every platform |
+| `sendimg` / `sendimg_url` | Set bot's **video frame** to an image (base64 via `img`, or URL via `img_url`). Zoom and Teams; on Google Meet use `send_image` |
 
 For chat / images **into the chat panel only** (not video frame), there are also REST endpoints:
 ```
@@ -1200,7 +1210,7 @@ MIA (MeetStream Infrastructure Agents) creates a server-configured AI agent that
 - **`pipeline`**: mix STT + LLM + TTS providers (configurable per layer)
 - **`realtime`**: a single realtime model (OpenAI realtime, xAI, Google Gemini) - lower latency
 
-Use this only when the user asks for a voice agent. Setups in order: MeetStream's inbuilt keys (`"key_source": "meetstream"` on each pipeline section, the default), the user's own keys, then their own agent (`local_agent`, only on request, with the warning). Price: bot + $0.25 per hour agent infrastructure (+ the models picked with inbuilt keys). Full guide: `mia-voice-agents`.
+This is flow 3 (hosted). Use it only when the user asks for a voice agent and wants MeetStream to host it; for their own stack, recommend the bridge server first (flow 2a, `realtime-streaming`, bot price only). Keys in order: MeetStream's inbuilt keys (`"key_source": "meetstream"` on each pipeline section; OpenAI and Deepgram today), then the user's own keys. Price: bot + $0.25 per hour agent infrastructure + the models picked. The user's own agent (`local_agent`, flow 2b) always comes with the warning. Full guide: `mia-voice-agents`.
 
 **Create the agent config first** (in the dashboard at app.meetstream.ai, or via the API):
 ```
@@ -1227,7 +1237,7 @@ POST /bots/create_bot
 }
 ```
 
-That's all MIA needs - MeetStream runs the agent on its own hosted bridge. Do **not** pass `socket_connection_url` or `live_audio_required` for MIA; those are only for the bring-your-own-bridge patterns 6–8 and point at *your* server.
+That's all MIA needs - MeetStream runs the agent on its own hosted bridge. Do **not** pass `socket_connection_url` or `live_audio_required` for MIA (a silent agent); those are for the bridge server flow (2a) and Patterns 3, 7 and 8, point at *your* server, and go on a separate bot.
 
 **Other MIA operations:**
 - `GET /api/v1/mia` - list all (no params) or fetch one (`?agent_config_id=...`). Secrets come back masked (`****` + last four characters); sending the mask back on `PUT` keeps the stored value.
@@ -1487,7 +1497,7 @@ The OpenAPI schema allows `additionalProperties: { description: Any type }`. Arb
 
 | Feature | Google Meet | Zoom | Microsoft Teams |
 |---|---|---|---|
-| Basic bot (`create_bot`) | ✓ | ✓ (no setup) | ✓ |
+| Basic bot (`create_bot`) | ✓ | ✓ (through your Zoom app, OBF or ZAK) | ✓ |
 | Recording + post-call transcript | ✓ | ✓ | ✓ |
 | Live transcription webhook | ✓ | ✓ | ✓ |
 | Live audio (`live_audio_required`) | ✓ | ✓ | ✓ |
@@ -1505,25 +1515,23 @@ The OpenAPI schema allows `additionalProperties: { description: Any type }`. Arb
 
 ### Zoom setup
 
-**Zoom needs no setup.** To send a bot to a Zoom meeting you need only the MeetStream API key and the meeting link: no Zoom Marketplace app, no Zoom app credentials, no Meeting SDK keys, no Zoom OAuth connection and no tokens. The same `create_bot` request works for Zoom, Google Meet and Microsoft Teams. Do not ask the user to create or register a Zoom app before their first bot.
+**How a Zoom bot joins.** Zoom bots join through the user's Zoom app with an OBF token (on behalf of a user who is in the meeting) or a ZAK token (a signed-in bot), the way Zoom asks Meeting SDK apps to join since 2 March 2026. Never write that Zoom needs no setup, that no Zoom app, SDK keys, OAuth or tokens are needed, or that the Zoom app is optional.
 
-Optional Zoom configuration, and what each adds:
-
-| Option | What it adds |
+| Setup | What it does |
 |---|---|
-| Your own Zoom app credentials (Client ID and Client Secret saved in Dashboard > Integrations > Zoom) | The bot joins with your Zoom app. Needed for `zak_url` / `obf_url`, per-participant camera video and live video into the bot camera (`bot_camera_stream`) |
+| Your Zoom app credentials (Client ID and Client Secret of a Zoom Meeting SDK app, saved in Dashboard > Integrations > Zoom) | The bot joins with your Zoom app. Needed for `zak_url` / `obf_url`, per-participant camera video and live video into the bot camera (`bot_camera_stream`) |
 | Connected Zoom accounts (Zoom OAuth Meeting Bots) | Meetings you map can be recorded without an Admit or Allow recording prompt |
-| `zoom.zak_url` (signed-in bot) | Joins as a Zoom user: can join meetings that allow only signed-in users, and can join before the host |
 | `zoom.obf_url` (on-behalf-of bot) | Joins on behalf of a user who is already in the meeting |
+| `zoom.zak_url` (signed-in bot) | Joins as a Zoom user: can join meetings that allow only signed-in users, and can join before the host |
 
-Without your own Zoom app:
+Bots that join without the user's Zoom app (`use_own_app: false`) differ:
 - Per-participant video (`video_separate_streams`) contains screen shares only. Per-participant audio works.
 - The bot camera shows images (`bot_image_url`, Send Image). Live video into the bot camera (`bot_camera_stream`) is not available. MIA agents on this bot can show images, video and an avatar.
 - The bot asks the host to allow recording, and records from the moment it is admitted. `recording_permission_denied_timeout` does not apply.
 - Meetings that require Zoom sign-in cannot be joined. Use `zak_url`.
 - `meeting_captions` and `initial_audio` work only on this bot. `screenshot` (via `send_command`) works here; the bot that uses your own Zoom app returns 400 for it.
 
-**Choosing the join with `zoom.use_own_app`** (optional, `true`, `false` or omitted):
+**The `zoom.use_own_app` field** (`true`, `false` or omitted):
 
 | `zoom.use_own_app` | What happens |
 |---|---|
@@ -1532,8 +1540,8 @@ Without your own Zoom app:
 | `false` | The bot joins without the user's Zoom app, even when one is saved. Cannot be combined with `zak_url` / `obf_url`: 400 `zoom.zak_url and zoom.obf_url cannot be used with zoom.use_own_app set to false`. |
 
 - Any other value returns 400 `zoom.use_own_app must be true or false`. The field is not echoed in bot details.
-- There is **no fallback**: if Zoom refuses the user's own app, the bot does not retry without it. Send `use_own_app: false` to avoid the app.
-- When the no-setup join is needed but not available for the account's region, `create_bot` returns 400 `Zoom bots are not available in this region right now`.
+- There is **no fallback**: if Zoom refuses the user's own app, the bot does not retry without it. Fix the app and send the bot again.
+- 400 `Zoom bots are not available in this region right now`: save the user's Zoom app and send `use_own_app: true`.
 - `zoom.use_own_app` also works on `POST /calendar/schedule/{event_id}` and `PATCH /calendar/scheduled_bots/{bot_id}`. Optional setup guides: https://docs.meetstream.ai/guides/app-integrations/zoom-marketplace-app-setup and, for joining meetings outside the app's own account with your app, https://docs.meetstream.ai/guides/app-integrations/zoom-app-production-submission
 
 For authenticated Zoom joins, pass `"zoom": { "zak_url": "https://..." }` (join as a signed-in user) or `"zoom": { "obf_url": "https://..." }` (join On Behalf Of a user who is already in the meeting). Each URL is an HTTPS endpoint on your server that returns a fresh token when MeetStream calls it. The older `use_zoom_obf` flag and `zoom_oauth_connection_user_id` are rejected by the API. Guide: https://docs.meetstream.ai/guides/app-integrations/zoom-authenticated-bots
@@ -1928,7 +1936,7 @@ Full error reference: https://docs.meetstream.ai/errors
 28. **Setting `video_separate_streams` because it looked useful** - per-participant video is opt-in only. Never set it unless the user explicitly asked for per-participant video streams. Per-participant `audio_separate_streams` is not affected by this rule. On Google Meet and Teams it also needs `video_required: true`, else 400.
 29. **Sending `raise_hand` before the bot is in the meeting** - `send_command` hand commands return 409 while the bot is joining or in the lobby. Wait for `bot.inmeeting`. Read `hand_raised` from the response; it is the real state in the meeting, not an echo.
 30. **Waiting for hand events on the workspace webhook** - `participant_events.raise_hand` / `.lower_hand` go only to `recording_config.realtime_endpoints` entries that list them.
-31. **Telling the user to create a Zoom app** - Zoom needs no setup. Use `zoom.use_own_app: true` only when the user must join with their own app, and never combine `use_own_app: false` with `zak_url` / `obf_url` (400). There is no fallback when Zoom refuses the user's app.
+31. **Saying Zoom needs no setup** - Zoom bots join through the user's Zoom app with an OBF or a ZAK token, the way Zoom asks Meeting SDK apps to join since 2 March 2026. Never combine `use_own_app: false` with `zak_url` / `obf_url` (400). There is no fallback when Zoom refuses the user's app.
 32. **Parsing `get_speaker_timeline` as the timeline every time** - large timelines return `{speaker_timeline_url, size_bytes, truncated}` instead. Check for `speaker_timeline_url` and download it (no API key, valid 1 hour).
 33. **Reading only `error` from an error body** - most errors are `{"message": "..."}`, and remove_bot / stop_status / transcriptions errors moved from `error` to `message`. Read `message`, then `error`, then fall back to the raw text.
 34. **Retrying `create_bot` in a tight loop on 429** - prepaid accounts get 5 creates per minute and 50 per hour. Sleep for the `Retry-After` seconds and resend with the same `Idempotency-Key` / `deduplication_key`.
@@ -1950,7 +1958,7 @@ Full error reference: https://docs.meetstream.ai/errors
 
 ## Latest docs
 
-- Two ways to integrate: https://docs.meetstream.ai/guides/introduction/integration-paths
+- Three flows (integration paths): https://docs.meetstream.ai/guides/introduction/integration-paths
 - API reference (base URL, groups): https://docs.meetstream.ai/api-reference/introduction
 - Create Bot payload reference: https://docs.meetstream.ai/api-reference/create-bot-payload-reference
 - Webhooks and events: https://docs.meetstream.ai/guides/webhooks/webhooks-and-events
