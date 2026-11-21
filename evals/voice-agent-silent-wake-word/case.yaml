@@ -1,0 +1,24 @@
+schema_version: "1.1"
+name: voice-agent-silent-wake-word
+description: "Build feedback (2 harnesses): a hosted pipeline agent greets but never answers because pipeline agents start with the wake word on. Fix: wake_word.enabled false (or say the wake word); commands such as update_mia need the bot InMeeting first."
+tags: [builds, voice-agent]
+runs: 1
+execution:
+  prompt: "My hosted MeetStream voice agent (pipeline mode, created with POST /api/v1/mia, no wake_word block) joins my Google Meet and says its greeting, but never answers when I ask it a question. Also, update_mia right after create_bot returned 503. What is going on? Don't send a bot."
+  max_turns: 10
+  allowed_tools: [Read, Glob, Grep, Skill]
+graders:
+- name: wake-word-named
+  type: regex
+  pattern: 'wake_word'
+- name: disable-wake-word
+  type: regex
+  pattern: '\x22enabled\x22\s*:\s*false|enabled.{0,10}false'
+- name: in-meeting-first
+  type: regex
+  pattern: 'InMeeting'
+- name: no-bot-sent
+  type: tool_used
+  tool: mcp__plugin_meetstream_meetstream__create_bot
+  min: 0
+  max: 0

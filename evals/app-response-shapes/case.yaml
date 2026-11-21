@@ -1,6 +1,6 @@
 schema_version: "1.1"
 name: app-response-shapes
-description: "Code that reads MeetStream responses uses the real fields without reading references/: bot_id, transcript segments, chatMessages, participants displayName, calendar meeting_url."
+description: "Code that reads MeetStream responses uses the real fields without reading references/: bot_id, transcript segments (participant-keyed: participant.name + words[].text, live shape), chatMessages, participants displayName, calendar meeting_url."
 tags: [round3, shapes]
 runs: 2
 execution:
@@ -11,9 +11,9 @@ graders:
 - name: bot-id-field
   type: regex
   pattern: '[\x22\x27]bot_id[\x22\x27]'
-- name: transcript-text-field
+- name: transcript-participant-words
   type: regex
-  pattern: '\[[\x22\x27]transcript[\x22\x27]\]|get\([\x22\x27]transcript[\x22\x27]'
+  pattern: '[\x22\x27]participant[\x22\x27][\s\S]{0,400}[\x22\x27]words[\x22\x27]|[\x22\x27]words[\x22\x27][\s\S]{0,400}[\x22\x27]participant[\x22\x27]'
 - name: chat-messages-key
   type: regex
   pattern: 'chatMessages'

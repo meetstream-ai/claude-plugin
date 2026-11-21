@@ -17,6 +17,12 @@ Signup gaps (MS-2305, 21 Nov 2026): the first-bot skills give the Zoom app step 
 with the Zoom setup link) and admission (waiting_room_timeout, NotAllowed, Denied); voice-agent
 recipes by job and the xAI and Google realtime configs; a build-for-your-customers skill;
 WhatsApp (Beta) setup and limits; the supported platforms; no undocumented `sendchat`.
+Build feedback (MS-2305, 21 Nov 2026, 4 harnesses live): participant-keyed transcript shape;
+full status flow (MediaProcessing, Done) and bounded polling; 0x04 frames on Google Meet;
+pipeline wake word on by default; commands need InMeeting; remove the bot on exit; the Agent
+Kit pairing token is dashboard-only; Cursor and OpenCode through serve --command; inbuilt keys
+per mode ("Pipeline: OpenAI + Deepgram. Realtime: OpenAI only.") and mia_managed; no tunnels
+or long-running processes unless asked; OpenCode and Cursor CLI setup.
 Usage: python3 evals/check_descriptions.py [repo_root]   (exit 1 on any miss)
 """
 import os
@@ -67,7 +73,7 @@ MUST = {
 
 LATEST_DOCS_LINE = re.compile(r"llms\.txt.*_mcp/server|_mcp/server.*llms\.txt")
 SCAFFOLD = re.compile(r"FastAPI\(|Flask\(|express\(\)|app\.listen\(|uvicorn\.run|requirements\.txt|package\.json|Dockerfile|[├└]── [\\w.-]+(/|\\.\\w+)")
-INTERNALS = re.compile(r"mia_managed|managed catalog", re.I)
+INTERNALS = re.compile(r"managed catalog|\"rates\"|managed_agent", re.I)  # mia_managed is read by agents (build feedback, 21 Nov); its prices are never stated
 MAX_BLOCK = 90  # longer code blocks are app code, not an API guide
 BRIDGE_DOCS = "https://docs.meetstream.ai/guides/websockets/bridge-server-architecture"
 STARTER = "https://github.com/meetstream-ai/meetstream-agent"
@@ -319,8 +325,62 @@ def signup_misses():
     return misses
 
 
+PER_MODE = r"Pipeline: OpenAI \+ Deepgram\. Realtime: OpenAI only\."
+BUILD_BODY = {
+    "notetaker": [("transcript: participant.name", r"participant\.name"), ("transcript: words[].text", r"words\[\]\.text"),
+                  ("poll until Done", r"MediaProcessing.{0,200}Done"), ("remove the bot on exit", r"remove_bot")],
+    "meeting-brief": [("transcript: participant.name", r"participant\.name"), ("transcript: words[].text", r"words\[\]\.text")],
+    "meetstream": [("transcript: participant-keyed default", r"participant\.name.{0,200}words\[\]\.text"),
+                   ("list bots: limit 50", r"limit.{0,40}50"), ("inbuilt keys per mode", PER_MODE),
+                   ("no tunnels unless asked", r"[Tt]unnel.{0,200}(unless|only when) the user"),
+                   ("MCP tools for real bot data", r"get_bot_detail")],
+    "join-meeting": [("full status flow", r"MediaProcessing.{0,300}Done"), ("commands need InMeeting (503)", r"503"),
+                     ("list bots filters", r"status=|custom_attr")],
+    "realtime-streaming": [("0x04 on Google Meet", r"Google Meet.{0,200}0x04|0x04.{0,200}Google Meet"),
+                           ("0x04 header offset 6", r"offset 6|\[1:5\]"), ("NoSpeaker echo", r"NoSpeaker"),
+                           ("secret path token", r"(secret|random).{0,40}token"), ("remove the bot on exit", r"remove_bot"),
+                           ("no tunnels unless asked", r"[Tt]unnel.{0,200}(unless|only when) the user")],
+    "mia-voice-agents": [("inbuilt keys per mode", PER_MODE), ("read mia_managed", r"mia_managed"),
+                         ("wake word on by default in fastest path", r"\"wake_word\": \{\"enabled\": false\}"),
+                         ("pairing token: dashboard only, stop and ask", r"(no public API|only in the dashboard).{0,300}(stop|ask the user)"),
+                         ("never probe endpoints", r"[Nn]ever (probe|call) undocumented"),
+                         ("Agent Kit presets", r"agy, claude, codex, copilot, hermes, muse, openclaw"),
+                         ("serve --command for Cursor / OpenCode", r"serve --command"),
+                         ("readonly not enforced for custom commands", r"not enforced"),
+                         ("commands need InMeeting", r"InMeeting")],
+    "getting-started": [("inbuilt keys per mode", PER_MODE), ("when MCP tools help", r"get_transcript.{0,200}(real|actual)")],
+    "troubleshooting": [("silent agent: default wake word", r"wake word.{0,80}(on by default|default)")],
+}
+STALE_SHAPE = re.compile(r"text field is `transcript`|text is (in )?`transcript`, not `text`|always `0x01`|\(Google Meet, Teams\) is 48 kHz")
+
+
+def build_misses():
+    misses = 0
+    for skill, checks in BUILD_BODY.items():
+        body = read_skill(skill)
+        for label, pattern in checks:
+            ok = re.search(pattern, body, re.S) is not None
+            misses += not ok
+            print(f"{'ok  ' if ok else 'MISS'} {skill} body: {label}")
+    for base, _, files in os.walk(os.path.join(ROOT, "skills")):
+        for name in files:
+            fp = os.path.join(base, name)
+            for n, line in enumerate(open(fp, encoding="utf-8"), 1):
+                hit = STALE_SHAPE.search(line)
+                if hit:
+                    misses += 1
+                    print(f"MISS {os.path.relpath(fp, ROOT)}:{n}: stale shape '{hit.group(0)}'")
+    for rel, pattern in (("INSTALL_FOR_AGENTS.md", r"OpenCode"), ("README.md", r"OpenCode"), ("setup", r"opencode\)"),
+                         ("INSTALL_FOR_AGENTS.md", r"cursor-agent"), ("INSTALL_FOR_AGENTS.md", r"OPENCODE_DISABLE_CLAUDE_CODE")):
+        fp = os.path.join(ROOT, rel)
+        ok = os.path.exists(fp) and re.search(pattern, open(fp, encoding="utf-8").read()) is not None
+        misses += not ok
+        print(f"{'ok  ' if ok else 'MISS'} {rel}: {pattern}")
+    return misses
+
+
 def main():
-    misses = version_wording_misses() + body_misses() + round6_misses() + signup_misses()
+    misses = version_wording_misses() + body_misses() + round6_misses() + signup_misses() + build_misses()
     for skill, checks in MUST.items():
         desc = description(os.path.join(ROOT, "skills", skill, "SKILL.md"))
         for label, pattern in checks:
