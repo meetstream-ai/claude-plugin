@@ -31,7 +31,7 @@ to meeting links", "connect my calendar"). Do not suggest a voice agent unless a
 No API key yet? Run `getting-started` first. Everything below uses
 `Authorization: Token $MEETSTREAM_API_KEY`.
 
-**Before the first bot:**
+**Before the first bot** (put both points in every notetaker answer, as a short "Before your first bot" list: the Zoom step when Zoom is in scope, and admission always):
 - **Zoom:** the bot joins through your own Zoom app with an OBF token (on behalf of a user
   who is in the meeting) or a ZAK token (a signed-in bot), the way Zoom asks Meeting SDK
   apps to join since 2 March 2026. Set it up once before the first Zoom bot: create a

@@ -4,8 +4,9 @@ description: "Signup prompt (anonymised): notetaker for Google Meet and Zoom tha
 tags: [signups, notetaker, zoom, admission]
 runs: 1
 execution:
-  prompt: "build me a notetaker that joins our google meet and zoom calls, writes a summary and action items and emails them to everyone on the invite. Don't send a bot yet."
+  prompt: "build me a notetaker that joins our google meet and zoom calls, writes a summary and action items and emails them to everyone on the invite. Don't send a bot yet, and don't write files: give me the plan and the calls."
   max_turns: 16
+  timeout_seconds: 480
   allowed_tools: [Read, Glob, Grep, Skill]
 graders:
 - name: zoom-obf-or-zak
