@@ -1,0 +1,29 @@
+schema_version: "1.1"
+name: signup-russian-voice-agent
+description: "Signup prompt (anonymised): a Russian-speaking voice agent in Zoom that answers when addressed and summarizes decisions at the end. Pipeline mode with transcriber.language ru (or multi), a Russian prompt and voice, name gating (speak_only_when_asked or a wake word in Russian), the end-of-meeting summary from the transcript, the Zoom app step, and the flow order."
+tags: [signups, voice-agent, language]
+runs: 1
+execution:
+  prompt: "voice agent that speaks Russian in our Zoom meetings, joins when addressed, and summarizes the decisions at the end. Don't send a bot."
+  max_turns: 10
+  allowed_tools: [Read, Glob, Grep, Skill]
+graders:
+- name: russian-language-code
+  type: regex
+  pattern: '\x22language\x22\s*:\s*\x22(ru|multi)'
+- name: name-gating-field
+  type: regex
+  pattern: 'speak_only_when_asked|wake_word'
+- name: zoom-obf-or-zak
+  type: regex
+  pattern: '\bOBF\b|\bZAK\b|obf_url|zak_url'
+- name: no-zoom-no-setup-claim
+  type: regex
+  pattern: 'needs? no (Zoom )?setup|no setup (is )?(needed|required)|no Zoom app (is )?(needed|required)|Zoom app is optional|(don.t|do not) need (a|your own) Zoom app'
+  flags: i
+  match: not_contains
+- name: no-bot-sent
+  type: tool_used
+  tool: mcp__plugin_meetstream_meetstream__create_bot
+  min: 0
+  max: 0

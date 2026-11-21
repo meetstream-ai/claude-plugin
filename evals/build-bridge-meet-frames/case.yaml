@@ -1,0 +1,21 @@
+schema_version: "1.1"
+name: build-bridge-meet-frames
+description: "Build feedback: live Google Meet audio arrives as 0x04 frames with [type:1][rate:4 LE][channels:1] (speaker fields at offset 6), not only 0x01. Decoder must branch on byte 0 for both types on every platform; Meet tags audio NoSpeaker (echo guard by timing, not by name); bridge URLs carry a secret path token."
+tags: [builds, bridge]
+runs: 1
+execution:
+  prompt: "Write the Python function my bridge server uses to decode MeetStream live audio WebSocket frames from a Google Meet bot (live_audio_required), plus one paragraph on how to stop the bridge from answering its own voice. Use the MeetStream skill; do not call MeetStream tools and do not ask me questions."
+  max_turns: 10
+  allowed_tools: [Read, Glob, Grep, Skill]
+graders:
+- name: handles-0x04
+  type: regex
+  pattern: '0x04'
+- name: header-offset-6
+  type: regex
+  pattern: '\[1:5\]|offset 6|\b6\b'
+- name: no-bot-sent
+  type: tool_used
+  tool: mcp__plugin_meetstream_meetstream__create_bot
+  min: 0
+  max: 0

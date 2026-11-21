@@ -1,0 +1,24 @@
+schema_version: "1.1"
+name: signup-ai-interviewer
+description: "Signup prompt (anonymised): an AI interviewer on scheduled Google Meet interviews that asks one question at a time and saves the recording and transcript. Must give an interviewer recipe: always-on (wake word off in pipeline mode, or realtime), one-question-at-a-time prompt, an AI and recording disclosure first message, scheduling (join_at or calendar), and the recording and transcript retrieval."
+tags: [signups, voice-agent, recipes]
+runs: 1
+execution:
+  prompt: "build an AI interviewer that joins scheduled google meet interviews, asks one question at a time, and saves the recording and transcript for the hiring team. Don't send a bot."
+  max_turns: 10
+  allowed_tools: [Read, Glob, Grep, Skill]
+graders:
+- name: prompt-or-first-message
+  type: regex
+  pattern: 'system_prompt|first_message'
+- name: scheduling
+  type: regex
+  pattern: 'join_at|calendar'
+- name: transcript-retrieval
+  type: regex
+  pattern: 'get_transcript|transcription\.processed'
+- name: no-bot-sent
+  type: tool_used
+  tool: mcp__plugin_meetstream_meetstream__create_bot
+  min: 0
+  max: 0

@@ -1,0 +1,25 @@
+schema_version: "1.1"
+name: signup-sales-copilot-live
+description: "Signup prompt (anonymised): silent sales copilot, live transcript to a webhook, overlay shows tips. Flow 1 live: live_transcription_required.webhook_url with a streaming provider, no voice agent. Guard case."
+tags: [signups, live]
+runs: 1
+execution:
+  prompt: "sales call copilot: bot joins as a silent listener, streams the live transcript to my webhook, and my overlay shows objection-handling tips. how do I build it?"
+  max_turns: 10
+  allowed_tools: [Read, Glob, Grep, Skill]
+graders:
+- name: live-transcription-webhook
+  type: regex
+  pattern: 'live_transcription_required'
+- name: streaming-provider
+  type: regex
+  pattern: '_streaming'
+- name: no-agent-config
+  type: regex
+  pattern: '\x22agent_config_id\x22\s*:'
+  match: not_contains
+- name: no-bot-sent
+  type: tool_used
+  tool: mcp__plugin_meetstream_meetstream__create_bot
+  min: 0
+  max: 0

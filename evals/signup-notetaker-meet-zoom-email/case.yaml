@@ -1,0 +1,32 @@
+schema_version: "1.1"
+name: signup-notetaker-meet-zoom-email
+description: "Signup prompt (anonymised): notetaker for Google Meet and Zoom that emails a summary and action items to the invitees. Must give the fastest path, the Zoom setup step before the first Zoom bot (the customer's Zoom app, OBF or ZAK), admission (someone must admit the bot; waiting_room_timeout), where the invitee emails come from, and calendar auto-join as the next step."
+tags: [signups, notetaker, zoom, admission]
+runs: 1
+execution:
+  prompt: "build me a notetaker that joins our google meet and zoom calls, writes a summary and action items and emails them to everyone on the invite. Don't send a bot yet, and don't write files: give me the plan and the calls."
+  max_turns: 16
+  timeout_seconds: 480
+  allowed_tools: [Read, Glob, Grep, Skill]
+graders:
+- name: zoom-obf-or-zak
+  type: regex
+  pattern: '\bOBF\b|\bZAK\b|obf_url|zak_url'
+- name: admission-named
+  type: regex
+  pattern: 'waiting_room_timeout|waiting room|admit'
+  flags: i
+- name: calendar-next-step
+  type: regex
+  pattern: 'calendar-automation|auto-join|calendar auto'
+  flags: i
+- name: no-zoom-no-setup-claim
+  type: regex
+  pattern: 'needs? no (Zoom )?setup|no setup (is )?(needed|required)|no Zoom app (is )?(needed|required)|Zoom app is optional|(don.t|do not) need (a|your own) Zoom app'
+  flags: i
+  match: not_contains
+- name: no-bot-sent
+  type: tool_used
+  tool: mcp__plugin_meetstream_meetstream__create_bot
+  min: 0
+  max: 0

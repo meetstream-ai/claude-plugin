@@ -30,7 +30,7 @@ You are a MeetStream integration expert. Teach the MeetStream API, the hosted MC
 2. **Agents in meetings on your own stack (recommended first when the user asks for an agent, a voice agent or a talking bot).**
    - 2a. **Bridge server.** The bot opens two WebSockets to the user's server: live audio in (`live_audio_required.websocket_url`, for example `wss://host/bridge/audio`) and the control socket (`socket_connection_url.websocket_url`, for example `wss://host/bridge`) to send audio, chat, images and interrupts back. The user runs any speech-to-text, LLM and TTS, local or hosted (for example Parakeet for local speech-to-text). Price: the bot price only, no agent infrastructure and no model tokens. Recipe: `realtime-streaming`. Docs: https://docs.meetstream.ai/guides/websockets/bridge-server-architecture . Starter: https://github.com/meetstream-ai/meetstream-agent
    - 2b. **Your own agent as the brain.** Claude Code, Codex, Hermes, OpenClaw and others through `model.provider: "local_agent"` and the MeetStream Agent Kit. Bot price + $0.25 per hour agent infrastructure, no model tokens. Always with the warning (see intake routing). Details: `mia-voice-agents`.
-3. **Managed agent infrastructure (Agents API, API name MIA).** MeetStream hosts the agent: 3a MeetStream's inbuilt keys (OpenAI and Deepgram today, `"key_source": "meetstream"`), 3b the user's own provider keys. Bot price + $0.25 per hour agent infrastructure + the models picked. Details: `mia-voice-agents`.
+3. **Managed agent infrastructure (Agents API, API name MIA).** MeetStream hosts the agent: 3a MeetStream's inbuilt keys (`"key_source": "meetstream"`; Inbuilt keys work in pipeline mode only: Deepgram (speech-to-text) and OpenAI (LLM and voice). Realtime mode runs on OpenAI and needs your own OpenAI key. Any other provider: bring your own key. Read `mia_managed` from `GET /api/v1/mia` for what the account allows), 3b the user's own provider keys. Bot price + $0.25 per hour agent infrastructure + the models picked. Details: `mia-voice-agents`.
 
 When the user asks what MeetStream offers or which API to start with, name them by their names, lead with the "Bot API", then for agents the bridge server (own stack) before the hosted "Agents API" (voice agents). Say "voice agent" or "agent in the meeting" to users, and give "MIA" once as the API name.
 
@@ -101,7 +101,8 @@ webhooks. Start there.
      available, it is not on for the account yet: offer flow 2a or flow 3.
    - 3. **Hosted Agents API (MIA)**: bot price + $0.25 per hour agent infrastructure + the
      models picked. 3a MeetStream's inbuilt keys: `"key_source": "meetstream"` in each
-     pipeline section, no provider keys to bring; OpenAI and Deepgram today; the dashboard
+     section, no provider keys to bring. Inbuilt keys work in pipeline mode only: Deepgram (speech-to-text) and OpenAI (LLM and voice). Realtime mode runs on OpenAI and needs your own OpenAI key. Any other provider: bring your own key. Use only the providers and models
+     that `mia_managed` (`GET /api/v1/mia`) lists for the account; the dashboard
      agent editor shows the model price before the bot runs. If the API answers
      `MeetStream-managed keys are not available for <section>. Use your own key.`, inbuilt
      keys are not on for the account yet: go on with 3b. Never retry in a loop. 3b the
@@ -111,6 +112,25 @@ webhooks. Start there.
 4. **Generic asks** ("help me get started", "help me use MeetStream", "set up
    MeetStream") → `getting-started`: one connect step if needed, then the post-call or
    live question.
+   - **Builds:** app code calls the REST API. Use the MeetStream MCP tools to look at real
+     data while you build (`get_bot_detail`, `get_transcript` on a real `bot_id` show the
+     actual response shape before you write a parser). Do not start tunnels, servers or
+     other long-running processes in a build unless the user asks: write the code, then
+     give the commands for the user to run (Codex stops background processes at the end of
+     each turn). Every app that sends a bot removes it on exit
+     (`POST /api/v1/bots/{bot_id}/remove_bot`).
+   - **Grok or Gemini in the call** ("make Grok join my Zoom call"): a voice agent with
+     the `xai` or `google` provider (hosted, own provider key, realtime or pipeline), or
+     that model behind the user's bridge server. Not a local agent. Configs and job
+     recipes (name-addressed assistant, standup, interviewer, role-play, demo agent, other
+     languages): `mia-voice-agents`.
+   - **Bots in the user's customers' meetings** (SaaS, per customer, per tenant) →
+     `for-your-customers`.
+   - **Platforms:** Zoom (through the user's Zoom app with OBF or ZAK; set it up before the
+     first Zoom bot), Google Meet, Microsoft Teams, and WhatsApp calls (Beta;
+     `platform-setup`). Webex, Slack huddles and other services are not supported (400).
+   - **First bots:** someone must admit the bot from the waiting room
+     (`automatic_leave.waiting_room_timeout`; `NotAllowed` or `Denied` otherwise).
 5. **Raise or lower the bot's hand**: there is no MCP tool, so do it now with REST, even
    when the MCP tools are not connected:
    ```bash
@@ -197,10 +217,16 @@ Field names to read, so code does not guess. REST paths are under
   Keep `bot_id`; every other call takes it.
 - `GET /bots/{bot_id}/status` → `{"bot_id", "status", "custom_attributes"}`.
   `GET /bots/{bot_id}/detail` → `{"bot_details": {"Status", "ErrorReason", "TranscriptStatus", "transcript_id", ...}}`.
-- `GET /transcript/{transcript_id}/get_transcript` → a top-level array of segments:
-  `[{"speaker": "Alice", "transcript": "the words", "start_time": 0.5, "end_time": 3.2, "words": [...]}]`.
-  The text is `transcript`, not `text`. The MCP `get_transcript` tool takes the `bot_id`
-  and returns the same `speaker` / `transcript` segments.
+- `GET /transcript/{transcript_id}/get_transcript` → a top-level array of segments, by
+  default participant-keyed:
+  `[{"participant": {"id": 100, "name": "Alice", ...}, "words": [{"text": "the words", "start_timestamp": {"relative": 0.5}}], "language_code": "en"}]`.
+  Speaker = `participant.name`; text = `words[].text` joined with spaces. Some providers
+  return the segment-list format (`speaker`, `transcript`, `start_time`); read both. The MCP
+  `get_transcript` tool takes the `bot_id` and returns the same segments.
+- `GET /bots?status=<status>&platform=GMeet&from=YYYY-MM-DD&limit=50` → `{"bots": [...], "hasNextPage", "nextCursor"}`.
+  `limit` is at most 50 (above it: 400); send `nextCursor` back as `cursor`. Filter by
+  `status`, `platform` (`GMeet`, `Zoom`, `Teams`), `from` / `to`, `custom_attr[key]`;
+  never page through the whole history. Statuses and polling: `join-meeting`.
 - `GET /bots/{bot_id}/get_chats` → `{"metadata": {...}, "speakers": [...], "chatMessages": [{"text", "speakerName", "speakerDisplayName", "timestamp", "messageId"}], "messagesBySpeaker": {...}}`.
   Messages are in `chatMessages`; the sender is `speakerName`.
 - `GET /bots/{bot_id}/get_participants` → a top-level array:
@@ -954,22 +980,27 @@ Once you receive the `transcription.processed` webhook, fetch:
 GET /transcript/{transcript_id}/get_transcript
 ```
 
-The response is a **top-level JSON array** of segment objects:
+The response is a **top-level JSON array** of segment objects (participant-keyed, the default):
 ```json
 [
   {
-    "speaker": "Alice",
-    "transcript": "Hello everyone, let's get started.",
-    "start_time": 0.5,
-    "end_time": 3.2,
-    "absolute_start_time": "2026-04-22T10:00:00.500Z",
-    "absolute_end_time": "2026-04-22T10:00:03.200Z",
-    "words": [{ "word": "Hello", "punctuated_word": "Hello,", "start": 0.5, "end": 0.8, "confidence": 0.99, "speaker": 0, "speaker_confidence": 0.95 }]
+    "participant": { "id": 100, "name": "Alice", "platform": "desktop", "extra_data": {} },
+    "words": [
+      { "text": "Hello everyone, let's get started.",
+        "start_timestamp": { "relative": 0.5, "absolute": null },
+        "end_timestamp": { "relative": 3.2, "absolute": null } }
+    ],
+    "language_code": "en"
   }
 ]
 ```
 
-The per-segment text field is **`transcript`**, not `text`. The response is the array itself, not `{transcript: [...]}`.
+Read it this way: the speaker is `participant.name`, the text is the `words[].text` values
+joined with spaces, and the start time is `words[0].start_timestamp.relative` (seconds).
+This participant-keyed format is the default whenever it exists. Some providers return the
+segment-list format instead (`speaker`, `transcript`, `start_time`, `end_time`, `words`
+with `word` / `punctuated_word`), so a parser should read both. Skip segments with no text.
+The `meetstream` engine can add a lone "Thank you." segment on silence; treat it as filler. The response is the array itself, not `{transcript: [...]}`.
 
 For raw provider output (unformatted), add `?raw=true`.
 
@@ -1157,25 +1188,34 @@ Real-time PCM audio with embedded speaker metadata over a WebSocket you host:
 
 The bot connects to your WSS, sends a JSON `ready` handshake, then streams **binary frames** with this exact wire format:
 
+Read byte 0 first; every platform can send either audio type (live Google Meet bots send
+one `0x01` frame and then `0x04` frames):
+
+| Type | Header | Speaker fields start at |
+|---|---|---|
+| `0x01` | `[type:1]`, PCM16 LE, 48 kHz mono | offset 1 |
+| `0x04` | `[type:1][sample_rate:4, uint32 LE][channels:1]` | offset 6 |
+
+Then `sid_length` (uint16 LE), `speaker_id`, `sname_length` (uint16 LE), `speaker_name`,
+then raw PCM16 LE samples (no container). Skip any other type. Duration =
+`len(pcm) / 2 / channels / sample_rate`.
+
+```python
+import struct
+def decode(data: bytes):
+    if data[0] == 0x01:
+        rate, ch, off = 48000, 1, 1
+    elif data[0] == 0x04:
+        rate, ch, off = struct.unpack_from("<I", data, 1)[0], data[5], 6
+    else:
+        return None                      # unknown type: skip
+    n = struct.unpack_from("<H", data, off)[0]; sid = data[off+2:off+2+n].decode(); off += 2 + n
+    n = struct.unpack_from("<H", data, off)[0]; name = data[off+2:off+2+n].decode(); off += 2 + n
+    return sid, name, rate, ch, data[off:]   # downmix if ch > 1, resample for your STT
 ```
-┌──────────┬────────────┬────────────┬──────────────┬──────────────┬──────────────────┐
-│ msg_type │ sid_length │ speaker_id │ sname_length │ speaker_name │  pcm_audio_data  │
-│ 1 byte   │ 2 bytes    │ L1 bytes   │ 2 bytes      │ L2 bytes     │  remaining bytes │
-└──────────┴────────────┴────────────┴──────────────┴──────────────┴──────────────────┘
-```
 
-| Offset | Size | Type | Field |
-|---|---|---|---|
-| 0 | 1 | uint8 | `msg_type` - always `0x01` for PCM audio |
-| 1 | 2 | uint16 LE | `sid_length` |
-| 3 | L1 | UTF-8 | `speaker_id` |
-| 3+L1 | 2 | uint16 LE | `sname_length` |
-| 5+L1 | L2 | UTF-8 | `speaker_name` |
-| 5+L1+L2 | remaining | int16 LE | raw PCM audio samples |
-
-Audio properties: **signed 16-bit PCM, little-endian, 48 kHz, mono, no container**. Duration = `len(pcm)/2 / 48000` seconds.
-
-When MeetStream can't attribute audio to a participant, `speaker_name` comes through as `"NoSpeaker"`. Filter or label these in your pipeline.
+`speaker_name` is `"NoSpeaker"` when MeetStream cannot attribute the audio (Google Meet
+mixed audio often is), so you cannot drop the bot's own voice by name.
 
 Decoders for Python, Node.js, Go and Java: https://docs.meetstream.ai/guides/websockets/real-time-audio-streaming
 
@@ -1290,7 +1330,7 @@ Response 200:
 - With `"wait_for_ack": true`, the response carries the agent's result: `status` is `applied`, `partially_applied`, `failed` (with `errors: [{field, reason}]`) or `accepted` (with `ack_timeout: true` when the agent did not answer in time; the update may still apply). `applied` lists the fields that were applied.
 - A non-boolean `wait_for_ack` returns 400 `wait_for_ack must be a boolean (true or false)`.
 
-Other commands on the same endpoint: `screenshot` (Zoom: only on bots that join without your own Zoom app), `pause_recording`, `resume_recording`, and chat (`sendmsg` / `sendchat`). On Zoom and Teams, chat is accepted while the bot waits in the lobby and is posted on admission; Google Meet returns 409 in the lobby.
+Other commands on the same endpoint: `screenshot` (Zoom: only on bots that join without your own Zoom app), `pause_recording`, `resume_recording`, and chat (`sendmsg`). On Zoom and Teams, chat is accepted while the bot waits in the lobby and is posted on admission; Google Meet returns 409 in the lobby.
 
 ---
 
@@ -1744,7 +1784,8 @@ Specified under `recording_config.transcript.provider`. Use **exactly one** prov
 | `NotAllowed` | `bot.stopped` (`bot_event: bot.notallowed`) | Could not join (waiting-room / lobby timeout) |
 | `Denied` | `bot.stopped` (`bot_event: bot.denied`) | Host denied join or recording permission |
 | `FAILED` / `ERROR` / `Failed` | `bot.stopped` (`bot_event: bot.failed`) | Unexpected error. Casing varies, so match `bot_event` instead |
-| `Done` | `bot.done` | All processing complete - **terminal** |
+| `MediaProcessing` | (none) | Post-call processing after `Stopped` or `Kicked`. A poll can see `InMeeting` and then `MediaProcessing` or `Done` and never `Stopped` |
+| `Done` | `bot.done` | All processing complete - **terminal**. Poll until `Done` (or another final status: `NotAllowed`, `Denied`, `Failed`, `Error`, `MediaExpired`, `Cancelled`), with a cap |
 
 ### `*.failed` events
 
@@ -1795,7 +1836,7 @@ After the relevant `*.processed` event fires:
 Bot management:
 - Status: `GET /bots/{bot_id}/status`
 - List bots: `GET /bots` - returns `{bots: [...], hasNextPage: bool, nextCursor: string|null}` (note camelCase pagination keys)
-- Remove from active meeting: `GET /bots/{bot_id}/remove_bot` (it's GET in the OpenAPI; the Quickstart docs page shows `curl -X POST` but that contradicts the spec)
+- Remove from active meeting: `POST /bots/{bot_id}/remove_bot` (the GET form behaves the same). Call it when your app exits or gets Ctrl-C.
 - Delete data: `DELETE /bots/{bot_id}/delete` → fires `data_deletion` webhook
 
 ### Per-participant audio/video - concurrency & platform limits
@@ -1906,7 +1947,7 @@ Full error reference: https://docs.meetstream.ai/errors
 ## Common Mistakes
 
 1. **Looking for `transcript_id` in the webhook** - it's not there. The webhook only signals timing. Get the `transcript_id` from the `create_bot` response, `GET /bots/{bot_id}/detail` (`bot_details.transcript_id`), or `GET /bots/{bot_id}/transcriptions`.
-2. **Iterating `transcript.transcript[]` with `seg.text`** - the response is a top-level array, and the per-segment text field is `transcript`, not `text`.
+2. **Reading `seg["speaker"]` / `seg["transcript"]` only** - the response is a top-level array and, by default, participant-keyed: speaker `participant.name`, text `words[].text` joined. Reading only the segment-list fields prints an empty transcript (all four test harnesses hit this).
 3. **`send_image` body using `image_url`** - the field is `img_url`.
 4. **Fetching transcript before `transcription.processed`** - always wait for the webhook.
 5. **HTTP callback URL** - must be HTTPS; use ngrok / cloudflared for local dev.

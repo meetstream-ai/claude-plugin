@@ -6,7 +6,7 @@
 
 **Meeting bots for Zoom, Google Meet and Microsoft Teams: recordings, transcripts and live data from your agent or your app, plus agents that talk in the meeting, on your own stack or hosted.**
 
-[![Plugin Version](https://img.shields.io/badge/plugin-v2.9.0-5C4EFF?style=for-the-badge)](https://github.com/meetstream-ai/claude-plugin)
+[![Plugin Version](https://img.shields.io/badge/plugin-v2.10.0-5C4EFF?style=for-the-badge)](https://github.com/meetstream-ai/claude-plugin)
 [![Live-Tested](https://img.shields.io/badge/endpoints-live--tested-10B981?style=for-the-badge)](https://github.com/meetstream-ai/claude-plugin/commits/main)
 [![MIT License](https://img.shields.io/badge/license-MIT-yellow?style=for-the-badge)](LICENSE)
 [![Get API Key](https://img.shields.io/badge/get%20api%20key-app.meetstream.ai-0EA5E9?style=for-the-badge)](https://app.meetstream.ai/api-keys)
@@ -21,7 +21,7 @@
 2. **Agents in meetings on your own stack (recommended first when the user asks for an agent, a voice agent or a talking bot).**
    - 2a. **Bridge server.** The bot opens two WebSockets to your server: live audio in (`live_audio_required.websocket_url`) and the control socket (`socket_connection_url.websocket_url`) to send audio, chat, images and interrupts back. Run any speech-to-text, LLM and TTS, local or hosted (for example Parakeet for local speech-to-text). Price: the bot price only, no agent infrastructure and no model tokens. [Bridge server docs](https://docs.meetstream.ai/guides/websockets/bridge-server-architecture), starter: [meetstream-ai/meetstream-agent](https://github.com/meetstream-ai/meetstream-agent).
    - 2b. **Your own agent as the brain.** Claude Code, Codex, Hermes, OpenClaw and others through `model.provider: "local_agent"` and the MeetStream Agent Kit. The bot plus $0.25 per hour for the agent infrastructure, no model tokens. Warning: meeting speech reaches an agent that has access to your computer and terminal (prompt injection); keep the computer, the agent and the bridge on for the whole call, and use the lowest access level. [Your own agent](https://docs.meetstream.ai/guides/features/mia-screen-sharing-and-custom-agents).
-3. **Managed agent infrastructure (Agents API, API name MIA).** MeetStream hosts the voice agent: MeetStream's inbuilt keys (OpenAI and Deepgram today, no provider account) or your own provider keys. The bot plus $0.25 per hour for the agent infrastructure, plus the models you pick ([pricing and keys](https://docs.meetstream.ai/guides/mia/pricing-and-keys)). A hosted agent bot takes only `agent_config_id`, never the bridge sockets.
+3. **Managed agent infrastructure (Agents API, API name MIA).** MeetStream hosts the voice agent: MeetStream's inbuilt keys (no provider account; Inbuilt keys work in pipeline mode only: Deepgram (speech-to-text) and OpenAI (LLM and voice). Realtime mode runs on OpenAI and needs your own OpenAI key. Any other provider: bring your own key.) or your own provider keys. The bot plus $0.25 per hour for the agent infrastructure, plus the models you pick ([pricing and keys](https://docs.meetstream.ai/guides/mia/pricing-and-keys)). A hosted agent bot takes only `agent_config_id`, never the bridge sockets.
 
 Overview: [Integration paths](https://docs.meetstream.ai/guides/introduction/integration-paths).
 
@@ -56,6 +56,8 @@ The skills give the fastest path first: the shortest working request (curl, Node
 | Recordings and per-speaker audio | *"download the recording and each speaker's audio"* | `recordings-and-media` |
 | Agent on your own stack (on request) | *"build a voice agent on my own models with local Parakeet"* | `realtime-streaming` (bridge server) |
 | Hosted voice agent (on request) | *"host a voice agent that answers questions in my Zoom calls"* | `mia-voice-agents` |
+| Recording for your customers (SaaS) | *"bots join our customers' calls, recordings per customer in our app"* | `for-your-customers` |
+| Agent recipes by job (on request) | *"an agent in our standup that only talks when someone says its name"* | `mia-voice-agents` |
 | Move off Recall.ai | *"migrate this repo from Recall to MeetStream"* | `migrate-from-recall` |
 
 ---
@@ -69,13 +71,14 @@ skills/
 ├── join-meeting/           <- Send a bot to a meeting (now or later), chat, raise hand
 ├── meeting-brief/          <- After the call: notes, decisions, action items
 ├── notetaker/              <- Fastest path to a post-call notetaker in your app (API guide)
+├── for-your-customers/     <- Multi-tenant: bots in your customers' meetings, per-customer routing, storage, scale
 ├── sales-coach/            <- Fastest path to live coaching from the live transcript (API guide)
 ├── calendar-automation/    <- Auto-join from Google or Outlook calendars
 ├── realtime-streaming/     <- Live captions, audio, video, control socket, bridge server for your own agent stack
 ├── recordings-and-media/   <- Recordings, per-participant audio/video, retention
 ├── webhooks/               <- Webhook events, signatures, local development
-├── platform-setup/         <- Zoom, Google Meet and Teams specifics, signed-in bots
-├── mia-voice-agents/       <- Agents in meetings: flow picker, own agent (Agent Kit), hosted Agents API (inbuilt or own keys)
+├── platform-setup/         <- Zoom (your Zoom app, OBF or ZAK), Google Meet, Teams, WhatsApp (Beta), signed-in bots
+├── mia-voice-agents/       <- Agents in meetings: flow picker, own agent (Agent Kit), hosted Agents API, Grok and Gemini, recipes by job
 ├── migrate-from-recall/    <- Recall.ai to MeetStream
 ├── verify-account/         <- Read-only account check: key, balance, providers
 ├── test-bot/               <- Send a test bot + watch webhooks live
@@ -88,7 +91,7 @@ agents/
 └── meetstream-debugger     <- Subagent for diagnosing bot failures
 ```
 
-16 skills. Each one ends with a "Latest docs" section; when a skill and the docs differ, [the docs](https://docs.meetstream.ai) win. Agents can read https://docs.meetstream.ai/llms.txt, any page with `.md` appended, or the docs MCP server at https://docs.meetstream.ai/_mcp/server.
+17 skills. Each one ends with a "Latest docs" section; when a skill and the docs differ, [the docs](https://docs.meetstream.ai) win. Agents can read https://docs.meetstream.ai/llms.txt, any page with `.md` appended, or the docs MCP server at https://docs.meetstream.ai/_mcp/server.
 
 ## Live-tested correctness
 
@@ -142,6 +145,23 @@ Hermes has its own plugin: [hermes-meetstream](https://github.com/meetstream-ai/
 ### Cursor / Windsurf / VS Code (Claude extension)
 
 Settings → Plugins → Add marketplace `meetstream-ai/claude-plugin` → Install **meetstream** → Reload.
+
+Cursor Agent CLI (`cursor-agent`): the CLI cannot finish the MCP OAuth sign-in, so add a
+project `.cursor/mcp.json` with the key header
+(`"headers": {"Authorization": "Bearer ${env:MEETSTREAM_API_KEY}"}`). An old MeetStream
+Claude plugin in `~/.claude` can shadow the Cursor skills; remove or update it.
+
+### OpenCode
+
+From the project folder:
+
+```bash
+git clone https://github.com/meetstream-ai/claude-plugin ~/.meetstream-plugin && ~/.meetstream-plugin/setup --host opencode
+```
+
+It links the skills into `.opencode/skills/` and adds the hosted MCP server to
+`opencode.json` with `"headers": {"Authorization": "Bearer {env:MEETSTREAM_API_KEY}"}`.
+If a `CLAUDE.md` in the folder conflicts, run OpenCode with `OPENCODE_DISABLE_CLAUDE_CODE=1`.
 
 ### Update to the latest version
 

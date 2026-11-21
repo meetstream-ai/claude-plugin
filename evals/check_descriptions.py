@@ -13,6 +13,16 @@ They open the core skill, getting-started, README, AGENTS.md and INSTALL_FOR_AGE
 that order, and the old a/b/c voice-agent order (inbuilt keys as the default) is gone.
 Zoom (Sid, 20 Nov 2026): no file says Zoom needs no setup or that the Zoom app is optional;
 bots join through the customer's Zoom app with OBF or ZAK.
+Signup gaps (MS-2305, 21 Nov 2026): the first-bot skills give the Zoom app step (OBF or ZAK,
+with the Zoom setup link) and admission (waiting_room_timeout, NotAllowed, Denied); voice-agent
+recipes by job and the xAI and Google realtime configs; a build-for-your-customers skill;
+WhatsApp (Beta) setup and limits; the supported platforms; no undocumented `sendchat`.
+Build feedback (MS-2305, 21 Nov 2026, 4 harnesses live): participant-keyed transcript shape;
+full status flow (MediaProcessing, Done) and bounded polling; 0x04 frames on Google Meet;
+pipeline wake word on by default; commands need InMeeting; remove the bot on exit; the Agent
+Kit pairing token is dashboard-only; Cursor and OpenCode through serve --command; inbuilt keys
+pipeline-only with own OpenAI key for realtime (Sid, 22 Nov) and mia_managed; no tunnels
+or long-running processes unless asked; OpenCode and Cursor CLI setup.
 Usage: python3 evals/check_descriptions.py [repo_root]   (exit 1 on any miss)
 """
 import os
@@ -49,7 +59,7 @@ MUST = {
                          ("bridge: both sockets", r"live_audio_required.{0,80}socket_connection_url"),
                          ("bridge: bot price only", r"bot price only"),
                          ("hosted (flow 3): inbuilt keys first", r"MeetStream's inbuilt keys.{0,80}key_source.{0,20}meetstream"),
-                         ("inbuilt providers", r"OpenAI and Deepgram"),
+                         ("inbuilt providers", r"OpenAI and Deepgram|pipeline mode only: Deepgram \(speech-to-text\) and OpenAI \(LLM and voice\)"),
                          ("agent infrastructure price", r"\$0\.25 per hour"),
                          ("not-on fallback", r"not available.{0,160}own (provider )?keys"),
                          ("own keys after inbuilt keys", r"then (the user's )?own (provider )?keys"),
@@ -63,7 +73,7 @@ MUST = {
 
 LATEST_DOCS_LINE = re.compile(r"llms\.txt.*_mcp/server|_mcp/server.*llms\.txt")
 SCAFFOLD = re.compile(r"FastAPI\(|Flask\(|express\(\)|app\.listen\(|uvicorn\.run|requirements\.txt|package\.json|Dockerfile|[├└]── [\\w.-]+(/|\\.\\w+)")
-INTERNALS = re.compile(r"mia_managed|managed catalog", re.I)
+INTERNALS = re.compile(r"managed catalog|\"rates\"|managed_agent", re.I)  # mia_managed is read by agents (build feedback, 21 Nov); its prices are never stated
 MAX_BLOCK = 90  # longer code blocks are app code, not an API guide
 BRIDGE_DOCS = "https://docs.meetstream.ai/guides/websockets/bridge-server-architecture"
 STARTER = "https://github.com/meetstream-ai/meetstream-agent"
@@ -243,8 +253,146 @@ def round6_misses():
     return misses
 
 
+def read_skill(name):
+    fp = os.path.join(ROOT, "skills", name, "SKILL.md")
+    return open(fp, encoding="utf-8").read() if os.path.exists(fp) else ""
+
+
+# skill -> list of (label, regex that must match the SKILL.md body)
+SIGNUP_BODY = {
+    "notetaker": [("Zoom app step: OBF or ZAK", r"\bOBF\b.{0,200}\bZAK\b|\bZAK\b.{0,200}\bOBF\b"),
+                  ("Zoom setup link", r"zoom-marketplace-app-setup|zoom-authenticated-bots"),
+                  ("admission: waiting_room_timeout", r"waiting_room_timeout"),
+                  ("admission: NotAllowed and Denied", r"NotAllowed.{0,600}Denied|Denied.{0,600}NotAllowed"),
+                  ("transcript language is set, not fixed to en", r"languages-and-translation"),
+                  ("invitee emails: calendar_email", r"calendar_email"),
+                  ("calendar auto-join next step", r"calendar-automation")],
+    "getting-started": [("Zoom app step: OBF or ZAK", r"\bOBF\b.{0,200}\bZAK\b|\bZAK\b.{0,200}\bOBF\b"),
+                        ("Zoom setup link", r"zoom-marketplace-app-setup|zoom-authenticated-bots"),
+                        ("admission: waiting_room_timeout", r"waiting_room_timeout"),
+                        ("admission: NotAllowed and Denied", r"NotAllowed.{0,600}Denied|Denied.{0,600}NotAllowed"),
+                        ("supported platforms, others rejected", r"Webex"),
+                        ("other bot APIs: migration note", r"MeetingBaaS|Attendee")],
+    "join-meeting": [("Zoom app step: OBF or ZAK", r"\bOBF\b.{0,200}\bZAK\b|\bZAK\b.{0,200}\bOBF\b"),
+                     ("Zoom setup link", r"zoom-marketplace-app-setup|zoom-authenticated-bots"),
+                     ("admission: waiting_room_timeout", r"waiting_room_timeout"),
+                     ("supported platforms, others rejected", r"Webex"),
+                     ("WhatsApp (Beta)", r"WhatsApp.{0,40}Beta")],
+    "troubleshooting": [("admission: waiting_room_timeout", r"waiting_room_timeout"),
+                        ("admission: NotAllowed and Denied", r"NotAllowed.{0,600}Denied|Denied.{0,600}NotAllowed"),
+                        ("admission fix: signed-in bot", r"signed-in")],
+    "mia-voice-agents": [("recipes by job", r"## Recipes"),
+                         ("recipe: wake word or name", r"speak_only_when_asked"),
+                         ("recipe: interviewer, wake word off", r"\"enabled\": false"),
+                         ("realtime xAI (Grok) config", r"\"provider\": \"xai\""),
+                         ("realtime Google (Gemini) config", r"\"provider\": \"google\""),
+                         ("other languages", r"\"language\": \"(ru|es|de|pt|multi)\"")],
+    "platform-setup": [("WhatsApp pairing step", r"Integrations > WhatsApp"),
+                       ("WhatsApp limits: deepgram only", r"WhatsApp.{0,800}deepgram")],
+    "for-your-customers": [("tenant tag", r"custom_attributes"), ("storage per customer", r"storage_id"),
+                           ("calendar per end user", r"create_calendar"), ("rate limit", r"429.{0,200}Retry-After"),
+                           ("per-speaker audio", r"audio_separate_streams")],
+    "migrate-from-recall": [("other bot APIs", r"MeetingBaaS.{0,80}Attendee|Attendee.{0,80}MeetingBaaS")],
+}
+SIGNUP_DESC = {
+    "for-your-customers": [("multi-tenant trigger", r"customers"), ("tenant tag", r"custom_attributes")],
+    "mia-voice-agents": [("Grok routes to xAI", r"Grok.{0,60}xai|xAI")],
+}
+
+
+def signup_misses():
+    misses = 0
+    for skill, checks in SIGNUP_BODY.items():
+        body = read_skill(skill)
+        for label, pattern in checks:
+            ok = bool(body) and re.search(pattern, body, re.S) is not None
+            misses += not ok
+            print(f"{'ok  ' if ok else 'MISS'} {skill} body: {label}")
+    for skill, checks in SIGNUP_DESC.items():
+        fp = os.path.join(ROOT, "skills", skill, "SKILL.md")
+        desc = description(fp) if os.path.exists(fp) else ""
+        for label, pattern in checks:
+            ok = re.search(pattern, desc, re.S) is not None
+            misses += not ok
+            print(f"{'ok  ' if ok else 'MISS'} {skill} description: {label}")
+    # `sendchat` is not a documented control command.
+    for base, _, files in os.walk(os.path.join(ROOT, "skills")):
+        for name in files:
+            fp = os.path.join(base, name)
+            if "sendchat" in open(fp, encoding="utf-8").read():
+                misses += 1
+                print(f"MISS {os.path.relpath(fp, ROOT)}: names the undocumented sendchat command")
+    return misses
+
+
+PER_MODE = r"Inbuilt keys work in pipeline mode only: Deepgram \(speech-to-text\) and OpenAI \(LLM and voice\)\. Realtime\s+mode runs on OpenAI and needs your own OpenAI key\. Any other provider: bring your own key\."
+OLD_PER_MODE = re.compile(r"Realtime: OpenAI only")
+BUILD_BODY = {
+    "notetaker": [("transcript: participant.name", r"participant\.name"), ("transcript: words[].text", r"words\[\]\.text"),
+                  ("poll until Done", r"MediaProcessing.{0,200}Done"), ("remove the bot on exit", r"remove_bot")],
+    "meeting-brief": [("transcript: participant.name", r"participant\.name"), ("transcript: words[].text", r"words\[\]\.text")],
+    "meetstream": [("transcript: participant-keyed default", r"participant\.name.{0,200}words\[\]\.text"),
+                   ("list bots: limit 50", r"limit.{0,40}50"), ("inbuilt keys per mode", PER_MODE),
+                   ("no tunnels unless asked", r"[Tt]unnel.{0,200}(unless|only when) the user"),
+                   ("MCP tools for real bot data", r"get_bot_detail")],
+    "join-meeting": [("full status flow", r"MediaProcessing.{0,300}Done"), ("commands need InMeeting (503)", r"503"),
+                     ("list bots filters", r"status=|custom_attr")],
+    "realtime-streaming": [("0x04 on Google Meet", r"Google Meet.{0,200}0x04|0x04.{0,200}Google Meet"),
+                           ("0x04 header offset 6", r"offset 6|\[1:5\]"), ("NoSpeaker echo", r"NoSpeaker"),
+                           ("secret path token", r"(secret|random).{0,40}token"), ("remove the bot on exit", r"remove_bot"),
+                           ("no tunnels unless asked", r"[Tt]unnel.{0,200}(unless|only when) the user")],
+    "mia-voice-agents": [("inbuilt keys per mode", PER_MODE), ("read mia_managed", r"mia_managed"),
+                         ("wake word on by default in fastest path", r"\"wake_word\": \{\"enabled\": false\}"),
+                         ("pairing token: dashboard only, stop and ask", r"(no public API|only in the dashboard).{0,300}(stop|ask the user)"),
+                         ("never probe endpoints", r"[Nn]ever (probe|call) undocumented"),
+                         ("Agent Kit presets", r"agy, claude, codex, copilot, hermes, muse, openclaw"),
+                         ("serve --command for Cursor / OpenCode", r"serve --command"),
+                         ("readonly not enforced for custom commands", r"not enforced"),
+                         ("commands need InMeeting", r"InMeeting")],
+    "getting-started": [("inbuilt keys per mode", PER_MODE), ("when MCP tools help", r"get_transcript.{0,200}(real|actual)")],
+    "troubleshooting": [("silent agent: default wake word", r"wake word.{0,80}(on by default|default)")],
+}
+STALE_SHAPE = re.compile(r"text field is `transcript`|text is (in )?`transcript`, not `text`|always `0x01`|\(Google Meet, Teams\) is 48 kHz")
+
+
+def build_misses():
+    misses = 0
+    for skill, checks in BUILD_BODY.items():
+        body = read_skill(skill)
+        for label, pattern in checks:
+            ok = re.search(pattern, body, re.S) is not None
+            misses += not ok
+            print(f"{'ok  ' if ok else 'MISS'} {skill} body: {label}")
+    for base, _, files in os.walk(os.path.join(ROOT, "skills")):
+        for name in files:
+            fp = os.path.join(base, name)
+            for n, line in enumerate(open(fp, encoding="utf-8"), 1):
+                hit = STALE_SHAPE.search(line)
+                if hit:
+                    misses += 1
+                    print(f"MISS {os.path.relpath(fp, ROOT)}:{n}: stale shape '{hit.group(0)}'")
+    for base, _, files in os.walk(ROOT):
+        if "/.git" in base or "/evals" in base:
+            continue
+        for name in files:
+            if name.endswith(".md") and name != "CHANGELOG.md":
+                fp = os.path.join(base, name)
+                if OLD_PER_MODE.search(open(fp, encoding="utf-8").read()):
+                    misses += 1
+                    print(f"MISS {os.path.relpath(fp, ROOT)}: old realtime inbuilt-keys wording")
+    for rel, pattern in (("INSTALL_FOR_AGENTS.md", r"OpenCode"), ("README.md", r"OpenCode"), ("setup", r"opencode\)"),
+                         ("INSTALL_FOR_AGENTS.md", r"cursor-agent"), ("INSTALL_FOR_AGENTS.md", r"OPENCODE_DISABLE_CLAUDE_CODE")):
+        fp = os.path.join(ROOT, rel)
+        if not os.path.exists(fp):
+            continue  # the Cursor repo has no setup script or INSTALL_FOR_AGENTS.md
+        ok = re.search(pattern, open(fp, encoding="utf-8").read()) is not None
+        misses += not ok
+        print(f"{'ok  ' if ok else 'MISS'} {rel}: {pattern}")
+    return misses
+
+
 def main():
-    misses = version_wording_misses() + body_misses() + round6_misses()
+    misses = version_wording_misses() + body_misses() + round6_misses() + signup_misses() + build_misses()
     for skill, checks in MUST.items():
         desc = description(os.path.join(ROOT, "skills", skill, "SKILL.md"))
         for label, pattern in checks:

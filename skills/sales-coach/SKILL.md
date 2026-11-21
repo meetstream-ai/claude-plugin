@@ -41,8 +41,8 @@ https://github.com/meetstream-ai/labs."
 4. **Push the card** to the seller's page over Server-Sent Events or a WebSocket that you
    host. Render card text with `textContent`, never `innerHTML` (model output is
    untrusted).
-5. **Stop** with `GET /api/v1/bots/{bot_id}/remove_bot` (MCP `remove_bot`) when the call
-   ends; `bot.done` on the webhook says the call finished.
+5. **Stop** with `POST /api/v1/bots/{bot_id}/remove_bot` (GET also works; MCP `remove_bot`)
+   when the call ends, and on Ctrl-C or exit of your app; `bot.done` on the webhook says the call finished.
 
 ```bash
 curl -X POST https://api.meetstream.ai/api/v1/bots/create_bot \

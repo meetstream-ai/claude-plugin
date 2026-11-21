@@ -1,0 +1,26 @@
+schema_version: "1.1"
+name: voice-agent-inbuilt-per-mode
+description: "Sid, 22 Nov 2026 (after a live probe): inbuilt keys work in pipeline mode only: Deepgram (speech-to-text) and OpenAI (LLM and voice). Realtime mode runs on OpenAI and needs the user's own OpenAI key. Any other provider: own key. Read GET /api/v1/mia mia_managed and fall back to own keys if a section is refused. No catalog prices."
+tags: [builds, voice-agent, keys]
+runs: 1
+execution:
+  prompt: "For a hosted MeetStream voice agent, which providers can I use with MeetStream's inbuilt keys in pipeline mode and in realtime mode, and how do I check what my account allows? Don't create anything."
+  max_turns: 10
+  allowed_tools: [Read, Glob, Grep, Skill]
+graders:
+- name: mia-managed-check
+  type: regex
+  pattern: 'mia_managed'
+- name: realtime-own-openai-key
+  type: regex
+  pattern: '(own|your) OpenAI key'
+  flags: i
+- name: no-catalog-price
+  type: regex
+  pattern: '\$0\.(4|45|6|75|05|1|2)\b'
+  match: not_contains
+- name: no-bot-sent
+  type: tool_used
+  tool: mcp__plugin_meetstream_meetstream__create_bot
+  min: 0
+  max: 0

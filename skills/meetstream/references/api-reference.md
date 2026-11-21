@@ -182,7 +182,10 @@ Returns a **top-level JSON array** (not an envelope) of participant objects:
 
 ---
 
-### GET `/bots/{bot_id}/remove_bot`
+### POST (or GET) `/bots/{bot_id}/remove_bot`
+
+Both forms behave the same and take no body. Apps call it on shutdown (Ctrl-C) so the bot does not stay in the meeting.
+
 Removes the bot from an active meeting. **GET per the OpenAPI spec.** (The Quickstart docs page shows `curl -X POST` which contradicts the spec; trust the OpenAPI.)
 
 ---
@@ -266,7 +269,7 @@ Response 200:
 
 **`update_mia`** - see [POST `/bots/{bot_id}/update_mia`](#post-botsbot_idupdate_mia); the same body plus `"command": "update_mia"` works here.
 
-Other commands: `screenshot` (on Zoom only for bots that join without the user's own Zoom app), `pause_recording`, `resume_recording`, `sendmsg`, `sendchat`, `sendimg`, `sendimg_url`, `interrupt`. On Zoom and Teams, chat sent while the bot is in the lobby is held and posted on admission; Google Meet returns 409.
+Other commands: `screenshot` (on Zoom only for bots that join without the user's own Zoom app), `pause_recording`, `resume_recording`, `sendmsg`, `sendimg`, `sendimg_url`, `interrupt`. On Zoom and Teams, chat sent while the bot is in the lobby is held and posted on admission; Google Meet returns 409.
 
 ---
 
@@ -327,32 +330,31 @@ Returns the processed transcript by `transcript_id`. The `transcript_id` comes f
 
 Query: `?raw=true` to retrieve raw unformatted provider output.
 
-**Response is a top-level JSON array** (`GetTranscriptionSchema`) of segments:
+**Response is a top-level JSON array.** By default it is participant-keyed (`GetTranscriptionV2Schema`):
 ```json
 [
   {
-    "speaker": "Alice",
-    "transcript": "the text of this segment",
-    "start_time": 0.5,
-    "end_time": 3.2,
-    "absolute_start_time": "2026-04-22T10:00:00.500Z",
-    "absolute_end_time": "2026-04-22T10:00:03.200Z",
+    "participant": { "id": 100, "name": "Alice", "platform": "desktop", "extra_data": {} },
     "words": [
-      {
-        "word": "Hello",
-        "punctuated_word": "Hello,",
-        "start": 0.5,
-        "end": 0.8,
-        "confidence": 0.99,
-        "speaker": 0,
-        "speaker_confidence": 0.95
-      }
-    ]
+      { "text": "Hello everyone, let's get started.",
+        "start_timestamp": { "relative": 0.5, "absolute": null },
+        "end_timestamp": { "relative": 3.2, "absolute": null } }
+    ],
+    "language_code": "en"
   }
 ]
 ```
 
-- Per-segment text field is **`transcript`**, not `text`.
+Read it this way: the speaker is `participant.name`, the text is the `words[].text` values
+joined with spaces, and the start time is `words[0].start_timestamp.relative` (seconds).
+This participant-keyed format is the default whenever it exists. Some providers return the
+segment-list format instead (`speaker`, `transcript`, `start_time`, `end_time`, `words`
+with `word` / `punctuated_word`), so a parser should read both. Skip segments with no text.
+The `meetstream` engine can add a lone "Thank you." segment on silence; treat it as filler.
+
+The segment-list format (`GetTranscriptionSchema`), when a provider returns it:
+`[{"speaker": "Alice", "transcript": "...", "start_time": 0.5, "end_time": 3.2, "absolute_start_time": "...", "words": [{"word", "punctuated_word", "start", "end", "confidence", "speaker"}]}]`.
+
 - Response is the array itself, not `{transcript: [...]}`.
 
 `?raw=true` returns a different shape (`GetRawTranscriptionSchema`) with `id` and provider-specific structure.
@@ -1213,26 +1215,6 @@ For chunked streams: 0.5–2 second chunks, pace slightly below real-time (e.g. 
 }
 ```
 
-### `sendchat` - chat with role + streaming
-
-```json
-{
-  "command": "sendchat",
-  "bot_id": "bot_abc123",
-  "role": "assistant",
-  "text": "Here is my response...",
-  "is_final": true
-}
-```
-
-| Field | Type | Notes |
-|---|---|---|
-| `role` | string | `"assistant"` or `"user"` |
-| `text` | string | Message text |
-| `is_final` | bool | `false` for interim streaming tokens, `true` for the committed message |
-
-Streaming pattern: send `is_final: false` repeatedly with growing `text`, then `is_final: true` with the final committed text.
-
 ### `interrupt` - stop playback
 
 ```json
@@ -1289,25 +1271,34 @@ Docs: https://docs.meetstream.ai/guides/websockets/meeting-control-patterns
 
 Provided via `live_audio_required: { "websocket_url": "wss://..." }`. Bot connects to your WSS, sends a JSON `{type: "ready", bot_id, message}` handshake, then streams **binary frames**:
 
+Read byte 0 first; every platform can send either audio type (live Google Meet bots send
+one `0x01` frame and then `0x04` frames):
+
+| Type | Header | Speaker fields start at |
+|---|---|---|
+| `0x01` | `[type:1]`, PCM16 LE, 48 kHz mono | offset 1 |
+| `0x04` | `[type:1][sample_rate:4, uint32 LE][channels:1]` | offset 6 |
+
+Then `sid_length` (uint16 LE), `speaker_id`, `sname_length` (uint16 LE), `speaker_name`,
+then raw PCM16 LE samples (no container). Skip any other type. Duration =
+`len(pcm) / 2 / channels / sample_rate`.
+
+```python
+import struct
+def decode(data: bytes):
+    if data[0] == 0x01:
+        rate, ch, off = 48000, 1, 1
+    elif data[0] == 0x04:
+        rate, ch, off = struct.unpack_from("<I", data, 1)[0], data[5], 6
+    else:
+        return None                      # unknown type: skip
+    n = struct.unpack_from("<H", data, off)[0]; sid = data[off+2:off+2+n].decode(); off += 2 + n
+    n = struct.unpack_from("<H", data, off)[0]; name = data[off+2:off+2+n].decode(); off += 2 + n
+    return sid, name, rate, ch, data[off:]   # downmix if ch > 1, resample for your STT
 ```
-┌──────────┬────────────┬────────────┬──────────────┬──────────────┬──────────────────┐
-│ msg_type │ sid_length │ speaker_id │ sname_length │ speaker_name │  pcm_audio_data  │
-│ 1 byte   │ 2 bytes    │ L1 bytes   │ 2 bytes      │ L2 bytes     │  remaining bytes │
-└──────────┴────────────┴────────────┴──────────────┴──────────────┴──────────────────┘
-```
 
-| Offset | Size | Type | Field |
-|---|---|---|---|
-| 0 | 1 | uint8 | `msg_type` - always `0x01` for PCM audio |
-| 1 | 2 | uint16 LE | `sid_length` |
-| 3 | L1 | UTF-8 | `speaker_id` |
-| 3+L1 | 2 | uint16 LE | `sname_length` |
-| 5+L1 | L2 | UTF-8 | `speaker_name` |
-| 5+L1+L2 | remaining | int16 LE | raw PCM audio samples |
-
-**Audio properties:** signed 16-bit PCM, little-endian, 48 kHz, mono, no container. Duration = `len(pcm_audio_data) / 2 / 48000` seconds.
-
-**`"NoSpeaker"`** appears as `speaker_name` when MeetStream can't attribute audio. Filter or label these.
+`speaker_name` is `"NoSpeaker"` when MeetStream cannot attribute the audio (Google Meet
+mixed audio often is), so you cannot drop the bot's own voice by name.
 
 Connection closes with code `1000` when bot leaves.
 

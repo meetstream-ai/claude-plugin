@@ -1,0 +1,24 @@
+schema_version: "1.1"
+name: build-poll-until-done
+description: "Build feedback: a polling app waited for Stopped and hung; a bot can go InMeeting -> MediaProcessing -> Done between polls. Poll until Done or another terminal status, with a cap; list bots with filters and limit <= 50."
+tags: [builds, lifecycle]
+runs: 1
+execution:
+  prompt: "My script creates a MeetStream bot, polls GET /bots/{id}/status every 10 seconds, and fetches the transcript when the status is 'Stopped'. Sometimes it hangs forever even though the meeting ended. It also checks for a duplicate bot first by listing all my bots, which takes minutes. What is wrong, and what should the loop and the duplicate check do? Don't send a bot."
+  max_turns: 10
+  allowed_tools: [Read, Glob, Grep, Skill]
+graders:
+- name: media-processing
+  type: regex
+  pattern: 'MediaProcessing'
+- name: done-status
+  type: regex
+  pattern: '\bDone\b'
+- name: list-filter-or-limit
+  type: regex
+  pattern: 'status=|limit|custom_attr|from='
+- name: no-bot-sent
+  type: tool_used
+  tool: mcp__plugin_meetstream_meetstream__create_bot
+  min: 0
+  max: 0

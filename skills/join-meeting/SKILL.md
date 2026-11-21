@@ -42,10 +42,21 @@ reply keep helping. Do not stop at "sign in first".
 ## The short path
 
 1. **`create_bot`** with `meeting_link` and a `bot_name`.
-2. **`get_bot_status`** to follow it (`Joining` -> `InWaitingRoom` -> `InMeeting` -> `Recording`).
+2. **`get_bot_status`** to follow it (`Joining` -> `InWaitingRoom` -> `InMeeting` -> `MediaProcessing` -> `Done`; full list below). Stop at `Done` or another final status, never loop forever.
 3. When the meeting ends, **`get_transcript`** with the `bot_id`.
 
 That is the whole flow. Everything below is detail you need when it is not that simple.
+
+**Tell the user before the first bot:**
+- **Someone must admit it.** The bot asks to join like a guest. The host (on Google Meet,
+  the host or a co-host) admits it from the waiting room or lobby. It waits
+  `automatic_leave.waiting_room_timeout` seconds (default 600 on Zoom and Google Meet,
+  1200 on Teams), then ends as `NotAllowed`; `Denied` means a person declined it.
+- **Zoom:** set up the user's Zoom app first (OBF or ZAK, below).
+- **Platforms:** Zoom, Google Meet, Microsoft Teams, and WhatsApp calls (Beta: enabled per
+  workspace, pair a number under Integrations > WhatsApp, `deepgram` post-call
+  transcription only, no chat or per-participant files; `platform-setup`). Links from
+  other services (Webex, Slack huddles and others) return 400; say they are not supported.
 
 ## Creating the bot
 
@@ -74,7 +85,11 @@ Ask for the meeting link if the user has not given one. Sensible defaults:
   `data:` URIs return 400.
 - Zoom: the bot joins through the user's Zoom app with an OBF token (on behalf of a user
   in the meeting) or a ZAK token (a signed-in bot), the way Zoom asks Meeting SDK apps to
-  join since 2 March 2026. Set it up once; see `platform-setup`.
+  join since 2 March 2026. Set it up once before the first Zoom bot (Meeting SDK app
+  credentials under Integrations > Zoom, then `zoom.obf_url` or `zoom.zak_url` on REST):
+  https://docs.meetstream.ai/guides/app-integrations/zoom-marketplace-app-setup and
+  https://docs.meetstream.ai/guides/app-integrations/zoom-authenticated-bots
+  (`platform-setup`).
 - `storage_id` (REST) - one of the workspace's storage destinations from the dashboard
   (1-80 letters, numbers, `_` or `-`). Omit it for the default destination.
 
@@ -99,23 +114,45 @@ timestamp rather than sleeping and creating it later.
 
 ## Following the bot
 
-`get_bot_status` returns one of:
+Statuses (`get_bot_status`, REST `GET /bots/{bot_id}/status`):
 
-`Joining` · `InWaitingRoom` · `InMeeting` · `Recording` · `Leaving` · `Stopped` ·
-`NotAllowed` · `Denied` · `Error` · `Done`
+- In progress: `Scheduled` · `Joining` · `InWaitingRoom` · `InMeeting` (Zoom may show
+  `RecordingPermissionAllowed`) · `Leaving` · `MediaProcessing`.
+- Ended in the meeting: `Stopped` · `Kicked`, then `MediaProcessing` → `Done`.
+- Never got in (final): `NotAllowed` · `Denied` · `Failed` / `FAILED` · `Error` / `ERROR`.
+- Other final: `Done` (post-call processing finished; fetch the transcript now) ·
+  `MediaExpired` · `Cancelled`.
 
-Three of those mean the bot never got in, and you should say so plainly rather than
-polling forever:
+A polling app must stop on any final status, not wait for `Stopped`: between two polls a
+bot can go `InMeeting` → `MediaProcessing` → `Done` and you never see `Stopped`. Poll every
+5-10 seconds with a time cap, or use the webhooks (`bot.stopped`, `transcription.processed`,
+`bot.done`). Never loop forever. `Recording` appears in the timeline and webhooks, not as
+the stored status.
+
+**Listing bots** (duplicate checks, dashboards): never page through the whole history.
+Filter: `GET /api/v1/bots?status=InMeeting&platform=GMeet&from=2026-11-21&limit=50`
+(`status`, `platform` = `GMeet` / `Zoom` / `Teams`, `from` / `to` dates, `custom_attr[key]`).
+`limit` is at most 50 (above it the API returns 400); follow `nextCursor` by sending it
+back as `cursor` while `hasNextPage` is true. For one bot per meeting, prefer a
+`deduplication_key` on `create_bot`.
+
+These mean the bot never got in, and you should say so plainly rather than polling
+forever:
 
 | Status | What actually happened | What to tell the user |
 |---|---|---|
-| `NotAllowed` | Sat in the waiting room until it timed out | Nobody admitted the bot. Ask a participant to let it in, or raise the waiting-room timeout. |
-| `Denied` | A host actively rejected it | The host declined. Nothing to retry automatically. |
+| `NotAllowed` | Sat in the waiting room until `waiting_room_timeout` ran out (on Zoom and Teams, also a meeting nobody started) | Nobody admitted the bot. Ask the host to watch for it by name and admit it, raise `automatic_leave.waiting_room_timeout` (Zoom up to 1200, Google Meet 600, Teams 1800), let guests in, or use a signed-in bot (`platform-setup`). Then send a new bot. |
+| `Denied` | A host actively rejected it (on Zoom, also Zoom refusing the bot's account) | The host declined. Ask them to admit it next time; on Zoom check the meeting allows guests or join with `zoom.zak_url`. Nothing to retry automatically. |
 | `Error` / `Failed` | The join failed or the session crashed | Check `ErrorReason` in `get_bot_detail`: `MeetingRestricted` (organization or invitees only) and `SignInRequired` (no anonymous guests) need a signed-in bot; `InvalidMeetingLink` needs the full join link. Otherwise create a fresh bot. |
 
 Poll with a sensible interval (5-10s) and a cap. Do not busy-loop.
 
 ## While it is in the meeting
+
+Commands (chat, image, raise hand, `send_command`, `update_mia`) need the bot to be
+`InMeeting` first. Before admission they return 409 or 503 (`no command endpoint`). Wait for
+the `bot.inmeeting` webhook or the `InMeeting` status, then send; retry a 503 two or three
+times with a few seconds' pause, never in a tight loop.
 
 - **`send_chat_message`** - post into the meeting chat, e.g. to announce the bot is
   recording. Good manners and often a legal requirement.
@@ -141,7 +178,9 @@ Poll with a sensible interval (5-10s) and a cap. Do not busy-loop.
 
 ## Ending it
 
-- **`remove_bot`** makes the bot leave now. Recorded data is kept.
+- **`remove_bot`** makes the bot leave now. Recorded data is kept. REST:
+  `POST /api/v1/bots/{bot_id}/remove_bot` (GET also works). Every app that sends a bot
+  calls it on shutdown or Ctrl-C, so the bot does not stay in the meeting.
 - **`delete_bot_data`** permanently erases the recording and transcript. This is
   irreversible - always confirm with the user before calling it, and never call it
   speculatively.

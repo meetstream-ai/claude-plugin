@@ -2,6 +2,38 @@
 
 All notable changes to the MeetStream Claude Code plugin.
 
+## [2.10.0] - 2026-11-21
+
+Closes the coverage gaps found in what new developers ask for (MS-2305).
+
+### Added
+- **Agent recipes by job** (`mia-voice-agents`): name-addressed assistant (`speak_only_when_asked`, wake word, `bypass_below_participants`), standup facilitator (`speaker_aware_responses`, decisions after the call), AI interviewer (one question at a time, `agent_config_params`, wake word off, recording and transcript), practice or role-play persona, demo or FAQ agent (MCP servers, custom functions, `screen`). Each names the flow: your bridge server (2a) or the hosted Agents API (3). Pipeline agents start with a wake word on by default; the skill now says so.
+- **Grok and Gemini:** "make Grok join my call" routes to a voice agent with the `xai` or `google` provider (realtime or pipeline, own provider key), or to that model behind your bridge server. Not a local agent.
+- **Other languages:** voice agents (`transcriber.language`, a multilingual voice) and notetaker transcripts (per-provider language fields and codes).
+- **New skill `for-your-customers`:** bots in your customers' meetings: `custom_attributes` per tenant, webhook routing, list bots per tenant, a calendar connection per end user, `storage_id` per customer, per-speaker audio, Zoom for customer meetings, the bot-creation rate limit (429, `Retry-After`, `join_at` 10 or more minutes ahead) and idempotency.
+- **WhatsApp calls (Beta)** in `platform-setup`: pairing, links, limits (post-call `deepgram` only; no chat or per-participant files). Supported platforms are stated: Zoom, Google Meet, Microsoft Teams, WhatsApp (Beta); Webex, Slack huddles and others return 400. Webinars must be hosted as regular meetings.
+- Migration note for MeetingBaaS, Attendee and in-house bots (`migrate-from-recall`, `getting-started`).
+
+### Changed
+- **First bot:** `notetaker`, `getting-started` and `join-meeting` give the Zoom step before the first Zoom bot (the customer's Zoom app with OBF or ZAK, with the setup guides) and admission (someone must admit the bot; `automatic_leave.waiting_room_timeout`; what `NotAllowed` and `Denied` mean and how to fix them). `troubleshooting` gives the same fixes.
+- `notetaker` says where invitee emails come from (`calendar_email` on participants with a connected calendar) and offers calendar auto-join as the next step.
+
+### Fixed
+- `references/api-reference.md` and the core skill no longer list `sendchat`, which is not in the public docs.
+
+### Fixed from live build tests (4 harnesses, 21 Nov 2026)
+- **Transcript shape:** `get_transcript` segments are participant-keyed by default (`participant.name`, `words[].text`); the segment-list format (`speaker`, `transcript`) is read as a fallback. Examples, parsers, the core skill, `references/api-reference.md`, `notetaker`, `meeting-brief` and `troubleshooting` changed. The `meetstream` engine can add a lone "Thank you." segment on silence.
+- **Polling:** the full status list; a bot can go `InMeeting` → `MediaProcessing` → `Done` with no `Stopped` between polls; poll until a final status with a cap. Listing bots: filters (`status`, `platform`, `from`/`to`, `custom_attr`), `limit` at most 50, `nextCursor`.
+- **Bridge audio:** live Google Meet bots send `0x04` frames (`[type][rate:4 LE][channels:1]`, speaker fields at offset 6) as well as `0x01`; one decoder for both. Meet tags audio `NoSpeaker`, so echo guards use timing, not the bot name. Bridge URLs carry a secret path token.
+- **Voice agents:** pipeline agents start with a wake word on; the fastest path sets `"wake_word": {"enabled": false}`. Commands (`update_mia`, chat, `send_command`) need the bot `InMeeting` (409 or 503 before). Inbuilt keys: "Inbuilt keys work in pipeline mode only: Deepgram (speech-to-text) and OpenAI (LLM and voice). Realtime mode runs on OpenAI and needs your own OpenAI key. Any other provider: bring your own key."; agents read `mia_managed` from `GET /api/v1/mia` and use only what it lists, with no prices.
+- **Agent Kit:** presets agy, claude, codex, copilot, hermes, muse, openclaw; OpenCode and Cursor through `serve --command "<cli> ... {prompt}"` (readonly is not enforced for a custom command). The pairing token is saved only in the dashboard: stop and ask the user; never probe undocumented endpoints or write the token anywhere.
+- **Apps:** remove the bot on exit (`POST /api/v1/bots/{bot_id}/remove_bot`); no tunnels or long-running processes in a build unless the user asks; MCP tools to look at real bot data while building.
+- **Setup:** OpenCode (`setup --host opencode`, project `.opencode/skills` and `opencode.json`), Cursor Agent CLI (key header in `.cursor/mcp.json`; old `~/.claude` plugin can shadow skills).
+
+### Evals
+- Six build-feedback cases (`build-transcript-live-shape`, `build-poll-until-done`, `build-bridge-meet-frames`, `voice-agent-inbuilt-per-mode`, `agent-kit-cursor-dashboard-step`, `voice-agent-silent-wake-word`); `app-response-shapes` and the transcript mock use the live shape.
+- Nine cases from anonymised signup prompts (`signup-*`). `evals/check_descriptions.py` checks the Zoom step, admission, recipes, xAI and Google configs, languages, WhatsApp, the new skill, the migration note and that no skill names `sendchat`.
+
 ## [2.9.0] - 2026-11-21
 
 The three flows: recording first; for an agent in the meeting, your own stack on a bridge server first, then the hosted Agents API.

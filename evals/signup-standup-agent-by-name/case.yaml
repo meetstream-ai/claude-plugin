@@ -1,0 +1,24 @@
+schema_version: "1.1"
+name: signup-standup-agent-by-name
+description: "Signup prompt (anonymised): a standup agent on Google Meet that talks only when its name is said and posts decisions to Slack after the call. Must give a job recipe: speak_only_when_asked or a wake word with the agent's name (pipeline mode), a standup prompt shape, the post-call decisions step from the transcript, and the flow (bridge first, or the own-stack-or-hosted question)."
+tags: [signups, voice-agent, recipes]
+runs: 1
+execution:
+  prompt: "I want an AI agent that joins our daily standup on Google Meet, only talks when someone says its name, and posts the decisions to Slack after the call. How do I set it up on MeetStream? Don't send a bot."
+  max_turns: 10
+  allowed_tools: [Read, Glob, Grep, Skill]
+graders:
+- name: name-gating-field
+  type: regex
+  pattern: 'speak_only_when_asked|wake_word'
+- name: pipeline-mode
+  type: regex
+  pattern: 'pipeline'
+- name: post-call-transcript
+  type: regex
+  pattern: 'get_transcript|transcription\.processed|transcript'
+- name: no-bot-sent
+  type: tool_used
+  tool: mcp__plugin_meetstream_meetstream__create_bot
+  min: 0
+  max: 0

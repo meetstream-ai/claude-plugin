@@ -1,0 +1,30 @@
+schema_version: "1.1"
+name: signup-grok-joins-zoom
+description: "Signup prompt (anonymised): make Grok join a Zoom call and answer out loud. Grok is the xAI provider of a voice agent (hosted Agents API, realtime or pipeline with provider xai and the user's own xAI key), or the model behind the user's bridge server; not a local agent. Plus the Zoom app step."
+tags: [signups, voice-agent, xai]
+runs: 1
+execution:
+  prompt: "make Grok join my zoom call as a speaking participant and answer out loud when someone asks it something. Don't send a bot."
+  max_turns: 10
+  allowed_tools: [Read, Glob, Grep, Skill]
+graders:
+- name: xai-provider
+  type: regex
+  pattern: '\x22provider\x22\s*:\s*\x22xai\x22'
+- name: grok-not-local-agent
+  type: regex
+  pattern: '\x22provider\x22\s*:\s*\x22local_agent\x22'
+  match: not_contains
+- name: zoom-obf-or-zak
+  type: regex
+  pattern: '\bOBF\b|\bZAK\b|obf_url|zak_url'
+- name: no-zoom-no-setup-claim
+  type: regex
+  pattern: 'needs? no (Zoom )?setup|no setup (is )?(needed|required)|no Zoom app (is )?(needed|required)|Zoom app is optional|(don.t|do not) need (a|your own) Zoom app'
+  flags: i
+  match: not_contains
+- name: no-bot-sent
+  type: tool_used
+  tool: mcp__plugin_meetstream_meetstream__create_bot
+  min: 0
+  max: 0
