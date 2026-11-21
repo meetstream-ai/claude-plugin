@@ -99,3 +99,11 @@ For the complete event catalog and payloads, use the `webhook_events_guide` refe
 ## What to tell the client
 
 MeetStream matches Recall on the core bot lifecycle, recording, per-participant streams, real-time audio/transcript, chat + image output, calendar (Google + Outlook), scheduling, signed-in bots, retention, and **pause/resume recording**. Same auth scheme, near-identical endpoints, lower price.
+
+## Latest docs
+
+- Migrate from Recall.ai: https://docs.meetstream.ai/migration/migrate-from-recall
+- Create Bot payload reference: https://docs.meetstream.ai/api-reference/create-bot-payload-reference
+- Webhooks and events: https://docs.meetstream.ai/guides/webhooks/webhooks-and-events
+
+For the latest details, fetch the page with `.md` appended, read https://docs.meetstream.ai/llms.txt, or connect the docs MCP server at https://docs.meetstream.ai/_mcp/server.

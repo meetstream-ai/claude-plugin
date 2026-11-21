@@ -7,7 +7,11 @@ description: >
   "rate limited", "Retry-After", or pastes an error from the API. Read this
   before guessing at a cause. Low credits: send the user to
   https://app.meetstream.ai/billing (top_up_link tool when connected); never
-  retry in a loop.
+  retry in a loop. The balance is on the billing page; GET
+  /api/v1/billing/balance (read only) may answer not available: expected, use
+  the billing page. get_transcript 422 = the transcript run failed, with status and
+  reason: final, do not retry; fix the cause (often the provider key) and
+  re-run with POST /api/v1/bots/{bot_id}/transcribe.
 ---
 
 # Troubleshooting MeetStream
@@ -24,8 +28,9 @@ prepaid 429 still use `error`. Read `message`, then `error`, then the raw body.
 |---|---|---|
 | `400` | Validation failed | Read `message`; fix the request. Never retry unchanged |
 | `401` | **No** API key sent | The header is missing entirely |
-| `403` | Key sent but **rejected**, or `Low credits please recharge` | Bad key: wrong, revoked or truncated. Low credits: give the user https://app.meetstream.ai/billing (and call the `top_up_link` tool when connected); never retry in a loop |
+| `403` | Key sent but **rejected**, or `Low credits please recharge` | Bad key: wrong, revoked or truncated. Low credits: give the user https://app.meetstream.ai/billing (and call the `top_up_link` tool when connected); never retry in a loop. The balance is on the billing page. `GET /api/v1/billing/balance` (read only) may answer "not available" or 404 on accounts where it is not on yet: expected, send the user to the billing page |
 | `404` | Unknown `bot_id` / `transcript_id` / route | Check the id, and that it was not deleted |
+| `422` | `get_transcript`: the transcript run failed. Body `{"message": "Transcript processing failed: <reason>", "transcript_status": "Failed", "transcript_id"}` | Final: never retry. Show the reason, fix it (often the provider key or its usage limit), then `POST /api/v1/bots/{bot_id}/transcribe` |
 | `409` | Conflict | Same `deduplication_key` with a different meeting; same key still saving (`Retry-After: 2`, retry with the same key); or an in-meeting command (for example `raise_hand`) sent before the bot is in the meeting |
 | `429` | Rate limited | Honour `Retry-After`, then back off. See below |
 | `500` / `503` | Transient server error | Exponential backoff |
@@ -111,8 +116,10 @@ webhook, not the bot. See the `webhooks` skill.
 
 In order:
 
-1. Did `transcription.processed` fire? If `transcription.failed` fired instead, read its
-   `message` - most often a provider API key issue on your account.
+1. Did `transcription.processed` fire? If `transcription.failed` fired instead (or
+   `get_transcript` returns 422), read the `message` - most often the provider rejected
+   the API key or its usage limit was reached. Do not retry the fetch: fix the key, then
+   start a new run with `POST /api/v1/bots/{bot_id}/transcribe`.
 2. Right identifier? The MCP `get_transcript` tool takes the **`bot_id`**. The REST
    endpoint takes the **`transcript_id`**, not the `bot_id`.
 3. Are you reading `segment.transcript`, not `segment.text`? Wrong field looks like an
@@ -140,9 +147,12 @@ Auth differs by surface, which trips people up:
 
 Keys come from https://app.meetstream.ai/api-key.
 
-## Reference
+## Latest docs
 
-- [Errors](https://docs.meetstream.ai/errors)
-- [Debugging bots](https://docs.meetstream.ai/guides/help/debugging-bots)
-- [FAQ](https://docs.meetstream.ai/guides/help/faq) · [Support](https://docs.meetstream.ai/guides/help/support)
-- [Authentication](https://docs.meetstream.ai/api-reference/authentication)
+- Errors: https://docs.meetstream.ai/errors
+- Bot statuses and error codes: https://docs.meetstream.ai/guides/reference/bot-status-and-error-codes
+- Debugging bots: https://docs.meetstream.ai/guides/help/debugging-bots
+- Authentication: https://docs.meetstream.ai/api-reference/authentication
+- FAQ: https://docs.meetstream.ai/guides/help/faq
+
+For the latest details, fetch the page with `.md` appended, read https://docs.meetstream.ai/llms.txt, or connect the docs MCP server at https://docs.meetstream.ai/_mcp/server.

@@ -161,12 +161,12 @@ never help - the transcript was delivered live during the meeting.
 - Do not create a second bot for the same meeting because the first is slow to join;
   check its status first.
 
-## Reference
+## Latest docs
 
-- [Create your first bot](https://docs.meetstream.ai/guides/get-started/create-your-first-bot)
-- [How bots work](https://docs.meetstream.ai/guides/introduction/how-bots-work)
-- [create_bot API](https://docs.meetstream.ai/api-reference/api-endpoints/bot-endpoints/create-bot)
-- [Automatic leave configuration](https://docs.meetstream.ai/guides/features/automatic-leave-configuration)
-- [Deduplication and idempotency keys](https://docs.meetstream.ai/guides/features/deduplication-idempotency-keys)
-- [Custom attributes](https://docs.meetstream.ai/guides/features/custom-attributes)
-- [Raise and lower a bot's hand](https://docs.meetstream.ai/guides/features/raise-lower-hand)
+- Create your first bot: https://docs.meetstream.ai/guides/get-started/create-your-first-bot
+- Create Bot payload reference: https://docs.meetstream.ai/api-reference/create-bot-payload-reference
+- Raise and lower hand: https://docs.meetstream.ai/guides/features/raise-lower-hand
+- Automatic leave: https://docs.meetstream.ai/guides/features/automatic-leave-configuration
+- Deduplication and idempotency: https://docs.meetstream.ai/guides/features/deduplication-idempotency-keys
+
+For the latest details, fetch the page with `.md` appended, read https://docs.meetstream.ai/llms.txt, or connect the docs MCP server at https://docs.meetstream.ai/_mcp/server.

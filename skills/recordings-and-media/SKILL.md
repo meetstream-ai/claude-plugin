@@ -170,10 +170,12 @@ A workspace can save up to 10 storage destinations in the dashboard. Pick one pe
 - Scheduled bots recheck the destination at join time and end `Error` /
   `StorageValidationFailed` if it no longer passes.
 
-## Reference
+## Latest docs
 
-- [Retrieve recordings](https://docs.meetstream.ai/guides/transcription-recordings/retrieve-recordings)
-- [Per-participant audio](https://docs.meetstream.ai/guides/transcription-recordings/per-participant-audio) · [Per-participant video](https://docs.meetstream.ai/guides/transcription-recordings/per-participant-video)
-- [Pause and resume recording](https://docs.meetstream.ai/guides/features/pause-resume-recording)
-- [Usage and retention](https://docs.meetstream.ai/guides/features/usage-and-retention)
-- [Custom storage configurations](https://docs.meetstream.ai/guides/features/custom-storage-configurations/overview)
+- Retrieve recordings: https://docs.meetstream.ai/guides/transcription-recordings/retrieve-recordings
+- Per-participant audio: https://docs.meetstream.ai/guides/transcription-recordings/per-participant-audio
+- Per-participant video: https://docs.meetstream.ai/guides/transcription-recordings/per-participant-video
+- Usage and retention: https://docs.meetstream.ai/guides/features/usage-and-retention
+- Custom storage: https://docs.meetstream.ai/guides/features/custom-storage-configurations/overview
+
+For the latest details, fetch the page with `.md` appended, read https://docs.meetstream.ai/llms.txt, or connect the docs MCP server at https://docs.meetstream.ai/_mcp/server.

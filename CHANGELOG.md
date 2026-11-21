@@ -2,6 +2,22 @@
 
 All notable changes to the MeetStream Claude Code plugin.
 
+## [2.8.0] - 2026-11-21
+
+Two ways to integrate, voice agent pricing and keys, MeetStream API v1.10.0, and skills that teach the API instead of pasting sample apps.
+
+### Added
+- **Two ways to integrate** open the core skill, `getting-started`, the README, `AGENTS.md` and `INSTALL_FOR_AGENTS.md`: the Bot API (default: meeting bots, recordings, transcripts, webhooks, live data) and the Agents API (voice agents, API name MIA), only when the user asks for an agent that talks.
+- **Voice agent setups and price** (`mia-voice-agents`, core routing): a) MeetStream's inbuilt keys, the default (`"key_source": "meetstream"` on each pipeline section; OpenAI and Deepgram today), b) your own provider keys, c) your own agent through `model.provider: "local_agent"` and the MeetStream Agent Kit (only on request, with the warning, the activation code and the access levels). Each costs the bot plus $0.25 per hour for the agent infrastructure; with inbuilt keys, add the per-hour price of the models picked (the dashboard agent editor shows it). If inbuilt keys are not on for an account yet, the API says so and the skills go on with your own keys, with no retry loop.
+- **v1.10.0 agent options:** `agent.chat_input`, `agent.quiet_actions`, `agent.speak_only_when_asked`, `agent.tools: ["screen"]` on Google Meet with a vision-capable model, the opt-in bot desktop, and `transcriber.language`.
+- **v1.10.0 Bot API:** `get_transcript` returns 422 with the status and the reason when a transcript fails (final: do not retry; fix and re-run with `/transcribe`), and the read-only `GET /api/v1/billing/balance`; where it is not on yet ("not available" or 404) the skills send the user to the billing page.
+- **"Latest docs"** at the end of every skill: 2 to 5 canonical docs URLs and how to get the latest page (`.md`, `llms.txt`, the docs MCP server). The core skill says the docs win when they differ.
+
+### Changed
+- **No sample apps inside skills.** `notetaker`, `sales-coach` and `calendar-automation` are now API guides: the fastest path in numbered steps with minimal curl, Node `@meetstream/sdk` and Python `meetstream-sdk` calls, and one link to [Tutorials and Sample Apps](https://docs.meetstream.ai/tutorials/sample-apps) and the labs repo as optional references. The core skill drops the "power prompts" and the `references/code-patterns-node.md` / `code-patterns-python.md` app files. `verify-account` is a read-only check (no probe bots).
+- Calendar disconnect is `DELETE /api/v1/calendar/disconnect`; recording links are valid for 1 hour.
+- `evals/check_descriptions.py` also checks the Latest docs sections, no app scaffolds, the two-ways openers and the new must-say lines.
+
 ## [2.7.0] - 2026-11-18
 
 Brings the plugin up to MeetStream API v1.9.0, adds intake routing, and stops agents from giving version-stability advice. Replaces the open 2.5.1 and API v1.7.0-v1.9.0 changes, re-applied on top of 2.6.0.

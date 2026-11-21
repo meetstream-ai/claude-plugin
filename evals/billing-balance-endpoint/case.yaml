@@ -1,6 +1,6 @@
 schema_version: "1.1"
 name: billing-balance-endpoint
-description: "Prepaid balance from code: GET /api/v1/billing/balance with the API key (read only)."
+description: "Prepaid balance from code: GET /api/v1/billing/balance with the API key (read only); where it is not on yet, the billing page."
 tags: [round5, billing]
 runs: 1
 execution:
@@ -11,6 +11,6 @@ graders:
 - name: balance-route
   type: regex
   pattern: '/api/v1/billing/balance'
-- name: token-header
+- name: billing-page
   type: regex
-  pattern: 'Authorization: Token'
+  pattern: 'app\.meetstream\.ai/billing'

@@ -47,6 +47,10 @@ Segments also carry `start_time` / `end_time`, which you need for timestamps and
 quoting "at 14:32 they said...".
 
 If the transcript is not ready, the tool will tell you. Retry a few times with a gap.
+If the transcript run **failed** (REST `get_transcript` returns 422 with
+`transcript_status: "Failed"` and the reason, for example the provider rejected the API
+key), do not retry: tell the user the reason, and after they fix it start a new run
+(`transcribe_audio` tool, or `POST /api/v1/bots/{bot_id}/transcribe`).
 If the bot used a **streaming-only** provider there will never be a post-call
 transcript - say so instead of retrying forever.
 
@@ -125,10 +129,12 @@ from another engine, use **`transcribe_audio`** on the existing bot. This works 
 for bots that originally used a streaming-only provider, and is the only way to get a
 post-call transcript for those.
 
-## Reference
+## Latest docs
 
-- [Bot summary API](https://docs.meetstream.ai/api-reference/api-endpoints/bot-endpoints/get-bot-summary)
-- [Participants and speaker timeline](https://docs.meetstream.ai/guides/features/participants-and-speaker-timeline)
-- [Post-call transcription](https://docs.meetstream.ai/guides/transcription-recordings/post-call-transcription)
-- [Diarization](https://docs.meetstream.ai/guides/transcription-recordings/diarization)
-- [Languages and translation](https://docs.meetstream.ai/guides/transcription-recordings/languages-and-translation)
+- Post-call transcription: https://docs.meetstream.ai/guides/transcription-recordings/post-call-transcription
+- Participants and speaker timeline: https://docs.meetstream.ai/guides/features/participants-and-speaker-timeline
+- Diarization: https://docs.meetstream.ai/guides/transcription-recordings/diarization
+- Languages and translation: https://docs.meetstream.ai/guides/transcription-recordings/languages-and-translation
+- Errors (failed transcript 422): https://docs.meetstream.ai/errors
+
+For the latest details, fetch the page with `.md` appended, read https://docs.meetstream.ai/llms.txt, or connect the docs MCP server at https://docs.meetstream.ai/_mcp/server.

@@ -128,12 +128,12 @@ Before building a WebSocket server, check whether the REST path is enough:
 Reach for WebSockets when you need raw media or custom real-time logic, not for
 one-off actions.
 
-## Reference
+## Latest docs
 
-- [Live transcription](https://docs.meetstream.ai/guides/transcription-recordings/live-transcription)
-- [Real-time audio streaming](https://docs.meetstream.ai/guides/websockets/real-time-audio-streaming)
-- [Meeting control patterns](https://docs.meetstream.ai/guides/websockets/meeting-control-patterns)
-- [Bridge server architecture](https://docs.meetstream.ai/guides/websockets/bridge-server-architecture)
-- [Bot camera streaming](https://docs.meetstream.ai/guides/websockets/bot-camera-streaming)
-- [Streaming providers](https://docs.meetstream.ai/guides/transcription-recordings/providers/transcription-providers)
-- [Chat and visuals](https://docs.meetstream.ai/guides/features/chat-and-visuals)
+- Live transcription: https://docs.meetstream.ai/guides/transcription-recordings/live-transcription
+- Real-time audio WebSocket: https://docs.meetstream.ai/guides/websockets/real-time-audio-streaming
+- Meeting control WebSocket: https://docs.meetstream.ai/guides/websockets/meeting-control-patterns
+- Bot camera streaming: https://docs.meetstream.ai/guides/websockets/bot-camera-streaming
+- Chat and visuals: https://docs.meetstream.ai/guides/features/chat-and-visuals
+
+For the latest details, fetch the page with `.md` appended, read https://docs.meetstream.ai/llms.txt, or connect the docs MCP server at https://docs.meetstream.ai/_mcp/server.

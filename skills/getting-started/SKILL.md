@@ -3,22 +3,32 @@ name: getting-started
 description: >
   First ask: notes after the call, or something live during the call? (one
   question, after the one sign-in step if the MeetStream tools are not
-  connected). First-time setup for MeetStream - guides a brand-new user through
-  account signup, API key creation, environment configuration, and a validation
-  ping. MUST be invoked before any other MeetStream skill (notetaker,
-  sales-coach, calendar-automation, etc.) if MEETSTREAM_API_KEY is missing.
-  Auto-trigger when user says "get started", "help me get started with
-  MeetStream", "help me use MeetStream", "how do I use MeetStream", "what can
-  MeetStream do", "set up MeetStream", "I don't have a MeetStream account",
-  "first time using MeetStream", "MeetStream onboarding", "create MeetStream API
-  key", "MeetStream signup", "how do I start with MeetStream", or when a user
-  invokes any other MeetStream skill without MEETSTREAM_API_KEY set.
+  connected). Two ways to integrate: the Bot API (default) and the Agents API
+  (voice agents) only on request. First-time setup for MeetStream: signup, API
+  key, environment, validation ping. Invoke before any other MeetStream skill
+  if MEETSTREAM_API_KEY is missing. Auto-trigger when the user says "get
+  started", "help me get started with MeetStream", "help me use MeetStream",
+  "how do I use MeetStream", "what can MeetStream do", "set up MeetStream", "I
+  don't have a MeetStream account", "first time using MeetStream", "create
+  MeetStream API key", "MeetStream signup", or invokes another MeetStream
+  skill without MEETSTREAM_API_KEY set.
 allowed-tools: Bash, Read, Write, Edit
 ---
 
 # MeetStream Getting Started - First-Time Setup
 
 This skill is the **mandatory Step 0** for any MeetStream integration. If the user doesn't have an account or API key, no other skill can succeed. Walk them through it before scaffolding anything.
+
+## Two ways to integrate
+
+1. **Bot API (default):** a bot joins Zoom, Google Meet or Microsoft Teams; you get
+   recordings, transcripts, participants, chat and webhooks after the call, or live data
+   during it.
+2. **Agents API (only on request):** a voice agent (API name MIA) on the bot listens and
+   talks. Bring it in only when the user asks for a voice agent or a bot that talks
+   (`mia-voice-agents`).
+
+Docs: https://docs.meetstream.ai/guides/introduction/integration-paths
 
 ## Your first reply
 
@@ -56,15 +66,18 @@ webhooks. Start there.
    `mia-voice-agents` only when the user asks for a "voice agent", an "agent in the
    meeting", or a bot that talks, answers or speaks (or names MIA, the API name). In
    replies say "voice agent"; most users do not know the word MIA.
-3. **Voice agent setups, in this order** (details in `mia-voice-agents`):
-   1. **MeetStream-managed keys** (default): `"key_source": "meetstream"` in each
-      pipeline section, no provider keys to bring, billed per hour on the MeetStream
-      account.
-   2. **Your own provider keys**: the user brings their own transcription, LLM and voice
-      keys and sets up the providers themselves.
-   3. **Your own agent on your own computer** (for example a Claude Code or Codex
-      subscription, through the MeetStream Agent Kit): only when the user asks for it.
-      Warn first, in the same answer: anyone in the meeting can try to make that agent run commands or read files on the user's computer (prompt injection); use the lowest access level (read-only) and the activation code, and keep the computer, the bridge and the tunnel running for the whole meeting.
+3. **Voice agent setups, in this order** (details in `mia-voice-agents`); each costs the
+   bot price plus $0.25 per hour for the agent infrastructure:
+   - a. **MeetStream's inbuilt keys** (default): `"key_source": "meetstream"` in each
+     pipeline section, no provider keys (OpenAI and Deepgram today), plus the per-hour
+     price of the models picked. If the API says MeetStream-managed keys are not
+     available, inbuilt keys are not on for the account yet: go on with setup b.
+   - b. **Your own provider keys**: the provider bills model usage.
+   - c. **Their own agent** (`local_agent` through the MeetStream Agent Kit): only when
+     the user asks for it. Warn first, in the same answer: meeting speech reaches an agent
+     that has access to the user's computer and terminal (prompt injection); use the
+     lowest access level (`readonly`) and the activation code; the computer, the agent and
+     the bridge must stay on for the whole call.
 4. **Version questions:** reply with these two sentences, then continue with what the
    user wants to do: "Install or update to the current MeetStream plugin. The MCP
    server is hosted at https://mcp.meetstream.ai/mcp, so everyone uses the same
@@ -253,7 +266,7 @@ Direct them to https://app.meetstream.ai/api-keys (deep link). Account may need 
 - Make sure they exported it: `echo $MEETSTREAM_API_KEY` should print the key (not empty)
 
 ### "I have no credits / billing question"
-Direct to https://app.meetstream.ai → Billing section. Free tier covers a meaningful amount; paid plans at https://meetstream.ai/pricing.
+Direct to https://app.meetstream.ai/billing (balance and top-up). New accounts start with $5 of credit; prices at https://meetstream.ai/pricing. The billing page shows the balance (a read-only `GET /api/v1/billing/balance` may answer "not available" on some accounts; then use the billing page).
 
 ### "I want to use a team account / shared key"
 - Each team member should create their own key from their own account
@@ -270,3 +283,12 @@ Direct to https://app.meetstream.ai → Billing section. Free tier covers a mean
 - **Never commit the key to git.** Always insist on `.env` + `.gitignore`.
 - **Never POST the key anywhere except api.meetstream.ai.**
 - **Never proceed with any build skill until Step 5 succeeds.** Better to ask once more than to scaffold a broken app.
+
+## Latest docs
+
+- Two ways to integrate: https://docs.meetstream.ai/guides/introduction/integration-paths
+- Dashboard setup and API key: https://docs.meetstream.ai/guides/get-started/dashboard-setup
+- Create your first bot: https://docs.meetstream.ai/guides/get-started/create-your-first-bot
+- Hosted MeetStream MCP server: https://docs.meetstream.ai/build-with-ai/meetstream-mcp-server
+
+For the latest details, fetch the page with `.md` appended, read https://docs.meetstream.ai/llms.txt, or connect the docs MCP server at https://docs.meetstream.ai/_mcp/server.

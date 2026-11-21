@@ -4,6 +4,13 @@ You are an AI agent. The user asked you to install MeetStream. Follow these step
 
 MeetStream sends a bot into the user's Zoom, Google Meet or Microsoft Teams call. You (the agent) do the note-taking with your own model. MeetStream bills the bot per hour from prepaid credits.
 
+## Two ways to integrate
+
+1. **Bot API (default): meeting bots and recording.** A bot joins Zoom, Google Meet or Microsoft Teams. You get recordings, transcripts, participants, chat and webhooks after the call, or live data during the call.
+2. **Agents API (only on request): voice agents in the meeting.** A voice agent (API name MIA) on the bot listens and talks. Use it only when the user asks for a voice agent or a bot that talks. Price: the bot plus $0.25 per hour for the agent infrastructure, plus the models picked with MeetStream's inbuilt keys (OpenAI and Deepgram), or the user's own provider keys.
+
+Details: https://docs.meetstream.ai/guides/introduction/integration-paths
+
 ## Step 1: install the plugin or the skills
 
 Pick the user's agent.

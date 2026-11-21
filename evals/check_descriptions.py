@@ -55,6 +55,9 @@ def body_misses():
         if not os.path.exists(path):
             continue
         text = open(path, encoding="utf-8").read()
+        if len(description(path)) > 1024:
+            misses += 1
+            print(f"MISS {skill}: description is {len(description(path))} characters (max 1024 for Codex and the Agent Skills spec)")
         # Latest docs: the last H2, with 2 to 5 docs URLs and the llms.txt / .md / docs MCP line.
         h2 = [m.start() for m in re.finditer(r"^## ", text, re.M)]
         last = text[h2[-1]:] if h2 else ""

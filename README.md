@@ -4,9 +4,9 @@
 
 # MeetStream for Claude Code
 
-**The fastest way to build meeting intelligence - AI notetakers, real-time sales coaches, transcription pipelines, and Google Calendar–driven recording automation.**
+**Meeting bots for Zoom, Google Meet and Microsoft Teams: recordings, transcripts and live data from your agent or your app, plus voice agents that talk in the meeting.**
 
-[![Plugin Version](https://img.shields.io/badge/plugin-v2.7.0-5C4EFF?style=for-the-badge)](https://github.com/meetstream-ai/claude-plugin)
+[![Plugin Version](https://img.shields.io/badge/plugin-v2.8.0-5C4EFF?style=for-the-badge)](https://github.com/meetstream-ai/claude-plugin)
 [![Live-Tested](https://img.shields.io/badge/endpoints-live--tested-10B981?style=for-the-badge)](https://github.com/meetstream-ai/claude-plugin/commits/main)
 [![MIT License](https://img.shields.io/badge/license-MIT-yellow?style=for-the-badge)](LICENSE)
 [![Get API Key](https://img.shields.io/badge/get%20api%20key-app.meetstream.ai-0EA5E9?style=for-the-badge)](https://app.meetstream.ai/api-keys)
@@ -15,106 +15,44 @@
 
 ---
 
+## Two ways to integrate
+
+1. **Bot API (default): meeting bots and recording.** Send a bot to Zoom, Google Meet or Microsoft Teams. Get recordings, transcripts, participants, chat and webhooks after the call, or live transcription, audio, video and in-meeting control during the call.
+2. **Agents API: voice agents in the meeting (on request).** A voice agent (API name MIA) on the bot listens and talks. Setups, in order: MeetStream's inbuilt keys (OpenAI and Deepgram, no provider account), your own provider keys, or your own agent (Claude Code, Codex, Hermes, OpenClaw and others) through the MeetStream Agent Kit. Price: the bot plus $0.25 per hour for the agent infrastructure, plus the per-hour price of the models you pick with inbuilt keys ([pricing and keys](https://docs.meetstream.ai/guides/mia/pricing-and-keys)).
+
+Overview: [Two ways to integrate](https://docs.meetstream.ai/guides/introduction/integration-paths).
+
+---
+
 ## 60-second quickstart
 
 ```bash
-# 1. Install the plugin
-claude plugin install meetstream-ai/meetstream
+# 1. Install the plugin (adds the skills and the hosted MeetStream MCP server)
+/plugin marketplace add meetstream-ai/claude-plugin
+/plugin install meetstream@meetstream-ai
 
-# 2. Set your API key (one-time)
-export MEETSTREAM_API_KEY=ms_xxxxx
+# 2. Sign in: /mcp -> meetstream -> Authenticate (no key to copy)
+#    For your own code, set a key instead: export MEETSTREAM_API_KEY=ms_xxxxx
 
-# 3. Verify your account is configured
-claude "verify my meetstream account"
-
-# 4. Build something
-claude "build me an AI meeting notetaker that emails summaries"
+# 3. Ask
+claude "send a bot to https://meet.google.com/abc-defg-hij and give me notes after the call"
 ```
 
-That's it. Claude scaffolds a working FastAPI/Express app with the webhook handler, transcript fetch, LLM summary, and delivery layer wired up.
+The skills give the fastest path first: the shortest working request (curl, Node [`@meetstream/sdk`](https://www.npmjs.com/package/@meetstream/sdk), Python [`meetstream-sdk`](https://pypi.org/project/meetstream-sdk/)), then the options. They teach the API; they do not paste sample apps. For complete example apps, see [Tutorials and Sample Apps](https://docs.meetstream.ai/tutorials/sample-apps) and the [labs repo](https://github.com/meetstream-ai/labs).
 
 ---
 
-## What you can build
+## What you can ask
 
-The fastest path from idea to production for every meeting-intelligence use case:
-
-| Use case | Try in Claude | What you get |
+| Goal | Try in Claude | Skill |
 |---|---|---|
-| 🎙️ **AI Meeting Notetaker** | *"build me an AI notetaker"* | Full webhook server + transcript fetch + GPT-4 summary + email delivery (Resend / SendGrid / SMTP) |
-| 🎯 **Real-Time AI Sales Coach** | *"build a real-time AI sales coach"* | Live transcription + objection detection + WebSocket push to seller's browser |
-| 📊 **Conversation Intelligence Platform** | *"build a conversation intelligence tool"* | Live + post-call transcripts + speaker analytics + searchable archive |
-| 📅 **Google Calendar Auto-Recording** | *"auto-record every meeting on my Google Calendar"* | OAuth setup + `/calendar/create_calendar` + auto-schedule + recurring event handling + post-meeting delivery |
-| 🔁 **Scheduled / Recurring Meeting Bot** | *"join every standup automatically"* | Calendar-driven, hands-free - bot joins 1 min before each meeting, recurring events auto-reschedule |
-| 🤖 **AI Meeting Assistant (MIA)** | *"build an AI agent that joins my meetings"* | MIA agent config (pipeline/realtime) + hosted bridge + voice/text interaction |
-| 📞 **Customer Call Analyzer** | *"analyze every sales call for insights"* | Transcript → LLM extraction → CRM auto-update → trend dashboards |
-| 🌍 **Multilingual Meeting Transcriber** | *"transcribe Hindi/Tamil/Telugu meetings"* | Sarvam provider + Indic language config + translation |
-| 🎬 **Compliance Meeting Recorder** | *"record meetings with 90-day retention"* | Long-retention bot + per-participant audio + audit trail |
-| 📝 **Live Captions Service** | *"build a live captions service"* | Streaming bot + caption broadcast UI + multilingual support |
-| 🎓 **Interview Recorder** | *"record + diarize interview meetings"* | Per-participant audio tracks + speaker labels + structured transcript |
-
----
-
-## 🚀 Copy-paste power prompts (build a full app in one shot)
-
-Each of these is a complete, production-quality prompt. Paste any one into Claude Code and you'll get a working, end-to-end app - webhook server, MeetStream integration, AI processing, delivery layer, error handling, all wired up.
-
-### 1️⃣ API-triggered AI notetaker with email delivery (one prompt)
-
-> Build me an API-triggered AI meeting notetaker in **Python + FastAPI**. Flow: my app POSTs `{meeting_link, attendee_emails, triggered_by}` to `/meetings/start` → MeetStream bot joins → meeting ends → fetch transcript via the canonical `bot_details.transcript_id` flow → generate a structured summary with GPT-4o (executive summary, key decisions, action items with owners, open questions) → email the summary to all attendees + the trigger user via Resend with the transcript attached as `transcript.txt`. Use **deepgram** as the transcription provider. Include: idempotent webhook handler (dedupe on `{bot_id, bot_event or event, timestamp}`), Redis-backed dedup, graceful handling of `transcription.failed` (retry with a different provider via `POST /bots/{id}/transcribe`), `.env` config with `.gitignore`, README with `ngrok` setup, a `requirements.txt`, and a `seed.py` test script that triggers a sample meeting. Tag every bot with `triggered_by` in `custom_attributes` for correlation. Use the recommended `automatic_leave` defaults (600/600/600/14400/300).
-
-### 2️⃣ Real-time AI sales coach with browser dashboard (one prompt)
-
-> Build me a real-time AI sales coaching tool in **Python + FastAPI + vanilla JS**. Flow: sales rep clicks "Start Coaching" in a web UI → enters meeting link → MeetStream bot joins with `meetstream_streaming` (no external provider key needed) + `live_transcription_required.webhook_url` → live chunks stream to FastAPI → debounced LLM (GPT-4o-mini) detects objections / buying signals / talk-time imbalance every `end_of_turn=true` → push coach cards to the rep's browser via WebSocket → render as colored cards (objection=red, signal=green, monologue=orange). Include: stateless transcript_id lookup via `bot_details.transcript_id`, XSS-safe rendering with `textContent` (not `innerHTML`), `bot.error` handling (surface as warning card), graceful WebSocket reconnect, and a "Stop Coaching" button that calls `/bots/{id}/remove_bot`. Provide a single-file `coach.html` UI plus the full backend.
-
-### 3️⃣ Google Calendar auto-recording with summary delivery (one prompt)
-
-> Build me a Google Calendar auto-recording system on MeetStream in **Python + FastAPI**. Flow: connect my Google Calendar via OAuth (use the helper script in the `calendar-automation` skill) → enable `/calendar/auto-schedule/enable` with a default_bot_config using deepgram → MeetStream auto-joins every upcoming meeting 1 min before start → webhook on `transcription.processed` → fetch transcript via canonical `bot_details.transcript_id` flow → generate AI summary → email me via Resend AND save to Notion via the Notion API. Include: full OAuth helper script (with `http://localhost:8080` redirect), `connect.py` (one-time call to `/calendar/create_calendar` with `google_` prefixed fields), `enable.py` (auto-schedule), `webhook.py` (FastAPI server with idempotent handler), `delivery.py` (Resend + Notion clients), and a `disable.sh` script that uses `DELETE /calendar/disconnect` for safe cleanup. Handle recurring events by setting `recurring_event: true` so each occurrence reschedules automatically.
-
-### 4️⃣ CRM auto-enricher (HubSpot) for sales calls (one prompt)
-
-> Build me a HubSpot CRM auto-enricher in **Node.js + Express + TypeScript**. Flow: every sales call recorded via MeetStream → on `transcription.processed` webhook → fetch transcript via canonical `bot_details.transcript_id` flow → run two LLM extractions in parallel (Claude 3.5 Sonnet): (a) extract action items with owners, (b) extract competitor mentions / pricing objections / next-step commitments → upsert a HubSpot "Meeting Activity" record with the summary + action items → if the meeting was on a known deal record (correlated via `custom_attributes.deal_id`), update the deal's `next_step` and `last_meeting_summary` properties. Include: idempotent webhook handler with dedup, retry-on-429 for HubSpot writes, structured error logging, env-based config, `.env.example`, README, and a `seed.ts` script that creates a test bot tagged with a test `deal_id` to verify the whole pipeline end-to-end.
-
-### 5️⃣ Interview recorder with per-participant audio for HR/recruiting (one prompt)
-
-> Build me an interview recorder for a recruiting SaaS in **Python + Django**. Flow: recruiter creates an interview record in our Django app with `candidate_email`, `interviewer_emails`, `meeting_link`, `position_id` → on save, send a MeetStream bot with `audio_separate_streams: true` (per-participant audio for clean candidate-only transcripts later) + deepgram post-call provider + `custom_attributes.interview_id={record.pk}` → on `bot.done`, fetch the per-participant audio streams via `/bots/{id}/get_audio_streams` (10-min URLs - download immediately to S3) + fetch the full transcript via canonical flow → generate a structured interview report (candidate strengths/concerns/skills mentioned/red flags) using Claude 3.5 Sonnet → save report + audio S3 URLs to a `InterviewRecording` model → email the recruiter when complete. Include: Django models, signal handlers, Celery tasks for the long-running download/processing work, and explicit handling of the 10-minute URL TTL (always re-fetch on access, never store the URLs).
-
-### 6️⃣ Multi-tenant notetaker SaaS - each user connects their own calendar (one prompt)
-
-> Build me a multi-tenant notetaker SaaS in **Next.js 14 (App Router) + Postgres + Prisma**. Flow: user signs up → connects their own Google Calendar via per-user OAuth (each user has their own refresh token, all stored encrypted in Postgres) → my app calls `/calendar/create_calendar` with that user's credentials → enable auto-scheduling → webhooks fire for every meeting → I fetch transcript via canonical flow → AI summary → email to that specific user via Resend. Include: full Next.js App Router setup, Prisma schema for `User`, `CalendarConnection`, `Meeting`, `Summary`, Google OAuth route handlers, encrypted secret storage helper using AWS KMS (or local sealedbox for dev), one webhook endpoint that routes by `custom_attributes.tenant_id`, idempotent processing with Postgres-backed dedup table, billing-ready Stripe Checkout integration (free tier: 10 meetings/mo, pro: $20/mo unlimited), and a clean React dashboard showing the user's last 10 summarized meetings.
-
-### 7️⃣ Compliance meeting recorder with 90-day retention + audit log (one prompt)
-
-> Build me a compliance-grade meeting recorder for regulated industries (healthcare/legal/finance) in **Python + FastAPI**. Flow: every recorded meeting MUST have `recording_config.retention.hours: 2160` (90 days), `audio_separate_streams: true` (for legal evidentiary separation), explicit consent flag in `custom_attributes.consent_obtained_at` (ISO timestamp + obtained_by user_id) → on `bot.inmeeting` webhook, write an audit log entry to an append-only Postgres `audit_log` table (never UPDATE, only INSERT) → on `bot.stopped`, mark the session complete → on `transcription.processed`, fetch + encrypt the transcript at rest (AES-256-GCM with KMS-managed keys) before storing → on `data_deletion` webhook, write a deletion audit entry. Include: full SQLAlchemy models, KMS encryption helpers, a `/audit/{meeting_id}` admin endpoint that returns the full timeline of bot status + processing + delete events, IP allowlist middleware for admin routes, structured JSON logging compatible with Datadog/Splunk, and a README section documenting the compliance posture for legal/security review.
-
-### 8️⃣ AI Meeting Assistant (MIA) - voice-interactive bot that participates in the meeting (one prompt)
-
-> Build me a voice-interactive AI assistant that joins meetings and participates conversationally. Use MeetStream's MIA (Meeting Infrastructure Agent). Flow: I run a script to create a pipeline-mode MIA agent config via `POST /api/v1/mia` (OpenAI gpt-4.1 LLM + ElevenLabs voice + Deepgram nova-3 streaming transcriber + first_message: "Hi everyone, I'm Acme AI joining to help with this meeting. Just say 'Hey Acme' to address me.") → save the returned `agent_config_id` → my Next.js dashboard has a "Send AI to Meeting" button that creates a bot by passing just the `agent_config_id` (MeetStream hosts the agent bridge) → wake word `["hey acme"]` with 30s timeout → the agent responds to questions, takes notes when asked, summarizes on demand → post-meeting summary delivered via email. Include: the agent-config creation script, the bot-creation handler, a webhook server that catches `bot.error` (streaming-provider auth issue → surface to user, don't fail silently), and a settings UI to edit the agent's system prompt without redeploying.
-
-### 9️⃣ Live captions service for accessibility (one prompt)
-
-> Build me a real-time live captions broadcaster for accessibility (hearing-impaired users) in **Python + FastAPI + Server-Sent Events**. Flow: meeting organizer triggers `POST /captions/start` with a meeting link → MeetStream bot joins with `meetstream_streaming` + `live_transcription_required.webhook_url` → live chunks POSTed to my server → I rebroadcast via SSE to any connected client at `GET /captions/{session_id}` → clients render large, readable captions in their browser with speaker names and a scrolling history. Include: SSE handler that broadcasts to all connected clients per session, a clean accessibility-friendly HTML page (high-contrast, large font, ARIA labels), graceful disconnect handling, automatic 5-minute idle cleanup, and a `nginx.conf` snippet showing how to proxy SSE with proper buffering settings. No LLM processing - captions are passthrough only, raw transcript chunks rendered live.
-
-### 🔟 Customer call analyzer with weekly insights dashboard (one prompt)
-
-> Build me a customer call analyzer + insights dashboard in **Python + FastAPI + Postgres + React**. Flow: every customer call recorded via MeetStream (tagged with `custom_attributes.customer_id`, `custom_attributes.call_type` in {discovery, demo, follow-up, churn}) → on `transcription.processed` → fetch transcript → extract structured insights with Claude (sentiment, top topics, pricing objections mentioned, feature requests, competitive mentions, customer health signals like {happy, frustrated, churning}) → store in Postgres with proper indexing → React dashboard shows: per-customer call history, week-over-week sentiment trend, top 10 feature requests across all customers, churn risk leaderboard, competitor mention frequency. Include: full Postgres schema, indexes optimized for the dashboard queries, daily aggregation cron, React + Tanstack Query dashboard, role-based access (sales reps see their own customers, managers see all), and CSV export for any view.
-
----
-
-> 💡 **First time?** Each of these power prompts assumes you have a MeetStream API key set. If you don't, run *"set up MeetStream"* first - it walks you through signup at https://app.meetstream.ai and key creation in 60 seconds.
-
----
-
-## Why this plugin
-
-| | Most API plugins | This plugin |
-|---|---|---|
-| Endpoint correctness | ❌ Common hallucinations (wrong paths, wrong fields) | ✅ Every endpoint live-tested against `api.meetstream.ai` |
-| Webhook lifecycle | ❌ Generic claims ("you'll get an event") | ✅ All 12 events documented with full payloads, status codes, two-path semantics |
-| Provider failure modes | ❌ Vague "configure your API key" | ✅ Live-captured error messages + exact fix for each |
-| Use cases | ❌ Read the docs, write your own glue | ✅ Verb-named skills scaffold the whole app (`notetaker`, `sales-coach`, etc.) |
-| Account health check | ❌ None | ✅ `verify-account` skill probes every provider before you start |
-| Subagent for failures | ❌ None | ✅ `meetstream-debugger` triages bot failures without flooding main context |
+| Notes after a call | *"record my 3pm call and send me notes"* | `join-meeting`, `meeting-brief` |
+| Notetaker in your app | *"build a notetaker that puts summaries in my app"* | `notetaker` |
+| Live captions or coaching | *"stream live captions from my Google Meet into my web app"* | `realtime-streaming`, `sales-coach` |
+| Calendar auto-join | *"auto-record every meeting on my Google Calendar"* | `calendar-automation` |
+| Recordings and per-speaker audio | *"download the recording and each speaker's audio"* | `recordings-and-media` |
+| Voice agent (on request) | *"set up a voice agent that answers questions in my Zoom calls"* | `mia-voice-agents` |
+| Move off Recall.ai | *"migrate this repo from Recall to MeetStream"* | `migrate-from-recall` |
 
 ---
 
@@ -122,40 +60,45 @@ Each of these is a complete, production-quality prompt. Paste any one into Claud
 
 ```
 skills/
-├── meetstream/             ← Core skill: API reference, lifecycle, decision tree
-├── notetaker/              ← Scaffold a complete AI meeting notetaker
-├── sales-coach/            ← Scaffold a real-time AI sales coach with browser UI
-├── calendar-automation/    ← Auto-join from Google or Outlook calendars (from your agent, or as an app scaffold)
-├── verify-account/         ← Probe which providers are configured in your account
-├── test-bot/               ← Send a test bot + watch webhooks live
-├── join-meeting/           ← Send a bot to YOUR meeting (now or later)
-├── meeting-brief/          ← After the call: notes, decisions, action items, saved and remembered
-├── recordings-and-media/   ← Recordings, per-participant audio/video, retention
-├── mia-voice-agents/       ← MIA voice agents that talk in the meeting (agent_config_id)
-├── realtime-streaming/     ← Live captions, live audio and video over WebSocket
-├── webhooks/               ← Webhook events, signatures, local development
-├── platform-setup/         ← Zoom, Google Meet and Teams specifics, signed-in bots
-└── troubleshooting/        ← 401/403/202, missing transcripts, bots that never join
+├── meetstream/             <- Core skill: two ways to integrate, routing, API reference, lifecycle, decision tree
+├── getting-started/        <- First-time setup: sign in or API key, then post-call or live
+├── join-meeting/           <- Send a bot to a meeting (now or later), chat, raise hand
+├── meeting-brief/          <- After the call: notes, decisions, action items
+├── notetaker/              <- Fastest path to a post-call notetaker in your app (API guide)
+├── sales-coach/            <- Fastest path to live coaching from the live transcript (API guide)
+├── calendar-automation/    <- Auto-join from Google or Outlook calendars
+├── realtime-streaming/     <- Live captions, live audio and video over WebSocket
+├── recordings-and-media/   <- Recordings, per-participant audio/video, retention
+├── webhooks/               <- Webhook events, signatures, local development
+├── platform-setup/         <- Zoom, Google Meet and Teams specifics, signed-in bots
+├── mia-voice-agents/       <- Voice agents (Agents API): inbuilt keys, own keys, own agent
+├── migrate-from-recall/    <- Recall.ai to MeetStream
+├── verify-account/         <- Read-only account check: key, balance, providers
+├── test-bot/               <- Send a test bot + watch webhooks live
+└── troubleshooting/        <- 401/403/422/202, missing transcripts, bots that never join
 
-.mcp.json, mcp.json         ← Hosted MeetStream MCP server (browser sign-in, no key to copy)
-.cursor-plugin/             ← Cursor manifest (same skills, same server)
+.mcp.json, mcp.json         <- Hosted MeetStream MCP server (browser sign-in, no key to copy)
+.cursor-plugin/             <- Cursor manifest (same skills, same server)
 
 agents/
-└── meetstream-debugger     ← Subagent for diagnosing bot failures
+└── meetstream-debugger     <- Subagent for diagnosing bot failures
 ```
+
+16 skills. Each one ends with a "Latest docs" section; when a skill and the docs differ, [the docs](https://docs.meetstream.ai) win. Agents can read https://docs.meetstream.ai/llms.txt, any page with `.md` appended, or the docs MCP server at https://docs.meetstream.ai/_mcp/server.
 
 ## Live-tested correctness
 
-Every endpoint, field name, response shape, and webhook event in this plugin has been verified by sending real bots to a real Google Meet and capturing real API responses. No hallucinations.
+Every endpoint, field name, response shape, and webhook event in this plugin has been verified against the live API and the public docs.
 
-Specifically verified live:
-- ✅ `create_bot` returns HTTP **201** Created
-- ✅ `bot_details.transcript_id` is the canonical stateless fetch path (not in any webhook payload)
-- ✅ Streaming providers produce **no post-call** `transcription.processed` event - lifecycle ends at `audio.processed`
-- ✅ `bot.error` fires mid-meeting for streaming-provider auth issues (bot keeps recording)
-- ✅ `recording_permission_denied_timeout` range is **60–600** seconds (default 600)
-- ✅ `in_call_recording_timeout` minimum is **600** seconds
-- ✅ `POST /bots/{id}/transcribe` overwrites `bot_details.transcript_id` and fires exactly one webhook (no `bot.done` follow-up)
+- `create_bot` returns HTTP **201** Created
+- `bot_details.transcript_id` is the canonical stateless fetch path (not in any webhook payload)
+- A failed transcript returns **422** with the status and the reason; it is final, so do not retry it
+- Streaming providers produce **no post-call** `transcription.processed` event
+- `bot.error` fires mid-meeting for streaming-provider auth issues (bot keeps recording)
+- `recording_permission_denied_timeout` range is **60-600** seconds (default 600)
+- `in_call_recording_timeout` minimum is **600** seconds
+- `POST /bots/{id}/transcribe` overwrites `bot_details.transcript_id` and fires exactly one webhook (no `bot.done` follow-up)
+- The prepaid balance is on https://app.meetstream.ai/billing; the read-only `GET /api/v1/billing/balance` may answer "not available" where it is not on yet
 
 ---
 
@@ -248,7 +191,7 @@ GET /transcript/{transcript_id}/get_transcript → top-level array of segments
 bot.done ← terminal event
 ```
 
-The plugin's skills walk you through every variant of this flow (live, post-call, hybrid, MIA agent, calendar auto-scheduled) with complete code.
+The skills walk you through every variant of this flow (live, post-call, hybrid, voice agent, calendar auto-scheduled) with the minimal calls for each.
 
 ---
 

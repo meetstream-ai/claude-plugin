@@ -162,3 +162,11 @@ If anything fails, surface the message field from the failing event - it usually
 | `bot.error` mid-meeting | Streaming provider auth issue | Check provider key in MeetStream dashboard |
 | `transcription.failed` | Post-call provider missing key | Use `verify-account` skill to confirm; switch provider or add key |
 | 0 live chunks | Streaming provider failed silently OR no one spoke | Check `bot.error` events; have someone speak in the meeting |
+
+## Latest docs
+
+- Create your first bot: https://docs.meetstream.ai/guides/get-started/create-your-first-bot
+- Webhooks and events: https://docs.meetstream.ai/guides/webhooks/webhooks-and-events
+- Local webhook server (tunnels): https://docs.meetstream.ai/guides/webhooks/local-webhook-server
+
+For the latest details, fetch the page with `.md` appended, read https://docs.meetstream.ai/llms.txt, or connect the docs MCP server at https://docs.meetstream.ai/_mcp/server.

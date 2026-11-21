@@ -1,304 +1,147 @@
 ---
 name: notetaker
 description: >
-  Build a complete MeetStream-powered AI meeting notetaker - bot joins,
-  records, transcribes, generates an AI summary, and emails it to the
-  meeting attendees (you choose the email provider: Resend / SendGrid /
-  SMTP). Use when the user says "build a notetaker", "AI meeting
-  notetaker", "meeting recorder with AI summaries", "auto-summarize my
-  meetings", "AI meeting summarizer", "meeting action items extractor",
-  "meeting recap email", or any variant of a meeting-summary product.
-  Walks through tech stack choice, scaffolds webhook handler, transcript
-  fetch, LLM summary, and email delivery end-to-end.
+  Build an AI meeting notetaker on the MeetStream Bot API: the bot joins,
+  records and transcribes; your app fetches the transcript, summarizes it with
+  your own model and delivers it (email, database, webhook). Use when the user
+  says "build a notetaker", "AI meeting notetaker", "meeting recorder with AI
+  summaries", "auto-summarize my meetings", "AI meeting summarizer", "meeting
+  action items extractor", "meeting recap email", or any variant of a
+  meeting-summary product. Gives the fastest path in numbered steps with the
+  minimal API calls (curl, Node @meetstream/sdk, Python meetstream-sdk), the
+  create_bot body (meetstream transcription by default), and links the sample
+  apps as optional references. If the request does not say post-call or live,
+  ask that once first.
 ---
 
-# Notetaker Scaffold
+# Notetaker (post-call)
 
-Build a production-ready meeting notetaker on the MeetStream API.
+A notetaker is a Bot API flow: send a bot, wait for the transcript, summarize it in your
+app. MeetStream gives you the recording and the transcript; the summary and the delivery
+(email, database, Slack and so on) are your app's job.
 
-## Step 0: Auth check (DO THIS FIRST)
+If the request does not already say which, ask once: should it work **after the meeting**
+(transcript, notes, summary email) or **live, during the call** (live captions, coaching)?
+Live goes to `realtime-streaming` (or `sales-coach`). "Record my meetings" alone does not
+say which, and neither does a request that names only the trigger ("a CLI that sends bots
+to meeting links", "connect my calendar"). Do not suggest a voice agent unless asked.
 
-Before asking the 4 config questions below:
+No API key yet? Run `getting-started` first. Everything below uses
+`Authorization: Token $MEETSTREAM_API_KEY`.
+
+## Fastest path
+
+1. **Send the bot** with a `callback_url` (your HTTPS webhook; use a tunnel for local dev).
+2. **Wait for `transcription.processed`** on that webhook (it carries `bot_id`, not the
+   transcript). Return 2xx at once, then do the work.
+3. **Fetch the transcript:** `GET /bots/{bot_id}/detail` → `bot_details.transcript_id` →
+   `GET /transcript/{transcript_id}/get_transcript` (a top-level array of segments; the
+   text field is `transcript`, not `text`).
+4. **Summarize** with your own model (decisions, action items with owners, open questions)
+   and **deliver** it with the channel's own SDK.
+
+### 1. Send the bot
 
 ```bash
-if [ -z "$MEETSTREAM_API_KEY" ]; then
-  # No API key → invoke the `getting-started` skill first
-  echo "No API key found - running first-time setup"
-else
-  # Validate
-  STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-    -H "Authorization: Token $MEETSTREAM_API_KEY" \
-    "https://api.meetstream.ai/api/v1/bots")
-  [ "$STATUS" = "200" ] || echo "API key invalid - running setup"
-fi
+curl -X POST https://api.meetstream.ai/api/v1/bots/create_bot \
+  -H "Authorization: Token $MEETSTREAM_API_KEY" -H "Content-Type: application/json" \
+  -d '{
+    "meeting_link": "https://meet.google.com/abc-defg-hij",
+    "bot_name": "Acme Notetaker",
+    "video_required": false,
+    "callback_url": "https://your-app.example/meetstream/webhook",
+    "custom_attributes": {"user_id": "u_123"},
+    "recording_config": {
+      "transcript": {"provider": {"meetstream": {"language": "en"}}},
+      "retention": {"type": "timed", "hours": 168}
+    },
+    "automatic_leave": {
+      "waiting_room_timeout": 600, "everyone_left_timeout": 600,
+      "voice_inactivity_timeout": 600, "in_call_recording_timeout": 14400,
+      "recording_permission_denied_timeout": 600
+    }
+  }'
 ```
 
-If the key is missing or invalid, **hand off to the `getting-started` skill** (it walks the user through signup at https://app.meetstream.ai → API key creation → env var setup → validation). When it returns, resume this skill from Step 1 below.
+- `meetstream` transcription works on every account with no provider key (+$0.10 per
+  hour). Use `deepgram` (`{"model": "nova-3", "language": "en"}`) only if the user saved
+  a Deepgram key.
+- `video_required: false`: notetakers do not need video. Only on request, set it `true`
+  and add `"recording_config": {"video_layout": "speaker_view"}`.
+- `custom_attributes` values are strings; they come back on the webhooks for routing.
 
-If the user explicitly says they have a key and want to skip onboarding, ask them to paste the key, set the env var inline, validate, and proceed.
-
-## What this skill does
-
-When the user wants a notetaker, ask the 4 questions below, then scaffold a complete app - webhook server, bot creation, transcript fetch, LLM summary, delivery - using their tech stack of choice.
-
-## Step 0: After the meeting or live?
-
-If the request does not already say which, ask this once before anything else: should the
-app work **after the meeting** (recording, transcript, notes, summary email) or **live,
-during the call** (live transcript, live captions, coaching cards)? After the meeting →
-this skill. Live → `sales-coach` / `realtime-streaming`. "Record my meetings" alone does not
-say which, and neither does a request that names only the trigger ("a CLI that sends bots to
-meeting links", "connect my calendar"). Do not suggest a voice agent unless the user asks for one.
-
-## Step 1: Requirements (4 questions)
-
-Ask in one message, with sensible defaults pre-filled:
-
-```
-I'll build you a complete meeting notetaker. Quick config:
-
-1. STACK?  Python (Flask/FastAPI) or Node.js (Express/Next.js)? [default: Python + FastAPI]
-
-2. TRIGGER?  How do meetings start the bot?
-   a) Manual API call (your app POSTs /meetings/start with a link)
-   b) Calendar auto-schedule (MeetStream watches Google Calendar)
-   c) From a CLI script you run on-demand
-   [default: manual API call]
-
-3. SUMMARY DELIVERY?  Where should the summary go?
-   (MeetStream gives you the transcript - delivery is your app's job. Pick
-   whichever channel you'll wire up yourself using that channel's own SDK.)
-   a) Email (Resend / SendGrid / SMTP - easiest, no extra setup)
-   b) Generic outbound webhook to your own server (you forward from there)
-   c) Save to a database (Postgres / Supabase / Firestore) for an in-app feed
-   [default: email via Resend]
-
-4. PROVIDERS?  Which post-call transcription provider does your MeetStream account have keys for?
-   Run /meetstream-verify-account first if you're not sure. Otherwise pick:
-   - deepgram (highest accuracy)
-   - assemblyai (best speaker diarization)
-   - meetstream (in-house, depends on account config)
-   [default: deepgram]
+Node (`npm install @meetstream/sdk`):
+```ts
+import { MeetStream } from '@meetstream/sdk';
+const ms = new MeetStream(); // reads MEETSTREAM_API_KEY
+const bot = await ms.bots.create({
+  meeting_link, bot_name: 'Acme Notetaker', video_required: false, callback_url,
+  recording_config: { transcript: { provider: { meetstream: { language: 'en' } } } },
+});
 ```
 
-If they say "you decide" - use the defaults.
-
-## Step 2: Scaffold the project
-
-Create this exact structure (Python + FastAPI + Resend example shown; adapt to their stack):
-
-```
-notetaker/
-├── .env.example          # MEETSTREAM_API_KEY, OPENAI_API_KEY, RESEND_API_KEY, etc.
-├── requirements.txt      # or package.json
-├── README.md             # quickstart for the user
-├── app/
-│   ├── main.py           # FastAPI app entrypoint
-│   ├── meetstream.py     # MeetStream client wrapper
-│   ├── webhook.py        # Webhook handler (returns 2xx fast, queues work)
-│   ├── summary.py        # LLM summary generation
-│   ├── delivery.py       # Email the summary (Resend / SendGrid / SMTP)
-│   └── queue.py          # Idempotency + async queue (use Redis or in-memory)
-└── scripts/
-    ├── start_bot.py      # CLI to send a bot to a meeting link
-    └── reprocess.py      # Re-run summary on a bot_id (useful for testing)
-```
-
-## Step 3: Reference implementation (Python + FastAPI)
-
-`app/main.py`:
+Python (`pip install meetstream-sdk`):
 ```python
-import os
-from fastapi import FastAPI, Request, BackgroundTasks
-from app.webhook import handle_webhook
-from app.meetstream import create_bot
-
-app = FastAPI(title="MeetStream Notetaker")
-
-@app.post("/meetings/start")
-async def start_meeting(meeting_link: str, user_email: str, tenant_id: str):
-    """Trigger: send a bot to a meeting and tag it for delivery later."""
-    bot_id = create_bot(
-        meeting_link=meeting_link,
-        callback_url=f"{os.environ['PUBLIC_URL']}/webhook/meetstream",
-        custom_attributes={"user_email": user_email, "tenant_id": tenant_id},
-    )
-    return {"bot_id": bot_id, "status": "joining"}
-
-@app.post("/webhook/meetstream")
-async def webhook(request: Request, tasks: BackgroundTasks):
-    # ALWAYS return 2xx fast - webhooks are NOT retried on non-2xx
-    payload = await request.json()
-    tasks.add_task(handle_webhook, payload)
-    return {"status": "ok"}
+from meetstream import MeetStream
+ms = MeetStream()  # reads MEETSTREAM_API_KEY
+bot = ms.bots.create({
+    "meeting_link": meeting_link, "bot_name": "Acme Notetaker", "video_required": False,
+    "callback_url": callback_url,
+    "recording_config": {"transcript": {"provider": {"meetstream": {"language": "en"}}}},
+})
 ```
 
-`app/meetstream.py`:
+### 2-3. On the webhook, fetch the transcript
+
 ```python
 import os, requests
-
 BASE = "https://api.meetstream.ai/api/v1"
-HEADERS = {
-    "Authorization": f"Token {os.environ['MEETSTREAM_API_KEY']}",
-    "Content-Type": "application/json",
-}
+H = {"Authorization": f"Token {os.environ['MEETSTREAM_API_KEY']}"}
 
-def create_bot(meeting_link: str, callback_url: str, custom_attributes: dict) -> str:
-    """Send a bot with a post-call provider - Path A lifecycle (bot.done is terminal)."""
-    resp = requests.post(f"{BASE}/bots/create_bot", headers=HEADERS, json={
-        "meeting_link": meeting_link,
-        "bot_name": "Acme Notetaker",
-        "video_required": False,  # audio only: notetakers never need video. Only set True
-                                 # if the user asks, and then add
-                                 # "recording_config": {"video_layout": "speaker_view"}
-        "callback_url": callback_url,
-        "custom_attributes": {k: str(v) for k, v in custom_attributes.items()},  # stringify
-        "recording_config": {
-            # meetstream works on every account with no provider key. Use deepgram
-            # ({"model": "nova-3", "language": "en"}) only if the user saved a Deepgram key.
-            "transcript": {"provider": {"meetstream": {"language": "en"}}},
-            "retention": {"type": "timed", "hours": 168},
-        },
-        "automatic_leave": {
-            "waiting_room_timeout": 600,
-            "everyone_left_timeout": 600,
-            "voice_inactivity_timeout": 600,
-            "in_call_recording_timeout": 14400,
-            "recording_permission_denied_timeout": 600,
-        },
-    })
-    resp.raise_for_status()
-    return resp.json()["bot_id"]
-
-
-def get_transcript(bot_id: str) -> list[dict]:
-    """Canonical stateless fetch via bot_details.transcript_id."""
-    detail = requests.get(f"{BASE}/bots/{bot_id}/detail", headers=HEADERS).json()
-    bd = detail["bot_details"]
-    if bd.get("TranscriptStatus") == "Failed":
-        raise RuntimeError(f"Transcript failed: {bd}")
-    tid = bd.get("transcript_id")
-    if not tid:
-        raise RuntimeError(f"No transcript_id for {bot_id}")
-    resp = requests.get(f"{BASE}/transcript/{tid}/get_transcript", headers=HEADERS)
-    if resp.status_code == 202:
-        raise RuntimeError("Not ready yet")
-    return resp.json()  # top-level array of segments
-
-
-def get_metadata(bot_id: str) -> dict:
-    """Read custom_attributes + meeting info for delivery routing."""
-    detail = requests.get(f"{BASE}/bots/{bot_id}/detail", headers=HEADERS).json()
-    return detail["bot_details"]
+def on_event(event: dict) -> list | None:
+    if event.get("event") != "transcription.processed":
+        return None
+    detail = requests.get(f"{BASE}/bots/{event['bot_id']}/detail", headers=H).json()
+    tid = detail["bot_details"]["transcript_id"]
+    r = requests.get(f"{BASE}/transcript/{tid}/get_transcript", headers=H)
+    if r.status_code == 422:  # the run failed: final, show the reason, do not retry
+        raise RuntimeError(r.json().get("message"))
+    r.raise_for_status()
+    return r.json()  # [{"speaker", "transcript", "start_time", "end_time", "words"}, ...]
 ```
 
-`app/webhook.py`:
-```python
-from app.meetstream import get_transcript, get_metadata
-from app.summary import generate_summary
-from app.delivery import deliver
-from app.queue import is_duplicate
+- `transcription.failed` (or a 422 with `transcript_status: "Failed"` and the reason) is
+  final. Fix the cause (for example the provider key), then re-run with
+  `POST /bots/{bot_id}/transcribe`. Do not retry the same fetch.
+- 202 means still processing: poll with a cap.
+- Dedupe deliveries on `{bot_id, bot_event or event, timestamp}`; there are no
+  redeliveries, so return 2xx first and queue the work. Signatures: `webhooks` skill.
 
-def handle_webhook(payload: dict):
-    bot_id = payload.get("bot_id")
-    event = payload.get("event")
-    # Dedupe on timestamp (present on every event); message is a defensive fallback
-    dedupe = f"{bot_id}:{event}:{payload.get('timestamp') or payload.get('message','')}"
-    if is_duplicate(dedupe):
-        return
+### 4. Summarize and deliver
 
-    if event == "transcription.processed":
-        # Path A success - fetch + summarize + deliver
-        segments = get_transcript(bot_id)
-        meta = get_metadata(bot_id)
-        custom = meta.get("custom_attributes", {})
-        summary = generate_summary(segments, meeting_link=meta.get("MeetingLink"))
-        deliver(
-            summary=summary,
-            transcript=segments,
-            user_email=custom.get("user_email"),
-            tenant_id=custom.get("tenant_id"),
-        )
-    elif event == "transcription.failed":
-        # Log + alert (don't retry - transcript_id stays Failed; would need /transcribe with different provider)
-        alert_ops(bot_id, payload.get("message"))
-    elif event == "bot.stopped" and payload.get("bot_status") != "Stopped":
-        # NotAllowed / Denied / Error - meeting never recorded
-        alert_user(bot_id, f"Bot couldn't join: {payload.get('bot_status')}")
-```
+Join the segments as `speaker: transcript` lines and give them to the user's model.
+A good brief: decisions, action items with owners and dates, open questions. See
+`meeting-brief` for the format and talk-time.
 
-`app/summary.py`:
-```python
-import os
-from openai import OpenAI
+From the user's own agent (no code): send the bot with the `create_bot` MCP tool, then
+use `get_transcript` (takes `bot_id`) and summarize in the chat.
 
-client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+## Options
 
-SYSTEM = """You are a meeting analyst. From the transcript, extract:
-1. Key Decisions (bulleted)
-2. Action Items (with owner + deadline if mentioned)
-3. Open Questions
-4. 3-sentence Executive Summary
+- **Calendar trigger:** bots join every calendar meeting: `calendar-automation`.
+- **Per-speaker audio:** `"audio_separate_streams": true`, then `get_audio_streams`
+  (`recordings-and-media`).
+- **Live notes during the call:** `realtime-streaming`.
 
-Be concise. Use the speaker names as-is."""
+Full example apps are optional references, not part of this plugin: "Tutorials and Sample
+Apps" (https://docs.meetstream.ai/tutorials/sample-apps) and the labs repo
+(https://github.com/meetstream-ai/labs).
 
-def generate_summary(segments: list[dict], meeting_link: str | None = None) -> str:
-    formatted = "\n".join(f"{s['speaker']}: {s['transcript']}" for s in segments)
-    resp = client.chat.completions.create(
-        model="gpt-4o",
-        messages=[
-            {"role": "system", "content": SYSTEM},
-            {"role": "user", "content": f"Meeting transcript:\n\n{formatted}"},
-        ],
-    )
-    return resp.choices[0].message.content
-```
+## Latest docs
 
-`app/delivery.py` (Resend email - swap for SendGrid / SMTP / your own SDK as needed; MeetStream is delivery-agnostic):
-```python
-import os, resend
+- Create your first bot: https://docs.meetstream.ai/guides/get-started/create-your-first-bot
+- Post-call transcription: https://docs.meetstream.ai/guides/transcription-recordings/post-call-transcription
+- Webhooks and events: https://docs.meetstream.ai/guides/webhooks/webhooks-and-events
+- Tutorials and sample apps: https://docs.meetstream.ai/tutorials/sample-apps
 
-resend.api_key = os.environ["RESEND_API_KEY"]
-
-def deliver(summary: str, transcript: list[dict], user_email: str, tenant_id: str):
-    resend.Emails.send({
-        "from": "notes@acme.com",
-        "to": user_email,
-        "subject": "Your meeting summary is ready",
-        "html": f"<h1>Meeting Summary</h1><pre>{summary}</pre>",
-    })
-```
-
-## Step 4: Tell the user what to do next
-
-After scaffolding, hand them this checklist:
-
-```
-✅ Notetaker scaffolded at ./notetaker/
-
-Next steps:
-  1. cp .env.example .env  (fill in MEETSTREAM_API_KEY, OPENAI_API_KEY, RESEND_API_KEY, PUBLIC_URL)
-  2. pip install -r requirements.txt  (or npm install)
-  3. uvicorn app.main:app --reload --port 3000
-  4. In another terminal: ngrok http 3000   (note the https URL)
-  5. Set PUBLIC_URL=<your ngrok url> in .env, restart server
-  6. Test: python scripts/start_bot.py "https://meet.google.com/abc-defg-hij" you@email.com
-  7. Watch your webhook logs - you should see lifecycle events, then a summary email after the meeting ends.
-
-🔧 Verify your account first if any provider call fails:
-   Use the verify-account skill to check which transcription providers are configured.
-
-📚 Reference: see the `meetstream` skill for full API details, lifecycle events, and edge cases.
-```
-
-## Defaults that matter (live-verified)
-
-- `automatic_leave` defaults: 600/600/600/14400/300 (don't shorten unless you have a reason)
-- `recording_config.retention.hours: 168` (7 days) - enough for the user to re-run summary if needed
-- Always set `callback_url` - without it you have to poll
-- Always stringify `custom_attributes` values defensively
-- Webhook handler returns 2xx FIRST, then queues - non-2xx means lost event
-
-## If the user wants live transcripts instead of post-call
-
-This is a different product (live captions / real-time agent). Defer to the `sales-coach` skill, or read the `meetstream` skill's "STEP 4A - Live transcription path" decision tree.
+For the latest details, fetch the page with `.md` appended, read https://docs.meetstream.ai/llms.txt, or connect the docs MCP server at https://docs.meetstream.ai/_mcp/server.

@@ -151,10 +151,11 @@ Two failure modes to check before debugging your code:
 | Bot never joined | `bot.stopped` with `bot_event` `bot.notallowed` or `bot.denied` |
 | Duplicate processing | No dedupe key, or a slow handler |
 
-## Reference
+## Latest docs
 
-- [Webhooks and events](https://docs.meetstream.ai/guides/webhooks/webhooks-and-events)
-- [Webhook signature verification](https://docs.meetstream.ai/guides/webhooks/webhook-signature-verification)
-- [Local webhook server](https://docs.meetstream.ai/guides/webhooks/local-webhook-server)
-- [Workspace webhooks](https://docs.meetstream.ai/guides/webhooks/workspace-webhooks)
-- [Errors](https://docs.meetstream.ai/errors)
+- Webhooks and events: https://docs.meetstream.ai/guides/webhooks/webhooks-and-events
+- Webhook signature verification: https://docs.meetstream.ai/guides/webhooks/webhook-signature-verification
+- Workspace webhook endpoints: https://docs.meetstream.ai/guides/webhooks/workspace-webhooks
+- Local webhook server (tunnels): https://docs.meetstream.ai/guides/webhooks/local-webhook-server
+
+For the latest details, fetch the page with `.md` appended, read https://docs.meetstream.ai/llms.txt, or connect the docs MCP server at https://docs.meetstream.ai/_mcp/server.

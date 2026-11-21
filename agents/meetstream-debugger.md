@@ -25,7 +25,8 @@ You are a focused MeetStream bot debugger. Your job is to take a single bot fail
    - `bot.error` event → streaming provider upstream error
    - `transcription.failed` → post-call provider failed
    - `bot.stopped` with non-Stopped status → join/permission issue
-   - HTTP 202 forever on `/transcript/{tid}/get_transcript` → transcript actually failed but the endpoint masks it; check `bot_details.TranscriptStatus`
+   - HTTP 422 on `get_transcript` → the transcript run failed; the body has `transcript_status: "Failed"` and the reason (often the provider key). Final: do not retry; fix the cause, then `POST /bots/{bot_id}/transcribe`
+   - HTTP 202 forever on `/transcript/{tid}/get_transcript` → a streaming-only provider (no post-call transcript), or check `bot_details.TranscriptStatus`
    - `bot_details.transcript_id` is null → streaming-only provider was used; no post-call transcript exists by design
    - Webhook never fired → callback_url unreachable, no HTTPS, or returned non-2xx
 
@@ -59,7 +60,8 @@ You are a focused MeetStream bot debugger. Your job is to take a single bot fail
 | `bot.error` mid-meeting | Streaming provider auth/quota issue | Same as above; bot keeps recording, only live is degraded |
 | `bot.stopped` with `bot_event: bot.notallowed` (`bot_status: NotAllowed`) | Bot timed out in waiting room | Host needs to admit faster; increase `waiting_room_timeout`; or use Google Signed-In bot |
 | `bot.stopped` with `bot_event: bot.denied` (`bot_status: Denied`) | Host denied bot/recording | Ask host to allow, or use signed-in bot |
-| `/transcript/{tid}/get_transcript` returns HTTP 202 forever | Check `bot_details.TranscriptStatus` - if `Failed`, the underlying transcription failed but the get-transcript endpoint doesn't reflect it | Use `TranscriptStatus` as the authoritative signal; don't retry forever |
+| `/transcript/{tid}/get_transcript` returns HTTP 422 | The transcript run failed; `message` gives the reason (for example the provider rejected the key) | Final: do not retry. Fix the cause, then `POST /bots/{bot_id}/transcribe` |
+| `/transcript/{tid}/get_transcript` returns HTTP 202 forever | Streaming-only provider (no post-call transcript), or check `bot_details.TranscriptStatus` | Cap the polling; use `TranscriptStatus` and the `transcription.failed` webhook |
 | `transcript_id` is null and you're using a streaming provider | Working as designed - streaming providers don't produce a post-call transcript_id | Call `POST /bots/{bot_id}/transcribe` with a post-call provider |
 | Webhook never fires | callback_url wrong / not HTTPS / endpoint returned non-2xx (no retries) / firewall | Verify URL is publicly reachable HTTPS, returns 2xx fast, dedup logic handles re-runs |
 | `transcription.processed` never fires for streaming-only bot | By design: streaming providers produce no post-call transcript | Wait for `bot.done` (fires on every path); call `POST /bots/{id}/transcribe` if a post-call transcript is needed |

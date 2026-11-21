@@ -357,6 +357,10 @@ Query: `?raw=true` to retrieve raw unformatted provider output.
 
 `?raw=true` returns a different shape (`GetRawTranscriptionSchema`) with `id` and provider-specific structure.
 
+Other status codes:
+- **202** `{"message": "Transcript is still being processed. ..."}`: poll again with a cap (a streaming-only bot never gets a post-call transcript).
+- **422** (API v1.10.0): the run failed. Body `{"message": "Transcript processing failed: <reason>", "transcript_status": "Failed", "transcript_id": "..."}`, for example the provider rejected the API key or the usage limit was reached. Final: do not retry. Fix the cause, then `POST /bots/{bot_id}/transcribe`.
+
 ---
 
 ### GET `/bots/{bot_id}/transcriptions`
@@ -723,13 +727,15 @@ All MIA operations use the same path `/api/v1/mia` (singular). The HTTP method d
 **Optional:**
 - `voice` (object, **pipeline only**)
 - `transcriber` (object, **pipeline only**)
-- `agent` (object) - `response_type` (`"voice"` / `"chat"` / `"action"`, default `"voice"`), `first_message` (string), `mcp_servers` (array)
+- `agent` (object) - `response_type` (`"voice"` / `"chat"` / `"action"`, default `"voice"`), `first_message` (string), `mcp_servers` (array), `tools` (`current_time`, `weather_now`, `screen`: Google Meet only, vision-capable model), `desktop` (Google Meet, with `screen`, opt-in), `chat_input`, `quiet_actions`, `speak_only_when_asked` (pipeline) - all default `false`
 - `audio` (object) - `sample_rate`, `num_channels`
 - `wake_word` (object, **pipeline only**) - `enabled` (bool), `words` (array or comma-separated string), `timeout` (seconds, default 30)
 - `avatar` (object) - `enabled` (bool), `provider` (`"anam"`), `avatar_id` (required when provider is anam)
 
+**Keys (`key_source`, pipeline sections `transcriber`, `model`, `voice`):** `"meetstream"` = MeetStream's inbuilt key (pipeline mode only, no `api_key` in that section; inbuilt keys cover OpenAI and Deepgram today); `"user"` or not sent = the user's own key from dashboard Integrations. `400 MeetStream-managed keys are not available for <section>. Use your own key.` means inbuilt keys are not on for the account yet: use own keys, do not retry. Price: bot + $0.25 per hour agent infrastructure (+ the models picked with inbuilt keys). https://docs.meetstream.ai/guides/mia/pricing-and-keys
+
 **`model` schema (pipeline):**
-- `provider` - `"openai"` or `"anthropic"`
+- `provider` - `"openai"`, `"anthropic"`, `"google"`, `"xai"`, or `"local_agent"` (the user's own agent through the MeetStream Agent Kit: `model.local_agent` = `url` (https, required), `label`, `access` (`readonly` default, `confirm`, `full`), `require_code` (default true), `owner_only` (default true), `owner_names` / `owner_ids`, `timeout_s` (10-600, default 120); `model.model` and `system_prompt` optional; test with `GET /api/v1/mia?agent_config_id=<id>&check=local_agent`)
 - `model` - e.g. `"gpt-4.1"`, `"gpt-4.1-mini"`; for Anthropic e.g. `"claude-haiku-5-5"`, `"claude-sonnet-5-5"`, `"claude-opus-5-5"`
 - `system_prompt` - defines personality
 - `temperature` (optional, 0–2; 0–1 for Anthropic)
@@ -1106,6 +1112,8 @@ Retry-After: 37
 {"error": "rate_limit_exceeded", "message": "...", "limit": 5, "window": "minute", "retry_after": 37}
 ```
 
+**Credits:** `create_bot` returns 403 `{"error": "Low credits please recharge", "active_bots": 1}` when credits run out; add credits at https://app.meetstream.ai/billing and do not retry before that. `GET /api/v1/billing/balance` (API v1.10.0, read only) returns the prepaid balance where it is on; "not available" or 404 means it is not on for the account yet, so use the billing page.
+
 `window` is `"minute"` or `"hour"`. Wait `Retry-After` seconds and resend. Concurrent creates with the same `Idempotency-Key` or `deduplication_key` make one bot; a loser may get 409 with `Retry-After: 2` while the first is still saving.
 
 **400s on `create_bot`:** a bot with `audio_required: false` and `video_required: false` and no other job; Google Meet / Teams `video_separate_streams: true` without `video_required: true`; a `bot_image_url` that is not an https:// image URL; a Zoom link with no meeting number (`invalid_meeting_link: ...`); Zoom `meeting_captions` on a bot that uses the user's own Zoom app; bad `zoom.use_own_app`, `storage_id`, `bot_camera_stream` or Smallest `model` values; `recording_permission_denied_timeout` outside 60–600. A `meeting_link` with `http://` is upgraded to `https://`.
@@ -1291,7 +1299,7 @@ Provided via `live_audio_required: { "websocket_url": "wss://..." }`. Bot connec
 
 Connection closes with code `1000` when bot leaves.
 
-Decoder implementations in Python / Node.js / Go / Java are in the docs and `code-patterns-*.md`.
+Decoder implementations in Python / Node.js / Go / Java: https://docs.meetstream.ai/guides/websockets/real-time-audio-streaming
 
 ---
 

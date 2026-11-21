@@ -182,10 +182,12 @@ Check these first - they look like platform problems and are not:
 - The bot did join, but a streaming-only provider means there is no post-call
   transcript to find.
 
-## Reference
+## Latest docs
 
-- Platform guides: [Zoom](https://docs.meetstream.ai/guides/platforms/zoom) · [Google Meet](https://docs.meetstream.ai/guides/platforms/google-meet) · [Microsoft Teams](https://docs.meetstream.ai/guides/platforms/microsoft-teams)
-- [Google Meet lobby admission](https://docs.meetstream.ai/guides/app-integrations/gmeet-lobby-admission)
-- Signed-in bots: [Google](https://docs.meetstream.ai/guides/app-integrations/google-signed-in-bots) · [Microsoft Teams](https://docs.meetstream.ai/guides/app-integrations/teams-signed-in-bots)
-- [Zoom authenticated bots (ZAK and OBF)](https://docs.meetstream.ai/guides/app-integrations/zoom-authenticated-bots) · [Zoom app production submission](https://docs.meetstream.ai/guides/app-integrations/zoom-app-production-submission)
-- [Automatic leave configuration](https://docs.meetstream.ai/guides/features/automatic-leave-configuration)
+- Zoom: https://docs.meetstream.ai/guides/platforms/zoom
+- Google Meet: https://docs.meetstream.ai/guides/platforms/google-meet
+- Microsoft Teams: https://docs.meetstream.ai/guides/platforms/microsoft-teams
+- Zoom ZAK and OBF: https://docs.meetstream.ai/guides/app-integrations/zoom-authenticated-bots
+- Automatic leave: https://docs.meetstream.ai/guides/features/automatic-leave-configuration
+
+For the latest details, fetch the page with `.md` appended, read https://docs.meetstream.ai/llms.txt, or connect the docs MCP server at https://docs.meetstream.ai/_mcp/server.
