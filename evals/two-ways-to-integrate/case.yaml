@@ -16,7 +16,7 @@ graders:
   pattern: 'Agents API'
 - name: bridge-before-agents-api
   type: regex
-  pattern: 'bridge[\s\S]*Agents API'
+  pattern: '(bridge server|own stack)[\s\S]*Agents API'
   flags: i
 - name: no-bot-sent
   type: tool_used

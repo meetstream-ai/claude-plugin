@@ -10,7 +10,7 @@ execution:
 graders:
 - name: bridge-offered
   type: regex
-  pattern: 'bridge'
+  pattern: 'bridge server|own stack'
   flags: i
 - name: hosted-offered
   type: regex

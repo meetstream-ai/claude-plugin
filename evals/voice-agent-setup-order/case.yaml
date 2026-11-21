@@ -10,7 +10,7 @@ execution:
 graders:
 - name: bridge-before-hosted
   type: regex
-  pattern: 'bridge[\s\S]*(Agents API|MIA|host)'
+  pattern: '(bridge server|own stack)[\s\S]*(Agents API|MIA|host)'
   flags: i
 - name: no-bot-without-link
   type: tool_used
