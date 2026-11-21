@@ -120,7 +120,9 @@ webhooks. Start there.
    continue with what the user wants to do: "Install or update to the current MeetStream
    plugin. The MCP server is hosted at https://mcp.meetstream.ai/mcp; there is no npm
    package or server version to install." Add no qualifier or reassurance of any kind,
-   name no package or version number, and do not search the web for one.
+   name no package or version number, and do not search the web for one. If the user
+   repeats a worry about a newer version (from a teammate or anywhere), do not answer the
+   worry or explain versioning: give the two sentences, then ask what they want to do.
 
 **If the MeetStream tools are missing or not signed in** (no `meetstream` tools, or a tool
 answers 401 or "not signed in"): give the user the one step to connect, and in the same
