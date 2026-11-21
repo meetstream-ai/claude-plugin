@@ -21,7 +21,7 @@ Build feedback (MS-2305, 21 Nov 2026, 4 harnesses live): participant-keyed trans
 full status flow (MediaProcessing, Done) and bounded polling; 0x04 frames on Google Meet;
 pipeline wake word on by default; commands need InMeeting; remove the bot on exit; the Agent
 Kit pairing token is dashboard-only; Cursor and OpenCode through serve --command; inbuilt keys
-per mode ("Pipeline: OpenAI + Deepgram. Realtime: OpenAI only.") and mia_managed; no tunnels
+pipeline-only with own OpenAI key for realtime (Sid, 22 Nov) and mia_managed; no tunnels
 or long-running processes unless asked; OpenCode and Cursor CLI setup.
 Usage: python3 evals/check_descriptions.py [repo_root]   (exit 1 on any miss)
 """
@@ -59,7 +59,7 @@ MUST = {
                          ("bridge: both sockets", r"live_audio_required.{0,80}socket_connection_url"),
                          ("bridge: bot price only", r"bot price only"),
                          ("hosted (flow 3): inbuilt keys first", r"MeetStream's inbuilt keys.{0,80}key_source.{0,20}meetstream"),
-                         ("inbuilt providers", r"OpenAI and Deepgram|Pipeline: OpenAI \+ Deepgram\. Realtime: OpenAI only"),
+                         ("inbuilt providers", r"OpenAI and Deepgram|pipeline mode only: Deepgram \(speech-to-text\) and OpenAI \(LLM and voice\)"),
                          ("agent infrastructure price", r"\$0\.25 per hour"),
                          ("not-on fallback", r"not available.{0,160}own (provider )?keys"),
                          ("own keys after inbuilt keys", r"then (the user's )?own (provider )?keys"),
@@ -325,7 +325,8 @@ def signup_misses():
     return misses
 
 
-PER_MODE = r"Pipeline: OpenAI \+ Deepgram\. Realtime: OpenAI only\."
+PER_MODE = r"Inbuilt keys work in pipeline mode only: Deepgram \(speech-to-text\) and OpenAI \(LLM and voice\)\. Realtime\s+mode runs on OpenAI and needs your own OpenAI key\. Any other provider: bring your own key\."
+OLD_PER_MODE = re.compile(r"Realtime: OpenAI only")
 BUILD_BODY = {
     "notetaker": [("transcript: participant.name", r"participant\.name"), ("transcript: words[].text", r"words\[\]\.text"),
                   ("poll until Done", r"MediaProcessing.{0,200}Done"), ("remove the bot on exit", r"remove_bot")],
@@ -370,6 +371,15 @@ def build_misses():
                 if hit:
                     misses += 1
                     print(f"MISS {os.path.relpath(fp, ROOT)}:{n}: stale shape '{hit.group(0)}'")
+    for base, _, files in os.walk(ROOT):
+        if "/.git" in base or "/evals" in base:
+            continue
+        for name in files:
+            if name.endswith(".md") and name != "CHANGELOG.md":
+                fp = os.path.join(base, name)
+                if OLD_PER_MODE.search(open(fp, encoding="utf-8").read()):
+                    misses += 1
+                    print(f"MISS {os.path.relpath(fp, ROOT)}: old realtime inbuilt-keys wording")
     for rel, pattern in (("INSTALL_FOR_AGENTS.md", r"OpenCode"), ("README.md", r"OpenCode"), ("setup", r"opencode\)"),
                          ("INSTALL_FOR_AGENTS.md", r"cursor-agent"), ("INSTALL_FOR_AGENTS.md", r"OPENCODE_DISABLE_CLAUDE_CODE")):
         fp = os.path.join(ROOT, rel)

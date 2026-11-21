@@ -126,7 +126,7 @@ webhooks. Start there.
      and the bridge must stay on for the whole call.
    - 3. **Hosted Agents API (MIA)**: bot price + $0.25 per hour agent infrastructure + the
      models picked. 3a MeetStream's inbuilt keys (`"key_source": "meetstream"`).
-     Pipeline: OpenAI + Deepgram. Realtime: OpenAI only. Read `mia_managed` from `GET /api/v1/mia` and use only what it lists. If the API says MeetStream-managed keys are not available, inbuilt
+     Inbuilt keys work in pipeline mode only: Deepgram (speech-to-text) and OpenAI (LLM and voice). Realtime mode runs on OpenAI and needs your own OpenAI key. Any other provider: bring your own key. Read `mia_managed` from `GET /api/v1/mia` and use only what it lists. If the API says MeetStream-managed keys are not available, inbuilt
      keys are not on for the account yet: go on with 3b, the user's own provider keys
      (the provider bills model usage). Never retry in a loop. The hosted bot takes only
      `agent_config_id`, never the bridge sockets.

@@ -1,18 +1,16 @@
 ---
 name: mia-voice-agents
 description: >
-  Agents that talk in a meeting ("voice agent", "AI agent in the call",
-  "bot that talks", "MIA"). Stack not said: ask once, own stack or hosted?
-  2a) bridge server first: the bot opens live_audio_required.websocket_url +
-  socket_connection_url.websocket_url to your server; any STT, LLM, TTS,
-  local too; bot price only. 2b) Yes: your own agent (Claude Code, Codex, Hermes, OpenClaw and others) can be the voice agent's brain through `model.provider: "local_agent"` and the MeetStream Agent Kit, with a
+  Agents that talk in a meeting ("voice agent", "bot that talks", "MIA").
+  Stack not said: ask own stack or hosted? 2a) bridge server first: the bot
+  opens live_audio_required + socket_connection_url to your server; any
+  models, local too; bot price only. 2b) Yes: your own agent (Claude Code, Codex, Hermes, OpenClaw and others) can be the voice agent's brain through `model.provider: "local_agent"` and the MeetStream Agent Kit, with a
   warning: meeting speech reaches an agent with access to their computer
-  (prompt injection); the computer must stay on for the whole call; pairing
-  token is dashboard-only. 3) hosted Agents API (MIA): MeetStream's inbuilt
-  keys (key_source "meetstream"; Pipeline: OpenAI + Deepgram. Realtime:
-  OpenAI only; check mia_managed), then own provider keys; bot + $0.25 per
-  hour + models. If not available: go on with own keys, never retry. Hosted
-  bot: only agent_config_id. Wake word on by default. Grok/Gemini: xai/google.
+  (prompt injection); the computer must stay on for the whole call. 3) hosted Agents API (MIA): MeetStream's inbuilt
+  keys (key_source "meetstream"; Inbuilt keys work in pipeline mode only: Deepgram (speech-to-text) and OpenAI (LLM and voice). Realtime mode runs on OpenAI and needs your own OpenAI key. Any other provider: bring your own key. Check mia_managed), then own provider
+  keys; bot + $0.25 per hour + models. If not available: own keys, never
+  retry. Hosted bot: only agent_config_id. Grok:
+  xAI.
 ---
 
 # Agents in meetings (voice agents; Agents API, API name MIA)
@@ -39,7 +37,7 @@ infrastructure work.
 |---|---|---|
 | 2a. Bridge server (your own stack, recommended first) | Runs a server that the bot connects to with two WebSockets: live audio in (`live_audio_required.websocket_url`) and the control socket (`socket_connection_url.websocket_url`) to send audio, chat, images and interrupts back. Any speech-to-text, LLM and voice, local or hosted (for example Parakeet for local speech-to-text, a local LLM, a local TTS). | Bot price only. MeetStream charges no agent infrastructure and no model tokens. |
 | 2b. Your own agent as the brain | Their own agent (Claude Code, Codex, Hermes, OpenClaw and others) writes what the voice agent says, through `model.provider: "local_agent"` and the MeetStream Agent Kit. Always with the warning below. | Bot price + $0.25 agent infrastructure. No model tokens for the agent's reasoning. |
-| 3. Hosted Agents API (MIA) | MeetStream hosts the agent. 3a: MeetStream's inbuilt keys (`"key_source": "meetstream"`; Pipeline: OpenAI + Deepgram. Realtime: OpenAI only). 3b: their own provider keys (OpenAI, Anthropic, Deepgram, ElevenLabs and the others in the docs). | Bot price + $0.25 agent infrastructure + the models picked (with own keys, the provider bills model usage). |
+| 3. Hosted Agents API (MIA) | MeetStream hosts the agent. 3a: MeetStream's inbuilt keys (`"key_source": "meetstream"`). Inbuilt keys work in pipeline mode only: Deepgram (speech-to-text) and OpenAI (LLM and voice). Realtime mode runs on OpenAI and needs your own OpenAI key. Any other provider: bring your own key. 3b: their own provider keys (OpenAI, Anthropic, Deepgram, ElevenLabs and the others in the docs). | Bot price + $0.25 agent infrastructure + the models picked (with own keys, the provider bills model usage). |
 
 Bot price: $0.35 per recording hour ($0.25 at volume). The MeetStream transcription
 add-on is $0.10 per hour and is waived with your own provider key. Give the price as these
@@ -195,12 +193,11 @@ Optional references: the MIA templates in "Tutorials and Sample Apps"
 ### 3a. MeetStream's inbuilt keys
 
 Inbuilt keys are the providers MeetStream runs in its own infrastructure.
-Pipeline: OpenAI + Deepgram. Realtime: OpenAI only.
-In pipeline mode, Deepgram is the speech-to-text and OpenAI the LLM and the voice; in
-realtime mode, OpenAI realtime models. Any other provider: bring your own key (3b).
+Inbuilt keys work in pipeline mode only: Deepgram (speech-to-text) and OpenAI (LLM and voice). Realtime mode runs on OpenAI and needs your own OpenAI key. Any other provider: bring your own key.
+(3b covers your own keys.)
 
-Set `"key_source": "meetstream"` on each section that uses an inbuilt key (pipeline:
-`transcriber`, `model`, `voice`; realtime: `model`), and send no `api_key` in that section.
+Set `"key_source": "meetstream"` on each pipeline section that uses an inbuilt key
+(`transcriber`, `model`, `voice`), and send no `api_key` in that section.
 Sections can mix: one section on an inbuilt key, another on the user's own key.
 
 **Your account's list is the source of truth.** Accounts can show a different set of
@@ -220,7 +217,7 @@ Configure > Integrations (Models, Voice, Transcription), remove `key_source` (or
 gets the same answer.
 
 Other `400`s: `MeetStream-managed keys are available only in pipeline mode.` (realtime
-inbuilt keys are not on for the account yet: use pipeline mode or your own OpenAI key);
+mode needs your own OpenAI key; or switch to pipeline mode);
 an `api_key` in a section with
 `key_source: "meetstream"`; a provider or model with no inbuilt key (the message lists the
 ones you can use).

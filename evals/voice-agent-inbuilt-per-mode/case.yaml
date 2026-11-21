@@ -1,6 +1,6 @@
 schema_version: "1.1"
 name: voice-agent-inbuilt-per-mode
-description: "Sid, 21 Nov 2026: inbuilt keys per mode. Pipeline: OpenAI + Deepgram (Deepgram speech-to-text, OpenAI LLM and voice). Realtime: OpenAI only. Any other provider: own key. Read GET /api/v1/mia mia_managed for the account and fall back to own keys if a section is refused. No catalog prices."
+description: "Sid, 22 Nov 2026 (after a live probe): inbuilt keys work in pipeline mode only: Deepgram (speech-to-text) and OpenAI (LLM and voice). Realtime mode runs on OpenAI and needs the user's own OpenAI key. Any other provider: own key. Read GET /api/v1/mia mia_managed and fall back to own keys if a section is refused. No catalog prices."
 tags: [builds, voice-agent, keys]
 runs: 1
 execution:
@@ -11,6 +11,10 @@ graders:
 - name: mia-managed-check
   type: regex
   pattern: 'mia_managed'
+- name: realtime-own-openai-key
+  type: regex
+  pattern: '(own|your) OpenAI key'
+  flags: i
 - name: no-catalog-price
   type: regex
   pattern: '\$0\.(4|45|6|75|05|1|2)\b'
