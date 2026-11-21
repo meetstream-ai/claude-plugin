@@ -1,0 +1,16 @@
+schema_version: "1.1"
+name: voice-agent-pricing-inbuilt
+description: "Voice agent price and keys: MeetStream's inbuilt keys (OpenAI and Deepgram) are the default, $0.25 per hour agent infrastructure on top of the bot plus the models picked; own keys as the alternative; no invented module prices."
+tags: [round5, voice-agent]
+runs: 1
+execution:
+  prompt: "I want a voice agent in my Google Meet calls. Do I need my own OpenAI or Deepgram API key, and what does it cost per hour?"
+  max_turns: 10
+  allowed_tools: [Read, Glob, Grep, Skill]
+graders:
+- name: agent-infra-price
+  type: regex
+  pattern: '\$0\.25'
+- name: key-source-field
+  type: regex
+  pattern: 'key_source'

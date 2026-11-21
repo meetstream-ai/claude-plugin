@@ -1,0 +1,13 @@
+schema_version: "1.1"
+name: transcript-422-no-retry
+description: "get_transcript 422 is a final failure with status and reason: stop retrying, show the reason, fix the provider, re-run the transcription."
+tags: [round5, transcripts]
+runs: 1
+execution:
+  prompt: "My Python worker calls GET https://api.meetstream.ai/api/v1/bots/{bot_id}/get_transcript and now gets HTTP 422 with {\"message\": \"Transcript processing failed: provider rejected the API key\", \"transcript_status\": \"Failed\", \"transcript_id\": \"t-9\"}. It retries every 10 seconds forever. How should my code handle this? Short answer with the code change."
+  max_turns: 8
+  allowed_tools: [Read, Glob, Grep, Skill]
+graders:
+- name: mentions-422
+  type: regex
+  pattern: '422'

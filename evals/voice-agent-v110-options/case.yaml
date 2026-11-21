@@ -1,0 +1,19 @@
+schema_version: "1.1"
+name: voice-agent-v110-options
+description: "v1.10.0 agent options: chat_input, speak_only_when_asked, tools screen on Google Meet with a vision-capable model."
+tags: [round5, voice-agent]
+runs: 1
+execution:
+  prompt: "My voice agent on Google Meet should answer questions people type to it in the meeting chat, stay silent unless someone says its name, and show and click through a web page for everyone. Which agent config fields do I set? Give the JSON for the agent and model blocks; no questions."
+  max_turns: 8
+  allowed_tools: [Read, Glob, Grep, Skill]
+graders:
+- name: chat-input
+  type: regex
+  pattern: 'chat_input'
+- name: speak-only-when-asked
+  type: regex
+  pattern: 'speak_only_when_asked'
+- name: screen-tool
+  type: regex
+  pattern: '\x22tools\x22\s*:\s*\[[^\]]*\x22screen\x22'
