@@ -1,0 +1,24 @@
+schema_version: "1.1"
+name: signup-whatsapp-notetaker
+description: "Signup prompt (anonymised): notetaker for WhatsApp group calls. WhatsApp calls are in Beta: enabled per workspace, pair a number under Integrations > WhatsApp, call links, post-call deepgram only, no per-participant media or chat; then the usual transcript, summary and delivery."
+tags: [signups, whatsapp]
+runs: 1
+execution:
+  prompt: "notetaker for whatsapp group calls that sends the minutes after the call. Don't send a bot."
+  max_turns: 10
+  allowed_tools: [Read, Glob, Grep, Skill]
+graders:
+- name: beta-named
+  type: regex
+  pattern: '[Bb]eta'
+- name: pairing-step
+  type: regex
+  pattern: 'Integrations.{0,12}WhatsApp|whatsapp\.account_id|[Pp]air'
+- name: deepgram-only
+  type: regex
+  pattern: 'deepgram'
+- name: no-bot-sent
+  type: tool_used
+  tool: mcp__plugin_meetstream_meetstream__create_bot
+  min: 0
+  max: 0

@@ -2,6 +2,28 @@
 
 All notable changes to the MeetStream Claude Code plugin.
 
+## [2.10.0] - 2026-11-21
+
+Closes the coverage gaps found in what new developers ask for (MS-2305).
+
+### Added
+- **Agent recipes by job** (`mia-voice-agents`): name-addressed assistant (`speak_only_when_asked`, wake word, `bypass_below_participants`), standup facilitator (`speaker_aware_responses`, decisions after the call), AI interviewer (one question at a time, `agent_config_params`, wake word off, recording and transcript), practice or role-play persona, demo or FAQ agent (MCP servers, custom functions, `screen`). Each names the flow: your bridge server (2a) or the hosted Agents API (3). Pipeline agents start with a wake word on by default; the skill now says so.
+- **Grok and Gemini:** "make Grok join my call" routes to a voice agent with the `xai` or `google` provider (realtime or pipeline, own provider key), or to that model behind your bridge server. Not a local agent.
+- **Other languages:** voice agents (`transcriber.language`, a multilingual voice) and notetaker transcripts (per-provider language fields and codes).
+- **New skill `for-your-customers`:** bots in your customers' meetings: `custom_attributes` per tenant, webhook routing, list bots per tenant, a calendar connection per end user, `storage_id` per customer, per-speaker audio, Zoom for customer meetings, the bot-creation rate limit (429, `Retry-After`, `join_at` 10 or more minutes ahead) and idempotency.
+- **WhatsApp calls (Beta)** in `platform-setup`: pairing, links, limits (post-call `deepgram` only; no chat or per-participant files). Supported platforms are stated: Zoom, Google Meet, Microsoft Teams, WhatsApp (Beta); Webex, Slack huddles and others return 400. Webinars must be hosted as regular meetings.
+- Migration note for MeetingBaaS, Attendee and in-house bots (`migrate-from-recall`, `getting-started`).
+
+### Changed
+- **First bot:** `notetaker`, `getting-started` and `join-meeting` give the Zoom step before the first Zoom bot (the customer's Zoom app with OBF or ZAK, with the setup guides) and admission (someone must admit the bot; `automatic_leave.waiting_room_timeout`; what `NotAllowed` and `Denied` mean and how to fix them). `troubleshooting` gives the same fixes.
+- `notetaker` says where invitee emails come from (`calendar_email` on participants with a connected calendar) and offers calendar auto-join as the next step.
+
+### Fixed
+- `references/api-reference.md` and the core skill no longer list `sendchat`, which is not in the public docs.
+
+### Evals
+- Nine cases from anonymised signup prompts (`signup-*`). `evals/check_descriptions.py` checks the Zoom step, admission, recipes, xAI and Google configs, languages, WhatsApp, the new skill, the migration note and that no skill names `sendchat`.
+
 ## [2.9.0] - 2026-11-21
 
 The three flows: recording first; for an agent in the meeting, your own stack on a bridge server first, then the hosted Agents API.

@@ -39,6 +39,13 @@ audio is unaffected by that rule and stays a good default suggestion.
 
 You cannot add this after the fact; the bot has to be told before it records.
 
+Per-participant audio works on Zoom, Google Meet and Microsoft Teams (up to 16 speakers,
+WebM/Opus files). On Teams the bot separates speakers from one mixed track, so overlapping
+speech goes to one speaker. Zoom bots join through your Zoom app with an OBF or ZAK token;
+set that up before the first Zoom bot (`platform-setup`). WhatsApp calls (Beta) have no
+per-participant files. Recording audio only for your own transcription: send
+`"video_required": false`, then fetch the files after `audio.processed`.
+
 `GET /bots/{bot_id}/get_audio_streams` (REST) returns a **flat top-level array**, one item
 per audio segment. The speaker is `participant.name`; the file is `download_url`:
 

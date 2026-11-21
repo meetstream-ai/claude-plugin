@@ -1,0 +1,32 @@
+schema_version: "1.1"
+name: signup-per-speaker-audio
+description: "Signup prompt (anonymised): record audio only on Teams, Meet and Zoom with per-speaker audio for the user's own transcription. audio_separate_streams, video_required false, audio.processed, get_audio_streams (download_url valid 1 hour, WebM Opus, optional MP3), Teams overlap caveat, Zoom app note."
+tags: [signups, recordings]
+runs: 1
+execution:
+  prompt: "bot joins teams, meet and zoom and records audio only. we transcribe ourselves, so give me per-speaker audio and how to download it. Don't send a bot."
+  max_turns: 10
+  allowed_tools: [Read, Glob, Grep, Skill]
+graders:
+- name: separate-audio-flag
+  type: regex
+  pattern: 'audio_separate_streams'
+- name: download-endpoint
+  type: regex
+  pattern: 'get_audio_streams'
+- name: audio-only
+  type: regex
+  pattern: 'video_required.{0,6}false'
+- name: zoom-obf-or-zak
+  type: regex
+  pattern: '\bOBF\b|\bZAK\b|obf_url|zak_url'
+- name: no-zoom-no-setup-claim
+  type: regex
+  pattern: 'needs? no (Zoom )?setup|no setup (is )?(needed|required)|no Zoom app (is )?(needed|required)|Zoom app is optional|(don.t|do not) need (a|your own) Zoom app'
+  flags: i
+  match: not_contains
+- name: no-bot-sent
+  type: tool_used
+  tool: mcp__plugin_meetstream_meetstream__create_bot
+  min: 0
+  max: 0

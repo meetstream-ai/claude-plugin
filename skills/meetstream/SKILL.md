@@ -111,6 +111,18 @@ webhooks. Start there.
 4. **Generic asks** ("help me get started", "help me use MeetStream", "set up
    MeetStream") → `getting-started`: one connect step if needed, then the post-call or
    live question.
+   - **Grok or Gemini in the call** ("make Grok join my Zoom call"): a voice agent with
+     the `xai` or `google` provider (hosted, own provider key, realtime or pipeline), or
+     that model behind the user's bridge server. Not a local agent. Configs and job
+     recipes (name-addressed assistant, standup, interviewer, role-play, demo agent, other
+     languages): `mia-voice-agents`.
+   - **Bots in the user's customers' meetings** (SaaS, per customer, per tenant) →
+     `for-your-customers`.
+   - **Platforms:** Zoom (through the user's Zoom app with OBF or ZAK; set it up before the
+     first Zoom bot), Google Meet, Microsoft Teams, and WhatsApp calls (Beta;
+     `platform-setup`). Webex, Slack huddles and other services are not supported (400).
+   - **First bots:** someone must admit the bot from the waiting room
+     (`automatic_leave.waiting_room_timeout`; `NotAllowed` or `Denied` otherwise).
 5. **Raise or lower the bot's hand**: there is no MCP tool, so do it now with REST, even
    when the MCP tools are not connected:
    ```bash
@@ -1290,7 +1302,7 @@ Response 200:
 - With `"wait_for_ack": true`, the response carries the agent's result: `status` is `applied`, `partially_applied`, `failed` (with `errors: [{field, reason}]`) or `accepted` (with `ack_timeout: true` when the agent did not answer in time; the update may still apply). `applied` lists the fields that were applied.
 - A non-boolean `wait_for_ack` returns 400 `wait_for_ack must be a boolean (true or false)`.
 
-Other commands on the same endpoint: `screenshot` (Zoom: only on bots that join without your own Zoom app), `pause_recording`, `resume_recording`, and chat (`sendmsg` / `sendchat`). On Zoom and Teams, chat is accepted while the bot waits in the lobby and is posted on admission; Google Meet returns 409 in the lobby.
+Other commands on the same endpoint: `screenshot` (Zoom: only on bots that join without your own Zoom app), `pause_recording`, `resume_recording`, and chat (`sendmsg`). On Zoom and Teams, chat is accepted while the bot waits in the lobby and is posted on admission; Google Meet returns 409 in the lobby.
 
 ---
 
