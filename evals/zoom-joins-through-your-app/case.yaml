@@ -8,7 +8,7 @@ execution:
   max_turns: 8
   allowed_tools: [Read, Glob, Grep, Skill]
 graders:
-- name: obf-or-zak
+- name: obf-or-zak-named
   type: regex
   pattern: '\bOBF\b|\bZAK\b|obf_url|zak_url'
 - name: no-no-setup-claim
