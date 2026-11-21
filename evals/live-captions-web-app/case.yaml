@@ -1,0 +1,18 @@
+schema_version: "1.1"
+name: live-captions-web-app
+description: "Live captions into a web app: the live transcript arrives by HTTPS POST to the user's server, which forwards it to the browser."
+tags: [routing, live]
+runs: 2
+execution:
+  prompt: "I want live captions from my Google Meet (https://meet.google.com/wkp-rnqz-hvd) streamed into my web app while the call is happening. How?"
+  max_turns: 10
+  allowed_tools: [Read, Glob, Grep, Skill]
+graders:
+- name: live-transcription-field
+  type: regex
+  pattern: 'live_transcription_required'
+- name: no-voice-agent-mention
+  type: regex
+  pattern: '\bvoice[- ]agents?\b|\bMIA\b|\btalking bot\b|\bagent_config_id\b|\bbot that (talks|speaks|answers)\b'
+  flags: i
+  match: not_contains

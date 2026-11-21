@@ -1,0 +1,19 @@
+schema_version: "1.1"
+name: voice-agent-inbuilt-not-on
+description: "The API says MeetStream-managed keys are not available: the reply says inbuilt keys are not on for the account yet and goes on with the user's own keys, with no retry loop and no internals."
+tags: [round5, voice-agent]
+runs: 1
+execution:
+  prompt: "I saved a voice agent with \"key_source\": \"meetstream\" in the transcriber, model and voice sections, and POST /api/v1/mia answered 400: \"MeetStream-managed keys are not available for transcriber. Use your own key.\" What do I do now?"
+  max_turns: 8
+  allowed_tools: [Read, Glob, Grep, Skill]
+graders:
+- name: no-internals
+  type: regex
+  pattern: 'mia_managed|\bregion\b|managed catalog'
+  flags: i
+  match: not_contains
+- name: own-keys-path
+  type: regex
+  pattern: 'Integrations|api_key|own (provider )?keys?'
+  flags: i

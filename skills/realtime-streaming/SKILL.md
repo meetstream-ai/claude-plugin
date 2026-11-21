@@ -1,15 +1,32 @@
 ---
 name: realtime-streaming
 description: >
-  Stream meeting data live while the call is happening - live transcription,
-  raw audio, live video, and two-way bot control over WebSocket. Use when the
-  user says "live transcription", "real-time captions", "stream the audio",
-  "live video from the bot", "make the bot speak", "interrupt the bot",
-  "websocket", "sendaudio", or wants anything during the meeting rather than
-  after it.
+  Stream meeting data live while the call is happening. Raise/lower hand: POST
+  /api/v1/bots/{bot_id}/send_command {"command": "raise_hand"} (works without
+  the MCP tools). Live transcripts arrive by HTTPS POST to
+  live_transcription_required.webhook_url on your server (not a WebSocket from
+  the bot); your server can then forward them to the browser (Server-Sent
+  Events or your own WebSocket). Also raw audio, live video, and two-way bot
+  control over WebSocket. Use when the user says "live transcription", "live
+  captions", "real-time captions", "stream the audio", "live video from the
+  bot", "make the bot speak", "interrupt the bot", "websocket", "sendaudio",
+  or wants anything during the meeting rather than after it.
 ---
 
 # Real-time streaming
+
+This is the live path: data during the call. For results after the call, use
+`join-meeting` and `meeting-brief`.
+
+## Live captions into your app (start here for "live transcript")
+
+Live transcripts arrive as **HTTPS POSTs to your server**, one per transcript update:
+set `live_transcription_required.webhook_url` on `create_bot` and pick a streaming
+provider (for example `meetstream_streaming`). To show captions in a web app, your
+server forwards each update to the browser over Server-Sent Events or a WebSocket that
+you host. MeetStream does not stream transcripts to the browser directly, and the API key
+must never reach the browser. If you would rather run your own speech-to-text, take the
+raw audio over the `live_audio_required` WebSocket instead (below).
 
 Four separate channels, often confused with each other. Pick by what the user
 actually needs.
@@ -20,16 +37,23 @@ actually needs.
 | Raw audio bytes | `live_audio_required.websocket_url` | WebSocket, binary PCM |
 | Live video frames | `live_video_required.websocket_url` | WebSocket, fMP4 |
 | Send things into the meeting | `socket_connection_url.websocket_url` | WebSocket, JSON commands |
+| Live video/audio INTO the bot camera and mic | `bot_camera_stream.websocket_url` | WebSocket signaling + WebRTC |
+| Participant join/leave and raise/lower hand | `recording_config.realtime_endpoints` | HTTPS POST, per event |
 
-All of these point at **your own** server. They are not used for MIA agents, which run
+All of these point at **your own** server. They are not used for voice agents (MIA), which run
 on MeetStream's hosted bridge and need only `agent_config_id`.
 
 ## Live transcription
 
 `live_transcription_required.webhook_url` **requires a streaming provider** in the
 transcription config (`deepgram_streaming`, `assemblyai_streaming`,
-`jigsawstack_streaming`, `meetstream_streaming`, or `meeting_captions`). Without one
-the API returns HTTP 400 telling you exactly that.
+`jigsawstack_streaming`, `meetstream_streaming`, `smallest_streaming`, or
+`meeting_captions`). Without one the API returns HTTP 400 telling you exactly that.
+
+`smallest_streaming` (Smallest AI) takes `model` `pulse` (default) or `pulse-2` (English
+only) and `language` (default `en`), and needs a Smallest AI key saved in the dashboard
+under voice integrations. `meeting_captions` works on Google Meet and Teams, and on Zoom
+only for bots that join without the user's own Zoom app.
 
 The critical trade-off: **streaming-only providers produce no post-call transcript.**
 `transcription.processed` never fires for these bots (though `bot.done` still does), and a
@@ -54,6 +78,28 @@ answer every ping message immediately with the matching pong, echoing the sequen
 number, **before** doing any other work on that message. Slow pong handling drops the
 stream. Raise your WebSocket max payload - keyframes are large.
 
+## Bot camera stream (WebRTC into the meeting)
+
+`bot_camera_stream: { "websocket_url": "wss://..." }` on the REST `create_bot` makes the
+bot connect **out** to your signaling socket and publish your WebRTC video (and optional
+audio) through its camera and microphone.
+
+- Google Meet (`ws://` or `wss://`), Teams and Zoom (`wss://` only; `ws://` returns 400).
+  Other platforms return 400.
+- Zoom: cannot be combined with `agent_config_id` (400), and not available on bots that
+  join without the user's own Zoom app.
+- The signaling host must resolve to a public address; private ICE candidates are dropped.
+- Protocol (offer/answer, ICE, status messages):
+  https://docs.meetstream.ai/guides/websockets/bot-camera-streaming
+
+## Participant hand events
+
+Add `participant_events.raise_hand` / `participant_events.lower_hand` to
+`recording_config.realtime_endpoints[].events` (Google Meet, Zoom). They reach only the
+endpoints that list them, never `callback_url` or workspace webhooks. Same nested shape as
+`participant_events.join`; `data.data.action` is `raise_hand` / `lower_hand`. Transitions
+only; the bot's own hand is never reported.
+
 ## Two-way control
 
 `socket_connection_url` gives you a command channel into the meeting. Send JSON:
@@ -75,17 +121,22 @@ queue stays fed without running away. Cancel your local send loop when you issue
 Before building a WebSocket server, check whether the REST path is enough:
 
 - Just posting a message? Use the **`send_chat_message`** MCP tool.
+- Raising the bot's hand? There is no MCP tool, but the REST call works now (header
+  `Authorization: Token <API key>`), even when the MCP tools are not connected:
+  `POST /api/v1/bots/{bot_id}/send_command` with `{"command": "raise_hand"}` /
+  `{"command": "lower_hand"}` (bot must be in the meeting, else 409; see `join-meeting`).
 - Just showing an image? Use the **`send_image`** MCP tool (public URL, not base64).
-- Want a talking agent? Use **MIA** (`agent_config_id`) and host nothing.
+- Only if the user asks for a bot that talks or answers: use a voice agent (`mia-voice-agents`, `agent_config_id`) and host nothing.
 
 Reach for WebSockets when you need raw media or custom real-time logic, not for
 one-off actions.
 
-## Reference
+## Latest docs
 
-- [Live transcription](https://docs.meetstream.ai/guides/transcription-recordings/live-transcription)
-- [Real-time audio streaming](https://docs.meetstream.ai/guides/websockets/real-time-audio-streaming)
-- [Meeting control patterns](https://docs.meetstream.ai/guides/websockets/meeting-control-patterns)
-- [Bridge server architecture](https://docs.meetstream.ai/guides/websockets/bridge-server-architecture)
-- [Streaming providers](https://docs.meetstream.ai/guides/transcription-recordings/providers/transcription-providers)
-- [Chat and visuals](https://docs.meetstream.ai/guides/features/chat-and-visuals)
+- Live transcription: https://docs.meetstream.ai/guides/transcription-recordings/live-transcription
+- Real-time audio WebSocket: https://docs.meetstream.ai/guides/websockets/real-time-audio-streaming
+- Meeting control WebSocket: https://docs.meetstream.ai/guides/websockets/meeting-control-patterns
+- Bot camera streaming: https://docs.meetstream.ai/guides/websockets/bot-camera-streaming
+- Chat and visuals: https://docs.meetstream.ai/guides/features/chat-and-visuals
+
+For the latest details, fetch the page with `.md` appended, read https://docs.meetstream.ai/llms.txt, or connect the docs MCP server at https://docs.meetstream.ai/_mcp/server.

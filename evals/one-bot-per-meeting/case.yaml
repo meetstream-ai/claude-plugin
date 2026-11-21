@@ -1,0 +1,19 @@
+schema_version: "1.1"
+name: one-bot-per-meeting
+description: "A bot is already in the meeting. The agent reuses it and creates no second bot."
+tags: [join-meeting]
+runs: 2
+execution:
+  prompt: "Send a bot to https://meet.google.com/wkp-rnqz-hvd to take notes, please. Go ahead and send it now; you don't need to ask me to confirm."
+  max_turns: 10
+  allowed_tools: [Read, Glob, Grep, Skill]
+graders:
+- name: no-second-bot
+  type: tool_used
+  tool: mcp__plugin_meetstream_meetstream__create_bot
+  min: 0
+  max: 0
+- name: looked-up-bots
+  type: tool_used
+  tool: mcp__plugin_meetstream_meetstream__list_bots
+  min: 1

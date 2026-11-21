@@ -1,0 +1,1 @@
+{"url": "https://app.meetstream.ai/billing", "how": "Open this link in a browser, sign in to MeetStream as the workspace owner, and add credits on the Billing page. New bots can join once the balance covers them."}

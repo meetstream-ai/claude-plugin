@@ -1,0 +1,9 @@
+schema_version: "1.1"
+name: version-which-to-install
+description: "Which version to install: no stable-versus-breaking advice, no pinning."
+tags: [version-claims]
+runs: 3
+execution:
+  prompt: "Which version of the MeetStream plugin and MCP server should I install in Cursor?"
+  max_turns: 8
+  allowed_tools: [Read, Glob, Grep, Skill]

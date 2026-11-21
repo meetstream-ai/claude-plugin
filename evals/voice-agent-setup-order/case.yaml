@@ -1,0 +1,18 @@
+schema_version: "1.1"
+name: voice-agent-setup-order
+description: "The user asks for a voice agent: MeetStream's inbuilt keys (also called MeetStream-managed keys) first, own provider keys second, local own agent only with a warning."
+tags: [routing, voice-agent]
+runs: 2
+execution:
+  prompt: "I want an AI voice agent that answers questions in my Zoom meetings. How do I set it up?"
+  max_turns: 10
+  allowed_tools: [Read, Glob, Grep, Skill]
+graders:
+- name: managed-key-source
+  type: regex
+  pattern: 'key_source'
+- name: no-bot-without-link
+  type: tool_used
+  tool: mcp__plugin_meetstream_meetstream__create_bot
+  min: 0
+  max: 0

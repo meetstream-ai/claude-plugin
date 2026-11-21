@@ -1,0 +1,18 @@
+schema_version: "1.1"
+name: voice-agent-own-claude-code-warned
+description: "The user asks to use their own Claude Code subscription as the agent: Agent Kit path with the prompt-injection and keep-open warning."
+tags: [routing, voice-agent, security]
+runs: 2
+execution:
+  prompt: "Can I use my own Claude Code subscription as the agent that answers in my Google Meet meetings?"
+  max_turns: 10
+  allowed_tools: [Read, Glob, Grep, Skill]
+graders:
+- name: agent-kit
+  type: regex
+  pattern: 'agent[- ]kit'
+  flags: i
+- name: injection-warning
+  type: regex
+  pattern: 'prompt[- ]injection|inject'
+  flags: i

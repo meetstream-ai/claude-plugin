@@ -2,6 +2,63 @@
 
 All notable changes to the MeetStream Claude Code plugin.
 
+## [2.8.0] - 2026-11-21
+
+Two ways to integrate, voice agent pricing and keys, MeetStream API v1.10.0, and skills that teach the API instead of pasting sample apps.
+
+### Added
+- **Two ways to integrate** open the core skill, `getting-started`, the README, `AGENTS.md` and `INSTALL_FOR_AGENTS.md`: the Bot API (default: meeting bots, recordings, transcripts, webhooks, live data) and the Agents API (voice agents, API name MIA), only when the user asks for an agent that talks.
+- **Voice agent setups and price** (`mia-voice-agents`, core routing): a) MeetStream's inbuilt keys, the default (`"key_source": "meetstream"` on each pipeline section; OpenAI and Deepgram today), b) your own provider keys, c) your own agent through `model.provider: "local_agent"` and the MeetStream Agent Kit (only on request, with the warning, the activation code and the access levels). Each costs the bot plus $0.25 per hour for the agent infrastructure; with inbuilt keys, add the per-hour price of the models picked (the dashboard agent editor shows it). If inbuilt keys are not on for an account yet, the API says so and the skills go on with your own keys, with no retry loop.
+- **v1.10.0 agent options:** `agent.chat_input`, `agent.quiet_actions`, `agent.speak_only_when_asked`, `agent.tools: ["screen"]` on Google Meet with a vision-capable model, the opt-in bot desktop, and `transcriber.language`.
+- **v1.10.0 Bot API:** `get_transcript` returns 422 with the status and the reason when a transcript fails (final: do not retry; fix and re-run with `/transcribe`), and the read-only `GET /api/v1/billing/balance`; where it is not on yet ("not available" or 404) the skills send the user to the billing page.
+- **"Latest docs"** at the end of every skill: 2 to 5 canonical docs URLs and how to get the latest page (`.md`, `llms.txt`, the docs MCP server). The core skill says the docs win when they differ.
+
+### Changed
+- **No sample apps inside skills.** `notetaker`, `sales-coach` and `calendar-automation` are now API guides: the fastest path in numbered steps with minimal curl, Node `@meetstream/sdk` and Python `meetstream-sdk` calls, and one link to [Tutorials and Sample Apps](https://docs.meetstream.ai/tutorials/sample-apps) and the labs repo as optional references. The core skill drops the "power prompts" and the `references/code-patterns-node.md` / `code-patterns-python.md` app files. `verify-account` is a read-only check (no probe bots).
+- Calendar disconnect is `DELETE /api/v1/calendar/disconnect`; recording links are valid for 1 hour.
+- Descriptions for agents that read only descriptions (round 6). `mia-voice-agents` now says yes: your own agent can be the voice agent's brain through `local_agent` and the Agent Kit. `realtime-streaming` says live transcripts arrive by HTTPS POST to `live_transcription_required.webhook_url`, and your server can then forward them to the browser. The core version answer is two fixed sentences, with no npm package, no server version and no qualifiers. The raise-hand REST call comes first in `join-meeting` and `realtime-streaming`. The connect step names only the MeetStream MCP sign-in; a one-off meeting link needs no calendar integration.
+- `evals/check_descriptions.py` also checks the Latest docs sections, no app scaffolds, the two-ways openers and the new must-say lines.
+
+## [2.7.0] - 2026-11-18
+
+Brings the plugin up to MeetStream API v1.9.0, adds intake routing, and stops agents from giving version-stability advice. Replaces the open 2.5.1 and API v1.7.0-v1.9.0 changes, re-applied on top of 2.6.0.
+
+### Fixed
+- **No version-stability advice.** Skills described per-version gates ("MCP server 0.3.2+", "CLI 0.4.0+"), an "old Node server frozen at 0.3.0", a migrator build that "lags", "as of v2.2" and "used to / now" history. Agents turned these into unprompted claims that one version is stable and another might break. Skills now describe current behaviour only: everyone uses the hosted MCP at `https://mcp.meetstream.ai/mcp`. The README badge showed 2.2.0; it now matches the manifests, and CI checks the badge and the top CHANGELOG entry.
+- `INSTALL_FOR_AGENTS.md` no longer offers "answer questions in the meeting chat": no skill in this plugin does that.
+- `migrate-from-recall` no longer claims built-in AI summaries (the API has none) or a roadmap item.
+
+### Changed
+- **Response shapes inline** in the core skill for the calls apps use most (`create_bot` `bot_id`, transcript segments `speaker` / `transcript`, `get_chats` `chatMessages`, participants `displayName`, speaker timeline incl. the download URL, screenshots, calendar events `meeting_url`), so agents that cannot open `references/` do not guess.
+- **Personal Teams** (`teams.live.com`) links are accepted for guest bots; the work or school rule applies only to signed-in bots.
+- **Screenshots** route is `GET /bots/{bot_id}/screenshots` (was `get_screenshots`).
+- **Calendar `bot_config`** puts the transcript provider under `recording_config.transcript.provider`, as on `create_bot`; the top-level `transcription` key that the skill used is ignored, so scheduled bots got no transcript.
+- **Webhook signing**: only workspace webhook endpoints are signed; `callback_url` deliveries are not. The core skill and the API reference now say the same as the webhooks skill.
+- `notetaker` defaults to the keyless `meetstream` transcription provider, and an ambiguous build request is asked "after the meeting or live?" once.
+- Version questions get only the positive answer (install or update to the current plugin; the MCP server is hosted, so there is nothing to choose). The guidance no longer names the words an agent repeated back to users; `evals/check_descriptions.py` fails if they return.
+- `webhooks` names the signed headers inline: `X-MeetStream-Signature: sha256=<hex>` (HMAC-SHA256 of the raw body) and `X-MeetStream-Timestamp`, an ISO 8601 UTC time, with a verify function.
+- Per-participant audio and video items: a flat array with the speaker in `participant.name` and the file in `download_url` (URLs valid 1 hour); the API reference showed an older nested shape.
+- A build request that names only the trigger (a CLI, a calendar, a list of links) gets the "after the meeting or live?" question once.
+- `join-meeting` description: when the MeetStream tools are not connected, give the one connect step (Codex, Claude Code, Cursor) and offer REST `create_bot`; never say MeetStream cannot record. `mia-voice-agents` names managed keys and own keys as the recommended defaults, and the first reply always names both.
+- Skill descriptions carry the must-say lines for agents that read only descriptions (billing URL, raise hand over REST, managed keys first and the Agent Kit warning, post-call or live first); `evals/check_descriptions.py` checks them in CI.
+- **Zoom needs no setup.** A Zoom bot needs only the MeetStream sign-in or API key and the meeting link. Your own Zoom app is optional (ZAK / OBF joins, per-participant camera video, live bot camera video). `zoom.use_own_app` (`true` / `false` / omitted) picks the join; there is no fallback when Zoom refuses the user's own app.
+- **`video_required` defaults to `false`** and `audio_required` is a real `create_bot` field (default `true`). Send `video_required` explicitly anyway. Both `false` with nothing else to do returns 400.
+- **`get_speaker_timeline`** can return `{bot_id, speaker_timeline_url, size_bytes, truncated}` for large timelines.
+- **`recording_permission_denied_timeout`** range is 60 to 600 seconds, default 600.
+- **`bot_image_url`** must be an https:// PNG, JPEG, GIF or WebP URL on a public host; other values return 400.
+- Zoom `meeting_captions` works only on bots that join without the user's own Zoom app. Voice agents on those bots can show images, video and an avatar.
+
+### Added
+- **Intake routing** in `meetstream` and `getting-started`, matched in `join-meeting`, `meeting-brief`, `mia-voice-agents`, `realtime-streaming`, `AGENTS.md` and `INSTALL_FOR_AGENTS.md`: MeetStream is meeting-bot and recording infrastructure first; when intent is unclear the agent asks "after the meeting or live?"; voice agents only when the user asks for one ("voice agent", "agent in the meeting", a bot that talks or answers, or "MIA"). Voice agent setups in order: MeetStream-managed keys (`key_source: "meetstream"`), the user's own provider keys, then the user's own agent (for example a Claude Code subscription) through the MeetStream Agent Kit, with a prompt-injection warning.
+- `getting-started` triggers on "get started" / "help me use MeetStream" and its first question is after the meeting or live; the core skill triggers on version questions ("which version", "is it stable", "update the plugin"). The Agent Kit warning sits in the same paragraph as the first mention of the Agent Kit. Every low-credit answer carries https://app.meetstream.ai/billing.
+- **When the MeetStream tools are missing or not signed in**, skills give the one step to connect (Claude Code, Cursor, Codex) and still help with the plan or the REST call.
+- Live captions: `realtime-streaming` starts with how live transcripts reach a web app (HTTPS POST to your server, then SSE or your own WebSocket to the browser). Raise hand is offered as the REST `send_command` call even though there is no MCP tool. Low credits name the `top_up_link` tool and the billing page; a balance that is not available is normal. A "which version?" question gets "install or update the current plugin; the MCP server is hosted, nothing to pin".
+- **Raise / lower hand** through the REST `POST /api/v1/bots/{bot_id}/send_command` (`raise_hand` / `lower_hand`, `hand_raised` in the response, 409 before the bot is in the meeting).
+- **Participant hand events** `participant_events.raise_hand` / `participant_events.lower_hand` (Google Meet, Zoom), opt-in through `recording_config.realtime_endpoints`.
+- `bot_camera_stream`, `storage_id`, `video_layout` values `speaker_view_default` / `grid_view_default` (Google Meet, Teams), Smallest AI transcription (`smallest`, `smallest_streaming`), Anthropic Claude as a voice-agent LLM (not a transcription provider), `update_mia` with `wait_for_ack`, failure reasons `MeetingRestricted`, `SignInRequired`, `InvalidMeetingLink`.
+- **Eval suite** (`evals/`) for `claude plugin eval`, with the hosted MCP tools mocked: sign-in, joining a meeting, a brief from the transcript, Zoom with no setup, raise hand, low credits, an unavailable balance, prompt injection in the meeting chat, intake routing (after the meeting, live, voice agents and their setup order), and two cases that fail on any version-stability or pinning advice.
+- "Errors, Rate Limits and Validation": `{"message": ...}` error bodies, the prepaid 429 (5 per minute, 50 per hour) with `Retry-After`, the `create_bot` 400s and the public-address rule. `join-meeting` handles the 429.
+
 ## [2.6.0] - 2026-11-17
 
 ### Fixed

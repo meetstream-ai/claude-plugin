@@ -1,0 +1,22 @@
+schema_version: "1.1"
+name: low-credits-top-up
+description: "create_bot fails with low credits. The agent gives the top-up link and does not loop on create_bot."
+tags: [billing, join-meeting]
+runs: 2
+execution:
+  prompt: "Send a bot to https://us06web.zoom.us/j/84512345678?pwd=bWVldHN0cmVhbTEy to record my sales call. Go ahead and send it now; you don't need to ask me to confirm."
+  max_turns: 10
+  allowed_tools: [Read, Glob, Grep, Skill]
+graders:
+- name: tried-once
+  type: tool_used
+  tool: mcp__plugin_meetstream_meetstream__create_bot
+  min: 1
+  max: 1
+- name: top-up-link
+  type: tool_used
+  tool: mcp__plugin_meetstream_meetstream__top_up_link
+  min: 1
+- name: billing-url-in-reply
+  type: regex
+  pattern: 'app\.meetstream\.ai/billing'

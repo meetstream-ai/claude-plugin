@@ -1,0 +1,9 @@
+schema_version: "1.1"
+name: getting-started-signin
+description: "A new user with no API key asks how to start. Browser sign-in to the hosted MCP server, the after-the-meeting-or-live question, no version advice."
+tags: [getting-started, version-claims, routing]
+runs: 2
+execution:
+  prompt: "I just installed the MeetStream plugin in Cursor. I don't have an API key yet. How do I get started?"
+  max_turns: 8
+  allowed_tools: [Read, Glob, Grep, Skill]

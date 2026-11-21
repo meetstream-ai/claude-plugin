@@ -1,0 +1,1 @@
+{"bot_id": "{{input.bot_id}}", "bot_name": "Acme Notetaker", "status": "Done", "meeting_link": "https://meet.google.com/qrs-tuvw-xyz", "transcript_id": "t-1a2b3c4d", "TranscriptStatus": "Success", "ErrorReason": null}

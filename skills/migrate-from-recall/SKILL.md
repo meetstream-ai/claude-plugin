@@ -2,8 +2,8 @@
 name: migrate-from-recall
 description: >
   Migrate an existing Recall.ai integration to MeetStream - rewrite base URLs,
-  endpoints, request fields, and webhook handlers. MeetStream is now essentially
-  one-to-one with Recall (cheaper, plus native AI summaries and MIA voice agents).
+  endpoints, request fields, and webhook handlers. MeetStream is essentially
+  one-to-one with Recall, at a lower price.
   Use when the user says "migrate from Recall", "move off recall.ai", "switch from
   Recall to MeetStream", "port my Recall bot", "Recall alternative migration", or
   points you at a codebase that calls recall.ai. Offers an automated CLI path and a
@@ -12,7 +12,7 @@ description: >
 
 # Migrate from Recall.ai → MeetStream
 
-MeetStream is a near drop-in replacement for Recall.ai at a lower price point, with native AI summaries and MIA voice agents that Recall lacks. As of v2.2 the migration is essentially **1:1** - the only feature still on the roadmap is **full live video output into the call** (static frames via `send_image` and audio via the WebSocket bridge are supported today).
+MeetStream is a near drop-in replacement for Recall.ai at a lower price point. The migration is essentially **1:1**.
 
 Pick the path that fits the user.
 
@@ -34,7 +34,7 @@ npx @meetstream/migrate /path/to/recall-project
 npx @meetstream/migrate test --api-key YOUR_MEETSTREAM_API_KEY
 ```
 
-Python projects: `pip install meetstream-migrate` then `meetstream-migrate migrate <path>`. The Node CLI is the reference implementation and edits files in place regardless of language, so prefer it when the PyPI build lags.
+Python projects: `pip install meetstream-migrate` then `meetstream-migrate migrate <path>`. The Node CLI edits files in place regardless of language, so it works on Python projects too.
 
 After it runs, walk the user through the **Post-migration checklist** below - the migrator flags anything that needs a human.
 
@@ -58,7 +58,7 @@ Apply these mappings. For full field-level detail, read `references/api-referenc
 | `GET /bot/{id}/` | `GET /bots/{id}/detail` (or `/status`) | |
 | `DELETE /bot/{id}/` | `DELETE /bots/{id}/delete` | |
 | `POST /bot/{id}/leave_call/` | `GET /bots/{id}/remove_bot` | **POST → GET** |
-| `GET /bot/{id}/audio/` · `video/` · `screenshots/` · `speaker_timeline/` · `participants/` · `chat_messages/` | `GET /bots/{id}/get_audio` · `get_video` · `get_screenshots` · `get_speaker_timeline` · `get_participants` · `get_chats` | drop the `_bot_` |
+| `GET /bot/{id}/audio/` · `video/` · `screenshots/` · `speaker_timeline/` · `participants/` · `chat_messages/` | `GET /bots/{id}/get_audio` · `get_video` · `screenshots` · `get_speaker_timeline` · `get_participants` · `get_chats` | drop the `_bot_`. A large speaker timeline comes back as `{speaker_timeline_url, size_bytes, truncated}`: download the URL |
 | `GET /bot/{id}/transcript/` | `GET /transcript/{transcript_id}/get_transcript` | **Uses `transcript_id`, not `bot_id`** - resolve via the create_bot response or `/bots/{id}/transcriptions` |
 | `POST /bot/{id}/send_chat_message/` | `POST /bots/{id}/send_message` | body `{ "message": "..." }`; drop `to`/`pin` |
 | `POST /bot/{id}/output_video/` | `POST /bots/{id}/send_image` | public `img_url` (not base64) |
@@ -98,4 +98,12 @@ For the complete event catalog and payloads, use the `webhook_events_guide` refe
 
 ## What to tell the client
 
-MeetStream matches Recall on the core bot lifecycle, recording, per-participant streams, real-time audio/transcript, chat + image output, calendar (Google + Outlook), scheduling, signed-in bots, retention, and now **pause/resume recording** - and adds MIA voice agents. Same auth scheme, near-identical endpoints, lower price.
+MeetStream matches Recall on the core bot lifecycle, recording, per-participant streams, real-time audio/transcript, chat + image output, calendar (Google + Outlook), scheduling, signed-in bots, retention, and **pause/resume recording**. Same auth scheme, near-identical endpoints, lower price.
+
+## Latest docs
+
+- Migrate from Recall.ai: https://docs.meetstream.ai/migration/migrate-from-recall
+- Create Bot payload reference: https://docs.meetstream.ai/api-reference/create-bot-payload-reference
+- Webhooks and events: https://docs.meetstream.ai/guides/webhooks/webhooks-and-events
+
+For the latest details, fetch the page with `.md` appended, read https://docs.meetstream.ai/llms.txt, or connect the docs MCP server at https://docs.meetstream.ai/_mcp/server.

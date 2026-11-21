@@ -1,0 +1,16 @@
+schema_version: "1.1"
+name: raise-hand-rest
+description: "Raise hand has no MCP tool. The agent gives the REST send_command call and does not say it is impossible."
+tags: [in-meeting]
+runs: 2
+execution:
+  prompt: "My bot c9a4f3e2-71b0-4d2a-8f5e-1e2d3c4b5a60 is in the meeting right now. Make it raise its hand."
+  max_turns: 8
+  allowed_tools: [Read, Glob, Grep, Skill]
+graders:
+- name: send-command-endpoint
+  type: regex
+  pattern: 'send_command'
+- name: raise-hand-command
+  type: regex
+  pattern: '"command"\s*:\s*"raise_hand"'

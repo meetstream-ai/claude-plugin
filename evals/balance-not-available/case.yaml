@@ -1,0 +1,13 @@
+schema_version: "1.1"
+name: balance-not-available
+description: "get_balance answers that the balance is not available here. That is normal: the user gets the billing page, not a debugging session."
+tags: [billing]
+runs: 2
+execution:
+  prompt: "How much MeetStream credit do I have left?"
+  max_turns: 8
+  allowed_tools: [Read, Glob, Grep, Skill]
+graders:
+- name: billing-url
+  type: regex
+  pattern: 'app\.meetstream\.ai/billing'

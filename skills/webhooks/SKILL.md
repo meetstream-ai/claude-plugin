@@ -2,11 +2,14 @@
 name: webhooks
 description: >
   Handle MeetStream webhooks correctly - the full event lifecycle, signature
-  verification, redelivery, and local tunnels. Use when the user says
-  "webhook", "callback_url", "bot events", "how do I know when the meeting
-  ended", "my webhook isn't firing", "verify the signature", "ngrok", or is
-  writing any handler that reacts to bot state. Read this before writing a
-  webhook handler.
+  verification, redelivery, and local tunnels. Use when the user says "webhook",
+  "callback_url", "bot events", "how do I know when the meeting ended", "my
+  webhook isn't firing", "verify the signature", "ngrok", or is writing any
+  handler that reacts to bot state. Read this before writing a webhook handler.
+  Signed deliveries (workspace endpoints only; callback_url is unsigned) carry
+  X-MeetStream-Signature: sha256=<hex> (HMAC-SHA256 of the raw body with the
+  endpoint secret) and X-MeetStream-Timestamp, an ISO 8601 UTC time such as
+  2026-11-19T14:30:00Z, not a number.
 ---
 
 # MeetStream webhooks
@@ -41,6 +44,19 @@ bot.joining -> bot.in_waiting_room -> bot.inmeeting -> bot.recording
 You may also see `bot.scheduled`, `bot.uploading`, `bot.transcriptionready`,
 `audio.skipped`, `manifest.skipped` and `participant_events.join` / `.leave`. On Zoom,
 `bot.recording_permission_allowed` / `_denied` can fire before `bot.recording`.
+
+**Participant hand events** (`participant_events.raise_hand` / `participant_events.lower_hand`,
+Google Meet and Zoom) are opt-in per bot: list them in
+`recording_config.realtime_endpoints[].events` on the REST `create_bot`. They go **only**
+to those endpoints, never to `callback_url` or workspace webhooks. Same nested shape as
+`participant_events.join` (`data.data.action` is `raise_hand` / `lower_hand`, bot id at
+`data.bot.id`). Transitions only; the bot's own hand is never reported; a participant who
+leaves with a hand up gets no `lower_hand`.
+
+A `bot.failed` terminal carries a reason in `bot_details.ErrorReason` (and, on Google
+Meet, `failure_reason` in the webhook), for example `MeetingRestricted` /
+`meeting_restricted`, `SignInRequired` / `sign_in_required` or `InvalidMeetingLink`.
+See the `platform-setup` skill.
 
 Four things that break handlers:
 
@@ -82,9 +98,37 @@ you are not, protect the route another way: a secret path segment, an allowlist,
 shared token in the query string. Never treat an unauthenticated public webhook route
 as trusted input.
 
+Signed requests carry two headers:
+
+| Header | Value |
+|---|---|
+| `X-MeetStream-Signature` | `sha256=<hex>`: HMAC-SHA256 of the raw request body, keyed with the endpoint's signing secret |
+| `X-MeetStream-Timestamp` | The send time as an ISO 8601 UTC string, for example `2026-11-19T14:30:00Z`. It is not a Unix number |
+
+```python
+import hashlib, hmac
+from datetime import datetime, timezone
+
+def verify(raw_body: bytes, headers, secret: str, max_age_s: int = 300) -> bool:
+    sig = headers.get("X-MeetStream-Signature", "").removeprefix("sha256=")
+    expected = hmac.new(secret.encode(), raw_body, hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(sig, expected):
+        return False
+    ts = headers.get("X-MeetStream-Timestamp")
+    if ts:  # replay check: parse the ISO 8601 time
+        sent = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+        if abs((datetime.now(timezone.utc) - sent).total_seconds()) > max_age_s:
+            return False
+    return True
+```
+
 ## Local development
 
-`callback_url` must be a **public HTTPS URL**. Localhost will never receive anything.
+`callback_url` must be a **public HTTPS URL** that resolves to a public address.
+Localhost will never receive anything. Post-call webhooks (`audio.processed`,
+`transcription.*`, `video.processed` and the rest) are delivered only to public
+addresses, on every redirect hop; a URL that resolves to a private, loopback or metadata
+address is dropped. Every delivery sends `User-Agent: MeetStream-Webhook/1.0`.
 
 ```bash
 ngrok http 3000          # then use the https URL + your path
@@ -100,16 +144,18 @@ Two failure modes to check before debugging your code:
 
 | Symptom | Likely cause |
 |---|---|
-| No events at all | `callback_url` not public HTTPS, or not set on that bot |
+| No events at all | `callback_url` not public HTTPS, resolves to a private address, or not set on that bot |
+| No hand events | `participant_events.raise_hand` / `.lower_hand` not listed in `realtime_endpoints`; they never reach `callback_url` |
 | No `transcription.processed` | Streaming-only provider: the transcript was live, there is no post-call one |
 | Kicks treated as normal exits | Branching on `bot_status` instead of `bot_event` |
 | Bot never joined | `bot.stopped` with `bot_event` `bot.notallowed` or `bot.denied` |
 | Duplicate processing | No dedupe key, or a slow handler |
 
-## Reference
+## Latest docs
 
-- [Webhooks and events](https://docs.meetstream.ai/guides/webhooks/webhooks-and-events)
-- [Webhook signature verification](https://docs.meetstream.ai/guides/webhooks/webhook-signature-verification)
-- [Local webhook server](https://docs.meetstream.ai/guides/webhooks/local-webhook-server)
-- [Workspace webhooks](https://docs.meetstream.ai/guides/webhooks/workspace-webhooks)
-- [Errors](https://docs.meetstream.ai/errors)
+- Webhooks and events: https://docs.meetstream.ai/guides/webhooks/webhooks-and-events
+- Webhook signature verification: https://docs.meetstream.ai/guides/webhooks/webhook-signature-verification
+- Workspace webhook endpoints: https://docs.meetstream.ai/guides/webhooks/workspace-webhooks
+- Local webhook server (tunnels): https://docs.meetstream.ai/guides/webhooks/local-webhook-server
+
+For the latest details, fetch the page with `.md` appended, read https://docs.meetstream.ai/llms.txt, or connect the docs MCP server at https://docs.meetstream.ai/_mcp/server.

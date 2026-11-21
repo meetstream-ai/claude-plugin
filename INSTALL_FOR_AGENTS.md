@@ -4,6 +4,13 @@ You are an AI agent. The user asked you to install MeetStream. Follow these step
 
 MeetStream sends a bot into the user's Zoom, Google Meet or Microsoft Teams call. You (the agent) do the note-taking with your own model. MeetStream bills the bot per hour from prepaid credits.
 
+## Two ways to integrate
+
+1. **Bot API (default): meeting bots and recording.** A bot joins Zoom, Google Meet or Microsoft Teams. You get recordings, transcripts, participants, chat and webhooks after the call, or live data during the call.
+2. **Agents API (only on request): voice agents in the meeting.** A voice agent (API name MIA) on the bot listens and talks. Use it only when the user asks for a voice agent or a bot that talks. Price: the bot plus $0.25 per hour for the agent infrastructure, plus the models picked with MeetStream's inbuilt keys (OpenAI and Deepgram), or the user's own provider keys.
+
+Details: https://docs.meetstream.ai/guides/introduction/integration-paths
+
 ## Step 1: install the plugin or the skills
 
 Pick the user's agent.
@@ -24,7 +31,7 @@ codex plugin marketplace add meetstream-ai/claude-plugin
 codex plugin add meetstream@meetstream-ai
 ```
 
-If `codex plugin` is not available in this Codex version, clone the repo (below) and run `./setup --host codex`.
+If `codex plugin` is not available, clone the repo (below) and run `./setup --host codex`.
 
 **Copilot CLI**
 
@@ -84,6 +91,7 @@ Say, in two lines: MeetStream is installed and signed in, and they can now say t
 
 - "Send a bot to <meeting link> and take notes."
 - "Get the notes from my last meeting."
-- "Answer questions in the meeting chat" (beta).
+
+If they ask what MeetStream can do, ask one question: results after the meeting (recording, transcript, notes) or something live during the call (live transcript, chat)? Do not suggest a voice agent unless they ask for one. If `create_bot` answers `Low credits please recharge`, give them https://app.meetstream.ai/billing.
 
 Do not explain the internals (paths, manifests) unless asked.

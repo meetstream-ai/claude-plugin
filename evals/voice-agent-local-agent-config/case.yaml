@@ -1,0 +1,24 @@
+schema_version: "1.1"
+name: voice-agent-local-agent-config
+description: "Own agent as the voice agent's brain: local_agent config, Agent Kit, pairing token, activation code, read-only access, with the warning."
+tags: [round5, voice-agent, security]
+runs: 1
+execution:
+  prompt: "Set me up to use my own Claude Code as the brain of a voice agent in my Google Meet calls. Give me the agent config JSON and the steps. Don't ask me questions."
+  max_turns: 10
+  allowed_tools: [Read, Glob, Grep, Skill]
+graders:
+- name: local-agent-provider
+  type: regex
+  pattern: '\x22provider\x22\s*:\s*\x22local_agent\x22'
+- name: readonly-access
+  type: regex
+  pattern: 'readonly|read-only'
+  flags: i
+- name: agent-kit-install
+  type: regex
+  pattern: 'meetstream-agent-kit'
+- name: activation-code
+  type: regex
+  pattern: 'activation code|6-digit'
+  flags: i

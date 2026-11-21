@@ -1,0 +1,35 @@
+schema_version: "1.1"
+name: join-meeting-defaults
+description: "Send a bot to a Google Meet. One create_bot call, audio only, keyless meetstream transcription, after a list_bots check."
+tags: [join-meeting]
+runs: 2
+execution:
+  prompt: "Send a notetaker bot to https://meet.google.com/wkp-rnqz-hvd and record the transcript. Go ahead and send it now; you don't need to ask me to confirm."
+  max_turns: 10
+  allowed_tools: [Read, Glob, Grep, Skill]
+graders:
+- name: one-create-bot
+  type: tool_used
+  tool: mcp__plugin_meetstream_meetstream__create_bot
+  min: 1
+  max: 1
+- name: meeting-link-passed
+  type: tool_used
+  tool: mcp__plugin_meetstream_meetstream__create_bot
+  input_match: 'wkp-rnqz-hvd'
+  min: 1
+- name: keyless-meetstream-transcription
+  type: tool_used
+  tool: mcp__plugin_meetstream_meetstream__create_bot
+  input_match: '"transcription_provider":\s*"meetstream"'
+  min: 1
+- name: no-video
+  type: tool_used
+  tool: mcp__plugin_meetstream_meetstream__create_bot
+  input_match: '"record_video":\s*true'
+  min: 0
+  max: 0
+- name: checks-existing-bots-first
+  type: tool_order
+  before: mcp__plugin_meetstream_meetstream__list_bots
+  after: mcp__plugin_meetstream_meetstream__create_bot

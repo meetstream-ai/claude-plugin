@@ -3,8 +3,9 @@ name: platform-setup
 description: >
   Platform-specific setup and quirks for Zoom, Google Meet and Microsoft
   Teams. Use when the user says "the bot can't join Zoom", "waiting room",
-  "the host has to admit it", "recording permission", "Zoom app setup", "OBF",
-  "signed-in bots", "the bot shows as guest", "Teams lobby", or hits a
+  "the host has to admit it", "recording permission", "Zoom setup", "do I need a Zoom app", "OBF",
+  "use_own_app", "signed-in bots", "the bot shows as guest", "Teams lobby",
+  "meeting access is restricted", "sign in required", or hits a
   platform-specific failure rather than an API error.
 ---
 
@@ -19,7 +20,18 @@ from the terminal webhook first: every ending arrives with `event: "bot.stopped"
 | `bot.notallowed` | Sat in the waiting room until timeout | Have someone admit it, raise `waiting_room_timeout`, or use a signed-in bot |
 | `bot.denied` | A host actively refused it | Human decision. Do not auto-retry |
 | `bot.kicked` | A participant removed it | Human decision. Do not auto-retry |
-| `bot.failed` | Session crashed | Create a fresh bot |
+| `bot.failed` | Join failed or the session crashed | Read `ErrorReason` (below); otherwise create a fresh bot |
+
+`bot.failed` carries a specific reason in `bot_details.ErrorReason` (REST `GET /bots/{bot_id}/detail`).
+Google Meet `bot.failed` webhooks also carry it as `failure_reason`. Treat unknown values as a generic failure.
+
+| `ErrorReason` | Platform | Meaning | Fix |
+|---|---|---|---|
+| `MeetingRestricted` (`meeting_restricted`) | Google Meet, Teams | The meeting admits only the host's organization or invitees | Signed-in bot from an allowed domain/tenant, or ask the organizer to allow the bot |
+| `SignInRequired` (`sign_in_required`) | Google Meet, Teams (new on Teams) | The meeting does not accept anonymous guests | Google or Teams signed-in bot |
+| `InvalidMeetingLink` (`invalid_meeting_link`) | Google Meet, Teams (new on Teams) | Broken, cut-off or non-meeting link | Copy the full join link from the invite |
+
+Reference: https://docs.meetstream.ai/guides/reference/bot-status-and-error-codes
 
 Without webhooks, `get_bot_status` shows the same outcome as `NotAllowed`, `Denied` or `Error`.
 
@@ -34,29 +46,61 @@ does not expose these, so use the REST API when you need them:
 | `everyone_left_timeout` | Leave after the humans go |
 | `voice_inactivity_timeout` | Leave on silence |
 | `in_call_recording_timeout` | **Minimum 600 seconds** - below that the API returns HTTP 400 |
-| `recording_permission_denied_timeout` | **Zoom only**, accepted range 60-300 |
+| `recording_permission_denied_timeout` | **Zoom only**, accepted range 60-600, default 600 |
 
 ## Zoom
 
 Zoom does the one thing the others do not: it can require **explicit recording
 permission** from the host. If nobody grants it,
-`recording_permission_denied_timeout` decides how long the bot waits before giving up.
+`recording_permission_denied_timeout` decides how long the bot waits before giving up
+(60-600 seconds, default 600). A Zoom bot that joins without your own Zoom app records
+from admission whatever the host answers, so the timeout does not apply to it.
 
-Zoom also needs app-level setup before bots can join meetings outside your own account:
+**Zoom needs no setup.** A Zoom bot needs only the MeetStream API key and the meeting
+link: no Zoom Marketplace app, no Zoom app credentials, no Meeting SDK keys, no Zoom OAuth
+connection and no tokens. Omit `zoom` (or send `{}`) and the same `create_bot` request
+works as it does for Google Meet and Teams. Do not tell the user to create a Zoom app
+before their first bot.
 
-- A Zoom Marketplace app, with credentials added on the MeetStream side.
-- Development mode restricts bots to meetings hosted by the app owner. Production use
-  requires submitting the app for review.
-- **Authenticated joins** use the `zoom` object on the REST `create_bot` request, with
-  exactly one of `zak_url` (the bot joins signed in as a Zoom user) or `obf_url` (the bot
-  joins on behalf of a user who is already in the meeting). Each is an HTTPS URL on
-  **your** server that returns a fresh token when MeetStream calls it at join time.
-  You run the Zoom OAuth flow and keep the refresh tokens; MeetStream does not store them.
-- `use_zoom_obf` and `zoom_oauth_connection_user_id` are **rejected** by the API, and the
-  old `/zoom/oauth/*` connection endpoints are no longer documented. Do not use them.
-- Omit `zoom` (or send `{}`) for a guest join.
+Your own Zoom app is **optional**. Saving its Client ID and Client Secret in the MeetStream
+dashboard (Integrations > Zoom) adds:
 
-Full walkthrough: https://docs.meetstream.ai/guides/app-integrations/zoom-marketplace-app-setup
+- **Authenticated joins** through the `zoom` object on the REST `create_bot` request, with
+  exactly one of `zak_url` (the bot joins signed in as a Zoom user, can enter sign-in-only
+  meetings and join before the host) or `obf_url` (the bot joins on behalf of a user who is
+  already in the meeting). Each is an HTTPS URL on **your** server that returns a fresh
+  token when MeetStream calls it at join time. You run the Zoom OAuth flow and keep the
+  refresh tokens; MeetStream does not store them.
+- Per-participant **camera** video (without your app, per-participant video contains
+  screen shares only; per-participant audio works either way).
+- Live video into the bot camera (`bot_camera_stream`). MIA agents can show images,
+  video and an avatar with or without your app.
+
+**Choosing the join with `zoom.use_own_app`** (REST `create_bot`, calendar schedule and
+scheduled-bot PATCH; optional):
+
+| `zoom.use_own_app` | What happens |
+|---|---|
+| omitted or `null` | Uses your Zoom app when one is saved or connected; otherwise joins without one |
+| `true` | Must use your Zoom app; 400 when none is configured |
+| `false` | Joins without your Zoom app even if one is saved. 400 with `zak_url` / `obf_url` |
+
+- Any other value: 400 `zoom.use_own_app must be true or false`.
+- **No fallback**: if Zoom refuses your app, the bot does not retry without it. Send
+  `use_own_app: false` to avoid the app.
+- No-setup join not offered for the account's region: 400 `Zoom bots are not available in this region right now`.
+- `meeting_captions` and `initial_audio` work only on bots that join without your app
+  (`meeting_captions` with your app: 400 `meeting_captions is not supported on Zoom. ...`).
+- A Zoom link with no meeting number (for example a `/my/` personal link) returns 400
+  `invalid_meeting_link: ...`. Use the `zoom.us/j/<number>` link.
+
+With your own app, development mode restricts bots to meetings hosted by the app owner;
+joining other accounts' meetings with your app needs Zoom's review and a ZAK or OBF token.
+
+- `use_zoom_obf` and `zoom_oauth_connection_user_id` are **rejected** by the API. Do not use them
+  or the `/zoom/oauth/*` connection endpoints.
+
+Optional app walkthrough: https://docs.meetstream.ai/guides/app-integrations/zoom-marketplace-app-setup
 
 ## Google Meet
 
@@ -65,8 +109,7 @@ the lobby. The fix is a **signed-in bot**: the bot authenticates as a real Googl
 Workspace user before joining.
 
 Setup is a one-time Workspace configuration. The `google_meet` block below goes on the
-REST `create_bot` request; over MCP, use `create_bot`'s `google_login_domain` param (MCP
-server 0.3.2+). Account management is REST/CLI/SDK only:
+REST `create_bot` request; over MCP, use `create_bot`'s `google_login_domain` param. Account management is REST/CLI/SDK only:
 
 1. Configure a SAML SSO profile in Google Workspace Admin.
 2. Generate a certificate pair:
@@ -102,7 +145,7 @@ that is their admin's decision.
 
 If the organiser disabled anonymous join, a guest bot hits a sign-in wall. A **signed-in
 bot** joins as a real Microsoft 365 account instead. Over MCP, use `create_bot`'s
-`teams_login_domain` param (MCP server 0.3.2+); account management is REST/CLI/SDK only.
+`teams_login_domain` param; account management is REST/CLI/SDK only.
 
 1. Use a **dedicated M365 tenant** (Business Basic or higher), not production. Create one
    standard, non-admin, Teams-licensed user per bot account. In Entra ID, disable security
@@ -119,7 +162,8 @@ bot** joins as a real Microsoft 365 account instead. Over MCP, use `create_bot`'
 
 - **One concurrent bot per account.** For N concurrent signed-in Teams bots, register N accounts.
 - The Microsoft account's display name and picture are shown; `bot_name` / `bot_image_url` are not applied.
-- Microsoft 365 work/school Teams only, not `teams.live.com`.
+- Signed-in bot accounts must be Microsoft 365 work/school accounts. Guest bots join
+  personal Teams meetings too: `teams.live.com` links are accepted.
 - Errors: 400 domain not registered; 403 domain/account owned by another MeetStream account;
   404 `sign_in_email` not in the domain; 409 pinned account busy or deactivated, or no free
   active account; 429 all accounts in use. A deactivated account (bad password) comes back
@@ -138,10 +182,12 @@ Check these first - they look like platform problems and are not:
 - The bot did join, but a streaming-only provider means there is no post-call
   transcript to find.
 
-## Reference
+## Latest docs
 
-- Platform guides: [Zoom](https://docs.meetstream.ai/guides/platforms/zoom) · [Google Meet](https://docs.meetstream.ai/guides/platforms/google-meet) · [Microsoft Teams](https://docs.meetstream.ai/guides/platforms/microsoft-teams)
-- [Google Meet lobby admission](https://docs.meetstream.ai/guides/app-integrations/gmeet-lobby-admission)
-- Signed-in bots: [Google](https://docs.meetstream.ai/guides/app-integrations/google-signed-in-bots) · [Microsoft Teams](https://docs.meetstream.ai/guides/app-integrations/teams-signed-in-bots)
-- [Zoom authenticated bots (ZAK and OBF)](https://docs.meetstream.ai/guides/app-integrations/zoom-authenticated-bots) · [Zoom app production submission](https://docs.meetstream.ai/guides/app-integrations/zoom-app-production-submission)
-- [Automatic leave configuration](https://docs.meetstream.ai/guides/features/automatic-leave-configuration)
+- Zoom: https://docs.meetstream.ai/guides/platforms/zoom
+- Google Meet: https://docs.meetstream.ai/guides/platforms/google-meet
+- Microsoft Teams: https://docs.meetstream.ai/guides/platforms/microsoft-teams
+- Zoom ZAK and OBF: https://docs.meetstream.ai/guides/app-integrations/zoom-authenticated-bots
+- Automatic leave: https://docs.meetstream.ai/guides/features/automatic-leave-configuration
+
+For the latest details, fetch the page with `.md` appended, read https://docs.meetstream.ai/llms.txt, or connect the docs MCP server at https://docs.meetstream.ai/_mcp/server.

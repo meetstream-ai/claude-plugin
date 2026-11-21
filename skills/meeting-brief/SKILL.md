@@ -14,6 +14,21 @@ description: >
 You have the MeetStream MCP server connected. Pull the real data with its tools
 before writing anything. Never summarize a meeting you have not actually read.
 
+This is the post-call path. Build the brief from the transcript; MeetStream has no
+built-in summary (`get_bot_summary` only says so). Do not offer a voice agent unless the
+user asks for one.
+
+**If the MeetStream tools are missing or not signed in** (no `meetstream` tools, or a tool
+answers 401 or "not signed in"): give the user the one step to connect, and in the same
+reply keep helping. Do not stop at "sign in first".
+- Claude Code: `/mcp` → `meetstream` → sign in. Cursor: Settings → MCP → **Connect** next
+  to `meetstream`. Codex: `codex mcp login meetstream` (full steps:
+  https://github.com/meetstream-ai/claude-plugin/blob/main/INSTALL_FOR_AGENTS.md).
+- Then go on: give the plan, the `create_bot` fields you will send once the tools work,
+  or the REST call (`curl` with `Authorization: Token $MEETSTREAM_API_KEY`).
+- The one step is the MeetStream MCP sign-in, nothing else. A one-off meeting link needs
+  no calendar integration (calendars are only for auto-joining every meeting).
+
 ## Fastest route to a brief
 
 1. **`get_transcript`** with `wait: true` - the speaker-labelled transcript. Everything
@@ -34,12 +49,21 @@ Segments also carry `start_time` / `end_time`, which you need for timestamps and
 quoting "at 14:32 they said...".
 
 If the transcript is not ready, the tool will tell you. Retry a few times with a gap.
+If the transcript run **failed** (REST `get_transcript` returns 422 with
+`transcript_status: "Failed"` and the reason, for example the provider rejected the API
+key), do not retry: tell the user the reason, and after they fix it start a new run
+(`transcribe_audio` tool, or `POST /api/v1/bots/{bot_id}/transcribe`).
 If the bot used a **streaming-only** provider there will never be a post-call
 transcript - say so instead of retrying forever.
 
 ## Talk-time and speaking balance
 
 `get_speaker_timeline` returns chunks with byte offsets into the audio, not seconds.
+For a large timeline (about 5 MB or more) the REST endpoint returns a download link
+instead of the chunks: `{"bot_id", "speaker_timeline_url", "size_bytes", "truncated": false}`.
+Download the URL (pre-signed, no API key, valid 1 hour; call again for a fresh one); the
+file has the same format as the inline body. Before the bot leaves the endpoint answers
+404 `Manifest file not found. It may still be processing.`
 Talk-time **shares** (percentages) are exact and safe to report. Absolute durations
 require the sample rate to convert bytes to time - if you cannot establish it, report
 shares and turn counts rather than inventing minute figures.
@@ -90,7 +114,11 @@ Set this on `create_bot` via the transcription provider option:
 | Indic languages | `sarvam` |
 | Alternative English engine | `assemblyai` |
 | MeetStream's own engine | `meetstream` |
+| Smallest AI (REST provider key) | `smallest` post-call (`model` `pulse` or `pulse-pro`), `smallest_streaming` live (`pulse` or `pulse-2`); needs a Smallest AI key in the dashboard (voice integrations) |
 | Live captions during the call | any `*_streaming` provider |
+
+Anthropic Claude is not a transcription provider. It is an LLM for voice agents (MIA; see
+`mia-voice-agents`).
 
 Post-call providers give you a transcript to fetch afterwards. Streaming providers
 deliver text live during the meeting and produce **no** post-call transcript. Pick
@@ -103,10 +131,12 @@ from another engine, use **`transcribe_audio`** on the existing bot. This works 
 for bots that originally used a streaming-only provider, and is the only way to get a
 post-call transcript for those.
 
-## Reference
+## Latest docs
 
-- [Bot summary API](https://docs.meetstream.ai/api-reference/api-endpoints/bot-endpoints/get-bot-summary)
-- [Participants and speaker timeline](https://docs.meetstream.ai/guides/features/participants-and-speaker-timeline)
-- [Post-call transcription](https://docs.meetstream.ai/guides/transcription-recordings/post-call-transcription)
-- [Diarization](https://docs.meetstream.ai/guides/transcription-recordings/diarization)
-- [Languages and translation](https://docs.meetstream.ai/guides/transcription-recordings/languages-and-translation)
+- Post-call transcription: https://docs.meetstream.ai/guides/transcription-recordings/post-call-transcription
+- Participants and speaker timeline: https://docs.meetstream.ai/guides/features/participants-and-speaker-timeline
+- Diarization: https://docs.meetstream.ai/guides/transcription-recordings/diarization
+- Languages and translation: https://docs.meetstream.ai/guides/transcription-recordings/languages-and-translation
+- Errors (failed transcript 422): https://docs.meetstream.ai/errors
+
+For the latest details, fetch the page with `.md` appended, read https://docs.meetstream.ai/llms.txt, or connect the docs MCP server at https://docs.meetstream.ai/_mcp/server.

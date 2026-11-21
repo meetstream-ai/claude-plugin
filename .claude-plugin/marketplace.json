@@ -9,7 +9,7 @@
   "plugins": [
     {
       "name": "meetstream",
-      "description": "Build meeting intelligence with MeetStream: AI notetakers, real-time sales coaches, conversation intelligence, Google Calendar auto-recording, and AI meeting agents. Scaffolds complete apps in one prompt. Works with Zoom, Google Meet, Teams. Every endpoint live-tested, no hallucinations.",
+      "description": "MeetStream Bot API (meeting bots, recordings, transcripts, live data for Zoom, Google Meet and Teams) and Agents API (voice agents, on request). Fastest path first: minimal API, SDK and MCP calls, with links to the latest docs.",
       "source": "./",
       "homepage": "https://meetstream.ai",
       "category": "developer-tools",

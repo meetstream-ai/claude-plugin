@@ -1,0 +1,29 @@
+schema_version: "1.1"
+name: webhook-signature-headers
+description: "Signature verification uses X-MeetStream-Signature (sha256=<hex>, HMAC-SHA256 over the raw body) and parses X-MeetStream-Timestamp as an ISO 8601 time."
+tags: [round4, webhooks]
+runs: 2
+execution:
+  prompt: "Write the Python function my FastAPI app uses to verify a MeetStream webhook on our workspace webhook endpoint (we set a signing secret in the dashboard), including a 5-minute replay check on the timestamp. Just the code; no questions."
+  max_turns: 8
+  allowed_tools: [Read, Glob, Grep, Skill]
+graders:
+- name: signature-header
+  type: regex
+  pattern: 'x[-_]meetstream[-_]signature'
+  flags: i
+- name: timestamp-header
+  type: regex
+  pattern: 'x[-_]meetstream[-_]timestamp'
+  flags: i
+- name: sha256-prefix
+  type: regex
+  pattern: 'sha256='
+- name: iso-timestamp-parse
+  type: regex
+  pattern: 'fromisoformat|isoparse|dateutil|strptime|Date\.parse'
+- name: timestamp-not-a-number
+  type: regex
+  pattern: '(int|float)\(\s*[a-z_]*(ts|timestamp)[a-z_]*\s*\)'
+  flags: i
+  match: not_contains

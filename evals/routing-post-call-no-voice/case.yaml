@@ -1,0 +1,15 @@
+schema_version: "1.1"
+name: routing-post-call-no-voice
+description: "A clear post-call request. The agent goes the post-call way and never brings up voice agents."
+tags: [routing]
+runs: 2
+execution:
+  prompt: "Record my 3pm call and send me notes."
+  max_turns: 8
+  allowed_tools: [Read, Glob, Grep, Skill]
+graders:
+- name: no-voice-agent-mention
+  type: regex
+  pattern: '\bvoice[- ]agents?\b|\bMIA\b|\btalking bot\b|\bagent_config_id\b|\bbot that (talks|speaks|answers)\b'
+  flags: i
+  match: not_contains
