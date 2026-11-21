@@ -16,7 +16,9 @@ ROOT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(os.pat
 
 # skill -> list of (label, regex that must match the description)
 MUST = {
-    "meetstream": [("two paths: Bot API", r"Bot API"), ("two paths: Agents API on request", r"Agents API.{0,200}(only|on request|when the user asks)"),
+    "meetstream": [("version answer, exact two sentences (round 6)", r"Install or update to the current MeetStream plugin\. The MCP server is hosted at https://mcp\.meetstream\.ai/mcp; there is no npm package or server version to install\."),
+                   ("version answer: those two sentences only, no qualifiers", r"(only|nothing else).{0,60}(no|without) (added )?qualifier"),
+                   ("two paths: Bot API", r"Bot API"), ("two paths: Agents API on request", r"Agents API.{0,200}(only|on request|when the user asks)"),
                    ("post-call or live question", r"after the (call|meeting).{0,80}live|post-call.{0,40}live")],
     "troubleshooting": [("billing URL", r"https://app\.meetstream\.ai/billing"), ("no retry loop", r"never retry"),
                         ("422 transcript is final", r"422.{0,120}(final|do not retry|don.t retry)")],
@@ -26,13 +28,17 @@ MUST = {
                      ("connect step: Claude Code", r"/mcp"),
                      ("connect step: Cursor", r"Settings.{0,4}MCP"),
                      ("REST create_bot fallback", r"POST /api/v1/bots/create_bot.*meeting_link"),
-                     ("never say it cannot record", r"[Nn]ever say MeetStream can.?t record")],
-    "realtime-streaming": [("raise-hand REST", r"POST /api/v1/bots/\{bot_id\}/send_command.*raise_hand")],
+                     ("never say it cannot record", r"[Nn]ever say MeetStream can.?t record"),
+                     ("one-off link needs no calendar integration (round 6)", r"(no|never|not).{0,40}calendar integration")],
+    "realtime-streaming": [("raise-hand REST", r"POST /api/v1/bots/\{bot_id\}/send_command.*raise_hand"),
+                           ("live transcripts by HTTPS POST (round 6)", r"HTTPS POST.{0,60}live_transcription_required\.webhook_url"),
+                           ("server forwards to the browser (round 6)", r"forward.{0,80}browser")],
     "mia-voice-agents": [("inbuilt keys first", r"[Dd]efault.{0,40}MeetStream's inbuilt keys.*key_source.*meetstream"),
                          ("inbuilt providers", r"OpenAI and Deepgram"),
                          ("agent infrastructure price", r"\$0\.25 per hour"),
                          ("not-on fallback", r"not available.{0,160}own (provider )?keys"),
                          ("own keys second", r"then the user's own (provider )?keys"),
+                         ("own agent stated positively (round 6)", r"Yes: your own agent \(Claude Code, Codex, Hermes, OpenClaw.{0,40}\) can be the voice agent's brain through .{0,4}model\.provider: .{0,2}local_agent.{0,4} and the MeetStream Agent Kit"),
                          ("Agent Kit warning", r"Agent Kit.*warning.*(meeting speech|what people say).*computer"),
                          ("computer stays on", r"computer must stay on"),
                          ("managed and own keys are the recommended defaults", r"(managed|own).{0,120}recommended|recommended.{0,120}(managed|own)")],
@@ -129,7 +135,7 @@ def description(path):
 
 # Words an agent paraphrases back to the user as version-stability advice. They must not
 # appear in any description, nor on any line of a skill body that talks about versions.
-FORBIDDEN = re.compile(r"\b(stable|unstable|break|breaks|breaking|broken|pin|pinned|pinning|downgrade|downgrading)\b|can.?t promise", re.I)
+FORBIDDEN = re.compile(r"\b(stable|unstable|break|breaks|breaking|broken|pin|pinned|pinning|downgrade|downgrading)\b|can.?t promise|always safe", re.I)
 
 
 def version_wording_misses():
@@ -149,8 +155,42 @@ def version_wording_misses():
     return misses
 
 
+EARLY = {"join-meeting": r"POST /api/v1/bots/\{bot_id\}/send_command.{0,40}raise_hand",
+         "realtime-streaming": r"POST /api/v1/bots/\{bot_id\}/send_command.{0,40}raise_hand"}
+OLD_PACKAGE = "@meetstream/" + "mcp"  # the old npm server; agents cite it as current if any file names it
+
+
+def round6_misses():
+    misses = 0
+    for skill, pattern in EARLY.items():
+        head = description(os.path.join(ROOT, "skills", skill, "SKILL.md"))[:300]
+        ok = re.search(pattern, head) is not None
+        misses += not ok
+        print(f"{'ok  ' if ok else 'MISS'} {skill}: raise-hand REST call in the first 300 characters")
+    ver = MUST["meetstream"][0][1]
+    for rel in ("skills/meetstream/SKILL.md", "skills/getting-started/SKILL.md"):
+        body = " ".join(open(os.path.join(ROOT, rel), encoding="utf-8").read().split())
+        ok = re.search(ver, body) is not None
+        misses += not ok
+        print(f"{'ok  ' if ok else 'MISS'} {rel}: body gives the exact two version sentences")
+    own = description(os.path.join(ROOT, "skills", "mia-voice-agents", "SKILL.md"))
+    if re.search(r"[Nn]ot directly|needs? an API integration", own):
+        misses += 1
+        print("MISS mia-voice-agents: description hedges on the own agent")
+    for base, _, files in os.walk(ROOT):
+        if "/.git" in base or "/evals" in base:
+            continue
+        for name in files:
+            if name.endswith((".md", ".json")):
+                fp = os.path.join(base, name)
+                if re.search(OLD_PACKAGE + r"(?![-\w])", open(fp, encoding="utf-8", errors="ignore").read()):
+                    misses += 1
+                    print(f"MISS {os.path.relpath(fp, ROOT)}: names the old npm package")
+    return misses
+
+
 def main():
-    misses = version_wording_misses() + body_misses()
+    misses = version_wording_misses() + body_misses() + round6_misses()
     for skill, checks in MUST.items():
         desc = description(os.path.join(ROOT, "skills", skill, "SKILL.md"))
         for label, pattern in checks:
