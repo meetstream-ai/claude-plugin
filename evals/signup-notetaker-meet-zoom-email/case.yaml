@@ -5,7 +5,7 @@ tags: [signups, notetaker, zoom, admission]
 runs: 1
 execution:
   prompt: "build me a notetaker that joins our google meet and zoom calls, writes a summary and action items and emails them to everyone on the invite. Don't send a bot yet."
-  max_turns: 10
+  max_turns: 16
   allowed_tools: [Read, Glob, Grep, Skill]
 graders:
 - name: zoom-obf-or-zak
