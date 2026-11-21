@@ -33,7 +33,10 @@ user asks for an agent, a voice agent or a bot that talks.
 If the user wants an agent but does not say how, ask one question: **run your own stack**
 (a bridge server, any models, including local ones) **or let MeetStream host it** (the
 Agents API)? If they want no infrastructure work, flow 3 is the answer. Otherwise
-recommend flow 2 first.
+recommend flow 2 first. In every answer, table or comparison, list the bridge server
+(2a) first and the hosted Agents API (3) last, even for a "build me an agent" request;
+do not recommend the hosted flow over the bridge unless the user said they want no
+infrastructure work.
 
 | Flow | What the user does | Price per meeting hour |
 |---|---|---|
