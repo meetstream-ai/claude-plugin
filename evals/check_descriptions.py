@@ -11,6 +11,8 @@ both sockets, bot price only; 2b own agent through local_agent and the Agent Kit
 warning); 3 managed agent infrastructure (Agents API, MIA: inbuilt keys, then own keys).
 They open the core skill, getting-started, README, AGENTS.md and INSTALL_FOR_AGENTS.md in
 that order, and the old a/b/c voice-agent order (inbuilt keys as the default) is gone.
+Zoom (Sid, 20 Nov 2026): no file says Zoom needs no setup or that the Zoom app is optional;
+bots join through the customer's Zoom app with OBF or ZAK.
 Usage: python3 evals/check_descriptions.py [repo_root]   (exit 1 on any miss)
 """
 import os
@@ -65,6 +67,8 @@ INTERNALS = re.compile(r"mia_managed|managed catalog", re.I)
 MAX_BLOCK = 90  # longer code blocks are app code, not an API guide
 BRIDGE_DOCS = "https://docs.meetstream.ai/guides/websockets/bridge-server-architecture"
 STARTER = "https://github.com/meetstream-ai/meetstream-agent"
+# Sid, 20 Nov 2026: Zoom bots join through the customer's Zoom app with OBF or ZAK; never say Zoom needs no setup.
+ZOOM_NO_SETUP = re.compile(r"[Zz]oom needs (NO|no) setup|needs no setup|\(no setup\)|no-setup|[Zz]oom app is \*{0,2}optional|own Zoom app \(optional\)|no Zoom (Marketplace )?app, no|none needs setup|zoom\.variant")
 STALE_ORDER = re.compile(r"\bsetups? [abc]\b|\(only on request\)|inbuilt keys\W{0,4}\(default\)|[Tt]wo ways to integrate")
 
 
@@ -166,6 +170,10 @@ def body_misses():
                     if hit and not name == "CHANGELOG.md":
                         misses += 1
                         print(f"MISS {os.path.relpath(fp, ROOT)}:{n}: old voice-agent order '{hit.group(0)}'")
+                    hit = ZOOM_NO_SETUP.search(line)
+                    if hit and not name == "CHANGELOG.md" and "Never" not in line and "Do not tell" not in line:
+                        misses += 1
+                        print(f"MISS {os.path.relpath(fp, ROOT)}:{n}: Zoom no-setup claim '{hit.group(0)}'")
     return misses
 
 

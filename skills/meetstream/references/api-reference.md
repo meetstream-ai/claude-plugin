@@ -23,7 +23,7 @@ Creates a bot and sends it to a meeting.
 **Optional fields in the schema:**
 - `video_required` (bool, **API default `false`**) - record video. **Send it explicitly on every bot** (`false` unless the user asked to record video). When it is `true`, pair it with `recording_config.video_layout` (below).
 - `audio_required` (bool, default `true`) - record the mixed meeting audio. Must be `true` when `audio_mixed_mp3` is `true`. Leave it at the default.
-- `zoom` (object): optional; Zoom needs no setup. `use_own_app` (bool or null): `true` requires the user's own Zoom app (400 without one), `false` joins without it, omitted/`null` uses the app when one is saved or connected and joins without one otherwise. Not echoed in bot details; no fallback when Zoom refuses the app. Authenticated joins: `{ "zak_url": "https://..." }` or `{ "obf_url": "https://..." }`, each an HTTPS endpoint on your server that returns a fresh token; neither works with `use_own_app: false` (400). `use_zoom_obf` and `zoom_oauth_connection_user_id` are rejected.
+- `zoom` (object): Zoom bots join through the user's Zoom app with an OBF token (on behalf of a user in the meeting) or a ZAK token (a signed-in bot), the way Zoom asks Meeting SDK apps to join since 2 March 2026. `{ "obf_url": "https://..." }` or `{ "zak_url": "https://..." }`, each an HTTPS endpoint on your server that returns a fresh token. `use_own_app` (bool or null): `true` requires the user's own Zoom app (400 without one), `false` joins without it, omitted/`null` uses the app when one is saved or connected. Not echoed in bot details; no fallback when Zoom refuses the app. OBF and ZAK: neither works with `use_own_app: false` (400). `use_zoom_obf` and `zoom_oauth_connection_user_id` are rejected.
 - `storage_id` (string, `^[A-Za-z0-9_-]{1,80}$`) - one of the workspace's storage destinations (set up in the dashboard; no public API). Omitted: the workspace default destination, or MeetStream storage. Bad format: 400 `storage_id must contain 1-80 letters, numbers, underscores or hyphens`. Unknown ID or failed validation: 400 with the storage error text; 503 when validation is unavailable. Scheduled bots recheck it at join time and end `Error` / `StorageValidationFailed` on failure.
 - `bot_camera_stream` (object) - `{ "websocket_url": "wss://..." }`: publish live WebRTC video/audio INTO the bot's camera and mic. Google Meet (ws:// or wss://), Teams and Zoom (wss:// only). The signaling host must resolve to a public address. 400 on other platforms, for a bad URL, for `ws://` on Teams/Zoom, and with `agent_config_id` on Zoom. Not available on Zoom bots that join without the user's own Zoom app. Guide: https://docs.meetstream.ai/guides/websockets/bot-camera-streaming
 - `audio_separate_streams` (bool) - per-participant audio tracks (Google Meet + Zoom only). Can also be set under `recording_config`.
@@ -732,7 +732,7 @@ All MIA operations use the same path `/api/v1/mia` (singular). The HTTP method d
 - `wake_word` (object, **pipeline only**) - `enabled` (bool), `words` (array or comma-separated string), `timeout` (seconds, default 30)
 - `avatar` (object) - `enabled` (bool), `provider` (`"anam"`), `avatar_id` (required when provider is anam)
 
-**Keys (`key_source`, pipeline sections `transcriber`, `model`, `voice`):** `"meetstream"` = MeetStream's inbuilt key (pipeline mode only, no `api_key` in that section; inbuilt keys cover OpenAI and Deepgram today); `"user"` or not sent = the user's own key from dashboard Integrations. `400 MeetStream-managed keys are not available for <section>. Use your own key.` means inbuilt keys are not on for the account yet: use own keys, do not retry. Price: bot + $0.25 per hour agent infrastructure (+ the models picked with inbuilt keys). https://docs.meetstream.ai/guides/mia/pricing-and-keys
+**Keys (`key_source`, pipeline sections `transcriber`, `model`, `voice`):** `"meetstream"` = MeetStream's inbuilt key (pipeline mode only, no `api_key` in that section; inbuilt keys cover OpenAI and Deepgram today); `"user"` or not sent = the user's own key from dashboard Integrations. `400 MeetStream-managed keys are not available for <section>. Use your own key.` means inbuilt keys are not on for the account yet: use own keys, do not retry. Price: bot + $0.25 per hour agent infrastructure + the models picked. https://docs.meetstream.ai/guides/mia/pricing-and-keys . This is flow 3 (hosted); an agent on the user's own stack uses a bridge server instead (both `live_audio_required` and `socket_connection_url` on the bot, the bot price only): https://docs.meetstream.ai/guides/websockets/bridge-server-architecture
 
 **`model` schema (pipeline):**
 - `provider` - `"openai"`, `"anthropic"`, `"google"`, `"xai"`, or `"local_agent"` (the user's own agent through the MeetStream Agent Kit: `model.local_agent` = `url` (https, required), `label`, `access` (`readonly` default, `confirm`, `full`), `require_code` (default true), `owner_only` (default true), `owner_names` / `owner_ids`, `timeout_s` (10-600, default 120); `model.model` and `system_prompt` optional; test with `GET /api/v1/mia?agent_config_id=<id>&check=local_agent`)
@@ -811,7 +811,7 @@ POST /bots/create_bot
 }
 ```
 
-Do **not** send `socket_connection_url` or `live_audio_required` for MIA; those are only for the bring-your-own-bridge real-time patterns and point at your own server.
+Do **not** send `socket_connection_url` or `live_audio_required` for MIA (a silent agent); those are for the bridge server flow and the real-time patterns, point at your own server, and go on a separate bot.
 
 ---
 
@@ -1243,7 +1243,19 @@ Streaming pattern: send `is_final: false` repeatedly with growing `text`, then `
 }
 ```
 
-**Platform support:** Google Meet only fully clears the queue. Zoom and Teams accept the command but do not clear.
+**Platform support:** stops playback and clears the queue on every platform. On Zoom and Teams the bot then holds further `sendaudio` until you send `resume_audio`; on Google Meet the next `sendaudio` plays normally.
+
+### `resume_audio` - allow audio again after an interrupt
+
+```json
+{
+  "command": "resume_audio",
+  "bot_id": "bot_abc123",
+  "resume_id": "turn-42"
+}
+```
+
+`resume_id` is any string. Zoom answers `resume_audio_ack` (`success`, `error`). Google Meet ignores it, so send it before the first `sendaudio` of each reply on every platform.
 
 ### `sendimg` - set video frame to image (base64)
 

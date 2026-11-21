@@ -7,10 +7,15 @@ description: >
   live_transcription_required.webhook_url on your server (not a WebSocket from
   the bot); your server can then forward them to the browser (Server-Sent
   Events or your own WebSocket). Also raw audio, live video, and two-way bot
-  control over WebSocket. Use when the user says "live transcription", "live
-  captions", "real-time captions", "stream the audio", "live video from the
-  bot", "make the bot speak", "interrupt the bot", "websocket", "sendaudio",
-  or wants anything during the meeting rather than after it.
+  control over WebSocket. Voice agent on your own stack (bridge server, flow
+  2a, recommended first for agents): the bot opens
+  live_audio_required.websocket_url (audio in) and
+  socket_connection_url.websocket_url (sendaudio, sendmsg, interrupt back);
+  run any STT, LLM and TTS, local too (Parakeet); bot price only. Use when
+  the user says "live transcription", "live captions", "stream the audio",
+  "live video from the bot", "make the bot speak", "interrupt the bot",
+  "bridge server", "websocket", "sendaudio", or wants anything during the
+  meeting rather than after it.
 ---
 
 # Real-time streaming
@@ -40,8 +45,10 @@ actually needs.
 | Live video/audio INTO the bot camera and mic | `bot_camera_stream.websocket_url` | WebSocket signaling + WebRTC |
 | Participant join/leave and raise/lower hand | `recording_config.realtime_endpoints` | HTTPS POST, per event |
 
-All of these point at **your own** server. They are not used for voice agents (MIA), which run
-on MeetStream's hosted bridge and need only `agent_config_id`.
+All of these point at **your own** server. `live_audio_required` plus `socket_connection_url`
+on one bot is the bridge server for a voice agent on your own stack (below). They are never
+added to a hosted voice agent bot (Agents API, MIA), which runs on MeetStream's hosted
+bridge and takes only `agent_config_id`.
 
 ## Live transcription
 
@@ -102,19 +109,68 @@ only; the bot's own hand is never reported.
 
 ## Two-way control
 
-`socket_connection_url` gives you a command channel into the meeting. Send JSON:
+`socket_connection_url` gives you a command channel into the meeting. The bot connects to
+your `wss://` endpoint, sends `{"type": "ready", "bot_id": "..."}`, then executes the JSON
+commands you send (each carries `"bot_id"`):
 
 | Command | Effect |
 |---|---|
-| `sendaudio` | Play audio into the call - base64 PCM16 LE chunks |
-| `sendmsg` | Post a message |
-| `sendchat` | Chat with role tagging and streaming support |
-| `interrupt` | `{"action": "clear_audio_queue"}` - stop bot audio. Google Meet only; Zoom/Teams accept it but do not clear |
-| `sendimg` / `sendimg_url` | Set the bot's video frame to an image |
+| `sendaudio` | Play audio into the call: `audiochunk` (base64 PCM16 LE), `sample_rate`, `encoding: "pcm16"`, `channels: 1`, `endianness: "little"`. Google Meet always plays it as 48 kHz |
+| `sendmsg` | Post a chat message. Send both `message` and `msg` so one payload works on every platform |
+| `interrupt` | `{"action": "clear_audio_queue"}`: stop playback and clear the queue. On Zoom and Teams it then holds further audio until `resume_audio` |
+| `resume_audio` | `{"resume_id": "turn-42"}`: allow audio again after an `interrupt` (Zoom answers `resume_audio_ack`). Google Meet ignores it, so send it on every platform before each new reply |
+| `sendimg` / `sendimg_url` | Set the bot's video frame (`img` base64, or `img_url`). Zoom and Teams; on Google Meet use the `send_image` MCP tool |
 
 Pace `sendaudio` slightly ahead of real time (roughly 0.8x the chunk duration) so the
 queue stays fed without running away. Cancel your local send loop when you issue
 `interrupt`, or you will keep pushing audio the bot has been told to drop.
+
+## Voice agent on your own stack (bridge server, flow 2a)
+
+This is the recommended first way to put an agent in a meeting when the user wants their
+own stack: any speech-to-text, LLM and voice, local or hosted (for example Parakeet for
+local speech-to-text, a local LLM and a local TTS). MeetStream charges the bot price only
+($0.35 per hour, $0.25 at volume): no agent infrastructure fee and no model tokens. For
+a hosted agent with no infrastructure work, use `mia-voice-agents` (flow 3) instead; for
+the user's own Claude Code or Codex as the brain, flow 2b in `mia-voice-agents`.
+
+1. Run a bridge server with two WebSocket endpoints, `/bridge/audio` (meeting audio in,
+   binary frames) and `/bridge` (JSON commands out). Start from the MeetStream Bridge
+   starter at https://github.com/meetstream-ai/meetstream-agent (FastAPI, OpenAI Realtime
+   by default; swap in local models), or build to the bridge docs.
+2. Expose it on a public `wss://` host (a tunnel such as ngrok works for local
+   development; `localhost` is not reachable from the bot).
+3. Send a bot with both sockets on the same host:
+   ```bash
+   curl -X POST https://api.meetstream.ai/api/v1/bots/create_bot \
+     -H "Authorization: Token $MEETSTREAM_API_KEY" -H "Content-Type: application/json" \
+     -d '{"meeting_link": "https://meet.google.com/abc-defg-hij", "bot_name": "Assistant",
+          "live_audio_required": {"websocket_url": "wss://your-bridge.example/bridge/audio"},
+          "socket_connection_url": {"websocket_url": "wss://your-bridge.example/bridge"}}'
+   ```
+   ```ts
+   await ms.bots.create({ meeting_link, bot_name: 'Assistant',            // @meetstream/sdk
+     live_audio_required: { websocket_url: 'wss://your-bridge.example/bridge/audio' },
+     socket_connection_url: { websocket_url: 'wss://your-bridge.example/bridge' } });
+   ```
+   ```python
+   ms.bots.create({"meeting_link": meeting_link, "bot_name": "Assistant",  # meetstream-sdk
+       "live_audio_required": {"websocket_url": "wss://your-bridge.example/bridge/audio"},
+       "socket_connection_url": {"websocket_url": "wss://your-bridge.example/bridge"}})
+   ```
+4. Both sockets open with a `{"type": "ready", "bot_id": "..."}` handshake; keep one AI
+   session per `bot_id`, created when the first socket connects and closed when both have
+   disconnected.
+5. Audio in: frames start with a type byte. `0x01` (Google Meet, Teams) is 48 kHz mono;
+   `0x04` (Zoom) carries the sample rate and channel count in the header. Then the speaker
+   id and name (each with a 2-byte little-endian length) and PCM16 LE audio. Skip the
+   bot's own name to avoid echo, and resample to your model's rate (for example 16 kHz).
+6. Reply: before the first chunk of each reply send `resume_audio`, then stream
+   `sendaudio` at 48 kHz; post text with `sendmsg`. When a person talks over the agent,
+   send `interrupt` and stop your send loop (barge-in).
+
+Do not add `agent_config_id` to a bridge bot: a bridge bot and a hosted agent bot are
+separate bots.
 
 ## Simpler alternatives
 
@@ -126,7 +182,7 @@ Before building a WebSocket server, check whether the REST path is enough:
   `POST /api/v1/bots/{bot_id}/send_command` with `{"command": "raise_hand"}` /
   `{"command": "lower_hand"}` (bot must be in the meeting, else 409; see `join-meeting`).
 - Just showing an image? Use the **`send_image`** MCP tool (public URL, not base64).
-- Only if the user asks for a bot that talks or answers: use a voice agent (`mia-voice-agents`, `agent_config_id`) and host nothing.
+- Only if the user asks for a bot that talks or answers: on their own stack, the bridge server above (bot price only); with no infrastructure work, the hosted voice agent (`mia-voice-agents`, flow 3, `agent_config_id`).
 
 Reach for WebSockets when you need raw media or custom real-time logic, not for
 one-off actions.
@@ -136,7 +192,7 @@ one-off actions.
 - Live transcription: https://docs.meetstream.ai/guides/transcription-recordings/live-transcription
 - Real-time audio WebSocket: https://docs.meetstream.ai/guides/websockets/real-time-audio-streaming
 - Meeting control WebSocket: https://docs.meetstream.ai/guides/websockets/meeting-control-patterns
+- Bridge server for a voice agent on your own stack: https://docs.meetstream.ai/guides/websockets/bridge-server-architecture
 - Bot camera streaming: https://docs.meetstream.ai/guides/websockets/bot-camera-streaming
-- Chat and visuals: https://docs.meetstream.ai/guides/features/chat-and-visuals
 
 For the latest details, fetch the page with `.md` appended, read https://docs.meetstream.ai/llms.txt, or connect the docs MCP server at https://docs.meetstream.ai/_mcp/server.

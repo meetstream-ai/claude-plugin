@@ -2,6 +2,24 @@
 
 All notable changes to the MeetStream Claude Code plugin.
 
+## [2.9.0] - 2026-11-21
+
+The three flows: recording first; for an agent in the meeting, your own stack on a bridge server first, then the hosted Agents API.
+
+### Changed
+- **Three flows** replace the two ways to integrate in the core skill, `getting-started`, the README, `AGENTS.md`, `CLAUDE.md` and `INSTALL_FOR_AGENTS.md`: 1) recording only (Bot API, default); 2) agents in meetings on your own stack, recommended first when the user asks for an agent: 2a a bridge server (the bot opens `live_audio_required.websocket_url` and `socket_connection_url.websocket_url` to your server; any speech-to-text, LLM and TTS, local or hosted, for example Parakeet; the bot price only), 2b your own agent through `model.provider: "local_agent"` and the Agent Kit (always with the prompt-injection warning); 3) the hosted Agents API (MIA) with MeetStream's inbuilt keys (OpenAI and Deepgram), then your own provider keys. The old order (inbuilt keys as the default, your own agent only on request) is gone.
+- When the user wants an agent and does not say how, the skills ask one question: your own stack or hosted by MeetStream? No infrastructure work means flow 3.
+- `realtime-streaming` owns the bridge recipe: both sockets, the handshake, the audio frames (`0x01`, `0x04`), and the control commands from the public docs (`sendaudio`, `sendmsg`, `interrupt`, `resume_audio`, `sendimg` / `sendimg_url`), with the starter repo [meetstream-ai/meetstream-agent](https://github.com/meetstream-ai/meetstream-agent).
+- `mia-voice-agents` starts with the flow picker, owns flows 2b and 3, and points to the bridge for flow 2a. A hosted agent bot takes only `agent_config_id`; flows 2a and 3 are separate bots.
+- `troubleshooting` and the debugger agent cover a silent agent in each flow.
+
+### Fixed
+- **Zoom setup wording** (Sid, 20 Nov 2026). The skills, README and debugger agent no longer say that Zoom needs no setup, that no Zoom app, SDK keys, OAuth or tokens are needed, or that the Zoom app is optional. Zoom bots join through the customer's Zoom app with an OBF token (on behalf of a user in the meeting) or a ZAK token (a signed-in bot), the way Zoom asks Meeting SDK apps to join since 2 March 2026. `zoom.use_own_app` stays documented as an API field; the guides do not promote joining without the app. The `zoom-no-setup` eval case is replaced by `zoom-joins-through-your-app`, and `evals/check_descriptions.py` fails on a no-setup claim.
+- `interrupt` stops playback on every platform; on Zoom and Teams audio stays held until `resume_audio`, which the skills did not name. The undocumented `sendchat` command is no longer listed in the core skill and `realtime-streaming`.
+
+### Evals
+- New cases: `agent-own-models-bridge`, `agent-unspecified-asks-own-or-hosted`, `agent-no-infra-hosted`, `mia-bot-no-bridge-sockets`. The setup-order, build, pricing, own-agent, two-ways and MIA cases follow the three flows; `zoom-no-setup` became `zoom-joins-through-your-app`. `evals/check_descriptions.py` checks the three flows, the bridge sockets and links, the control commands, and fails on the old a/b/c order.
+
 ## [2.8.0] - 2026-11-21
 
 Two ways to integrate, voice agent pricing and keys, MeetStream API v1.10.0, and skills that teach the API instead of pasting sample apps.

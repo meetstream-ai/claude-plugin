@@ -56,28 +56,26 @@ permission** from the host. If nobody grants it,
 (60-600 seconds, default 600). A Zoom bot that joins without your own Zoom app records
 from admission whatever the host answers, so the timeout does not apply to it.
 
-**Zoom needs no setup.** A Zoom bot needs only the MeetStream API key and the meeting
-link: no Zoom Marketplace app, no Zoom app credentials, no Meeting SDK keys, no Zoom OAuth
-connection and no tokens. Omit `zoom` (or send `{}`) and the same `create_bot` request
-works as it does for Google Meet and Teams. Do not tell the user to create a Zoom app
-before their first bot.
+**How a Zoom bot joins.** Zoom bots join through your Zoom app with an OBF token (on
+behalf of a user who is in the meeting) or a ZAK token (a signed-in bot), the way Zoom asks
+Meeting SDK apps to join since 2 March 2026. Do not tell the user that Zoom needs no setup
+or that a Zoom app is not needed.
 
-Your own Zoom app is **optional**. Saving its Client ID and Client Secret in the MeetStream
-dashboard (Integrations > Zoom) adds:
+1. Create a Zoom Meeting SDK app (General app, Meeting SDK on) and save its Client ID and
+   Client Secret in the MeetStream dashboard under Integrations > Zoom, or connect your
+   Zoom app and users (Zoom OAuth meeting bots).
+2. On the REST `create_bot` request, send the `zoom` object with exactly one of
+   `obf_url` (the bot joins on behalf of a user who is already in the meeting) or
+   `zak_url` (the bot joins signed in as a Zoom user, can enter sign-in-only meetings and
+   join before the host). Each is an HTTPS URL on **your** server that returns a fresh
+   token when MeetStream calls it at join time. You run the Zoom OAuth flow and keep the
+   refresh tokens; MeetStream does not store them.
 
-- **Authenticated joins** through the `zoom` object on the REST `create_bot` request, with
-  exactly one of `zak_url` (the bot joins signed in as a Zoom user, can enter sign-in-only
-  meetings and join before the host) or `obf_url` (the bot joins on behalf of a user who is
-  already in the meeting). Each is an HTTPS URL on **your** server that returns a fresh
-  token when MeetStream calls it at join time. You run the Zoom OAuth flow and keep the
-  refresh tokens; MeetStream does not store them.
-- Per-participant **camera** video (without your app, per-participant video contains
-  screen shares only; per-participant audio works either way).
-- Live video into the bot camera (`bot_camera_stream`). MIA agents can show images,
-  video and an avatar with or without your app.
+Your Zoom app also gives per-participant **camera** video and live video into the bot
+camera (`bot_camera_stream`).
 
-**Choosing the join with `zoom.use_own_app`** (REST `create_bot`, calendar schedule and
-scheduled-bot PATCH; optional):
+**The `zoom.use_own_app` field** (REST `create_bot`, calendar schedule and scheduled-bot
+PATCH):
 
 | `zoom.use_own_app` | What happens |
 |---|---|
@@ -86,9 +84,10 @@ scheduled-bot PATCH; optional):
 | `false` | Joins without your Zoom app even if one is saved. 400 with `zak_url` / `obf_url` |
 
 - Any other value: 400 `zoom.use_own_app must be true or false`.
-- **No fallback**: if Zoom refuses your app, the bot does not retry without it. Send
-  `use_own_app: false` to avoid the app.
-- No-setup join not offered for the account's region: 400 `Zoom bots are not available in this region right now`.
+- **No fallback**: if Zoom refuses your app, the bot does not retry without it. Fix the
+  app (credentials, Meeting SDK on) and send the bot again.
+- 400 `Zoom bots are not available in this region right now`: save your Zoom app and
+  send `zoom.use_own_app: true`.
 - `meeting_captions` and `initial_audio` work only on bots that join without your app
   (`meeting_captions` with your app: 400 `meeting_captions is not supported on Zoom. ...`).
 - A Zoom link with no meeting number (for example a `/my/` personal link) returns 400
@@ -100,7 +99,7 @@ joining other accounts' meetings with your app needs Zoom's review and a ZAK or 
 - `use_zoom_obf` and `zoom_oauth_connection_user_id` are **rejected** by the API. Do not use them
   or the `/zoom/oauth/*` connection endpoints.
 
-Optional app walkthrough: https://docs.meetstream.ai/guides/app-integrations/zoom-marketplace-app-setup
+Zoom app walkthrough: https://docs.meetstream.ai/guides/app-integrations/zoom-marketplace-app-setup
 
 ## Google Meet
 

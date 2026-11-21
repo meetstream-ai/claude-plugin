@@ -4,10 +4,13 @@ You are an AI agent. The user asked you to install MeetStream. Follow these step
 
 MeetStream sends a bot into the user's Zoom, Google Meet or Microsoft Teams call. You (the agent) do the note-taking with your own model. MeetStream bills the bot per hour from prepaid credits.
 
-## Two ways to integrate
+## Three flows
 
-1. **Bot API (default): meeting bots and recording.** A bot joins Zoom, Google Meet or Microsoft Teams. You get recordings, transcripts, participants, chat and webhooks after the call, or live data during the call.
-2. **Agents API (only on request): voice agents in the meeting.** A voice agent (API name MIA) on the bot listens and talks. Use it only when the user asks for a voice agent or a bot that talks. Price: the bot plus $0.25 per hour for the agent infrastructure, plus the models picked with MeetStream's inbuilt keys (OpenAI and Deepgram), or the user's own provider keys.
+1. **Recording only (Bot API, default).** A bot joins Zoom, Google Meet or Microsoft Teams. You get recordings, transcripts, participants, chat and webhooks after the call, or live data during the call. Use this for every request that does not ask for an agent in the meeting.
+2. **Agents in meetings on your own stack (recommended first when the user asks for an agent, a voice agent or a talking bot).**
+   - 2a. **Bridge server.** The bot opens two WebSockets to your server: live audio in (`live_audio_required.websocket_url`) and the control socket (`socket_connection_url.websocket_url`) to send audio, chat, images and interrupts back. Run any speech-to-text, LLM and TTS, local or hosted (for example Parakeet for local speech-to-text). Price: the bot price only, no agent infrastructure and no model tokens. [Bridge server docs](https://docs.meetstream.ai/guides/websockets/bridge-server-architecture), starter: [meetstream-ai/meetstream-agent](https://github.com/meetstream-ai/meetstream-agent).
+   - 2b. **Your own agent as the brain.** Claude Code, Codex, Hermes, OpenClaw and others through `model.provider: "local_agent"` and the MeetStream Agent Kit. The bot plus $0.25 per hour for the agent infrastructure, no model tokens. Warning: meeting speech reaches an agent that has access to your computer and terminal (prompt injection); keep the computer, the agent and the bridge on for the whole call, and use the lowest access level. [Your own agent](https://docs.meetstream.ai/guides/features/mia-screen-sharing-and-custom-agents).
+3. **Managed agent infrastructure (Agents API, API name MIA).** MeetStream hosts the voice agent: MeetStream's inbuilt keys (OpenAI and Deepgram today, no provider account) or your own provider keys. The bot plus $0.25 per hour for the agent infrastructure, plus the models you pick ([pricing and keys](https://docs.meetstream.ai/guides/mia/pricing-and-keys)). A hosted agent bot takes only `agent_config_id`, never the bridge sockets.
 
 Details: https://docs.meetstream.ai/guides/introduction/integration-paths
 
@@ -92,6 +95,6 @@ Say, in two lines: MeetStream is installed and signed in, and they can now say t
 - "Send a bot to <meeting link> and take notes."
 - "Get the notes from my last meeting."
 
-If they ask what MeetStream can do, ask one question: results after the meeting (recording, transcript, notes) or something live during the call (live transcript, chat)? Do not suggest a voice agent unless they ask for one. If `create_bot` answers `Low credits please recharge`, give them https://app.meetstream.ai/billing.
+If they ask what MeetStream can do, ask one question: results after the meeting (recording, transcript, notes) or something live during the call (live transcript, chat)? Do not suggest a voice agent unless they ask for one; if they do, follow the three flows above (own stack on a bridge server first, the hosted Agents API when they want no infrastructure work). If `create_bot` answers `Low credits please recharge`, give them https://app.meetstream.ai/billing.
 
 Do not explain the internals (paths, manifests) unless asked.
