@@ -42,7 +42,7 @@ reply keep helping. Do not stop at "sign in first".
 ## The short path
 
 1. **`create_bot`** with `meeting_link` and a `bot_name`.
-2. **`get_bot_status`** to follow it (`Joining` -> `InWaitingRoom` -> `InMeeting` -> `Recording`).
+2. **`get_bot_status`** to follow it (`Joining` -> `InWaitingRoom` -> `InMeeting` -> `MediaProcessing` -> `Done`; full list below). Stop at `Done` or another final status, never loop forever.
 3. When the meeting ends, **`get_transcript`** with the `bot_id`.
 
 That is the whole flow. Everything below is detail you need when it is not that simple.

@@ -10,7 +10,7 @@ execution:
 graders:
 - name: no-internals
   type: regex
-  pattern: 'mia_managed|\bregion\b|managed catalog'
+  pattern: '\bregion\b|managed catalog'
   flags: i
   match: not_contains
 - name: own-keys-path

@@ -11,7 +11,10 @@ description: >
   /api/v1/billing/balance (read only) may answer not available: expected, use
   the billing page. get_transcript 422 = the transcript run failed, with status and
   reason: final, do not retry; fix the cause (often the provider key) and
-  re-run with POST /api/v1/bots/{bot_id}/transcribe.
+  re-run with POST /api/v1/bots/{bot_id}/transcribe. Polling loop hangs or
+  waits for Stopped: the bot can go InMeeting -> MediaProcessing -> Done
+  between polls; poll until a final status with a cap. Slow duplicate check:
+  filter GET /bots (status, from, custom_attr, limit at most 50).
 ---
 
 # Troubleshooting MeetStream
@@ -162,6 +165,19 @@ First find which of the three flows the bot uses (flow 1, recording only, has no
   `speak_only_when_asked`, and the keys: `MeetStream-managed keys are not
   available` means inbuilt keys are not on for the account yet, so use your own provider
   keys; never retry in a loop. Details: `mia-voice-agents`.
+
+## "My polling loop hangs" or "the duplicate check takes minutes"
+
+- Do not wait for `Stopped`. Between two polls the bot can go `InMeeting` →
+  `MediaProcessing` → `Done`, so `Stopped` is never seen. Stop on any final status:
+  `Done`, `NotAllowed`, `Denied`, `Failed` / `FAILED`, `Error` / `ERROR`, `MediaExpired`,
+  `Cancelled` (in progress: `Scheduled`, `Joining`, `InWaitingRoom`, `InMeeting`,
+  `Leaving`, `MediaProcessing`). Fetch the transcript at `Done`. Always cap the loop, or
+  use the webhooks (`transcription.processed`, `bot.done`).
+- Do not page through every bot to find a duplicate. Filter the list:
+  `GET /api/v1/bots?status=InMeeting&from=2026-11-21&limit=50` (also `platform`,
+  `custom_attr[key]`); `limit` is at most 50 (400 above); follow `nextCursor` as `cursor`.
+  Better: send a `deduplication_key` (one bot per meeting) and an `Idempotency-Key`.
 
 ## "I'm getting duplicate bots"
 

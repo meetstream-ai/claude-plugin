@@ -1784,7 +1784,8 @@ Specified under `recording_config.transcript.provider`. Use **exactly one** prov
 | `NotAllowed` | `bot.stopped` (`bot_event: bot.notallowed`) | Could not join (waiting-room / lobby timeout) |
 | `Denied` | `bot.stopped` (`bot_event: bot.denied`) | Host denied join or recording permission |
 | `FAILED` / `ERROR` / `Failed` | `bot.stopped` (`bot_event: bot.failed`) | Unexpected error. Casing varies, so match `bot_event` instead |
-| `Done` | `bot.done` | All processing complete - **terminal** |
+| `MediaProcessing` | (none) | Post-call processing after `Stopped` or `Kicked`. A poll can see `InMeeting` and then `MediaProcessing` or `Done` and never `Stopped` |
+| `Done` | `bot.done` | All processing complete - **terminal**. Poll until `Done` (or another final status: `NotAllowed`, `Denied`, `Failed`, `Error`, `MediaExpired`, `Cancelled`), with a cap |
 
 ### `*.failed` events
 
