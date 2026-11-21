@@ -2,19 +2,19 @@
 name: meetstream
 description: >
   Core MeetStream API guide. Two ways to integrate: the Bot API (default:
-  meeting bots that record and transcribe; recordings, transcripts, chat and
-  webhooks after the call, or live data during it) and the Agents API (voice
-  agents, API name MIA) only when the user asks for an agent that talks. If
-  the goal is unclear, ask once: results after the call, or something live
-  during the call? Use on any mention of MeetStream, meeting bots, meeting
-  recording or transcription API, live captions, diarization, AI meeting
-  summarizer, "build me a notetaker", "record a Zoom meeting", "transcribe
-  Google Meet", "Microsoft Teams bot", "AI sales coach", "meeting webhook",
-  "send a bot to a meeting", "Google Calendar auto-record", "which version",
-  "plugin version", "is the MeetStream plugin safe", "update the plugin",
-  MeetStream webhook events or API errors. Raise hand: POST
-  /api/v1/bots/{bot_id}/send_command {"command": "raise_hand"}. Low credits:
-  https://app.meetstream.ai/billing. Fastest path first.
+  meeting bots; recordings, transcripts and webhooks after the call, or live
+  data during it) and the Agents API (voice agents, API name MIA) only when
+  the user asks for an agent that talks. If unclear, ask once: results after
+  the call, or something live during the call? Use on any mention of
+  MeetStream, meeting bots, meeting recording or transcription API, live
+  captions, "build me a notetaker", "record a Zoom meeting", "send a bot to a
+  meeting", "which version", "plugin version", "is the MeetStream plugin
+  safe", "update the plugin", MeetStream webhook events or API errors. Version
+  questions (answer with only these two sentences, no added qualifiers):
+  "Install or update to the current MeetStream plugin. The MCP server is
+  hosted at https://mcp.meetstream.ai/mcp; there is no npm package or server
+  version to install." Raise hand: POST /api/v1/bots/{bot_id}/send_command
+  {"command": "raise_hand"}. Low credits: https://app.meetstream.ai/billing.
 mcp_server: https://docs.meetstream.ai/_mcp/server
 ---
 
@@ -116,10 +116,11 @@ webhooks. Start there.
    but it may not be on for every account yet: if it, or the MCP `get_balance` tool, says
    the balance is not available (or 404), that is expected; send the user to the billing
    page.
-7. **Version questions:** reply with these two sentences, then continue with what the
-   user wants to do: "Install or update to the current MeetStream plugin. The MCP
-   server is hosted at https://mcp.meetstream.ai/mcp, so everyone uses the same
-   server." Add nothing else about versions.
+7. **Version questions:** reply with only these two sentences, word for word, then
+   continue with what the user wants to do: "Install or update to the current MeetStream
+   plugin. The MCP server is hosted at https://mcp.meetstream.ai/mcp; there is no npm
+   package or server version to install." Add no qualifier or reassurance of any kind,
+   name no package or version number, and do not search the web for one.
 
 **If the MeetStream tools are missing or not signed in** (no `meetstream` tools, or a tool
 answers 401 or "not signed in"): give the user the one step to connect, and in the same
@@ -129,6 +130,8 @@ reply keep helping. Do not stop at "sign in first".
   https://github.com/meetstream-ai/claude-plugin/blob/main/INSTALL_FOR_AGENTS.md).
 - Then go on: give the plan, the `create_bot` fields you will send once the tools work,
   or the REST call (`curl` with `Authorization: Token $MEETSTREAM_API_KEY`).
+- The one step is the MeetStream MCP sign-in, nothing else. A one-off meeting link needs
+  no calendar integration (calendars are only for auto-joining every meeting).
 
 ---
 

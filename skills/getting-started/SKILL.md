@@ -79,10 +79,11 @@ webhooks. Start there.
      that has access to the user's computer and terminal (prompt injection); use the
      lowest access level (`readonly`) and the activation code; the computer, the agent and
      the bridge must stay on for the whole call.
-4. **Version questions:** reply with these two sentences, then continue with what the
-   user wants to do: "Install or update to the current MeetStream plugin. The MCP
-   server is hosted at https://mcp.meetstream.ai/mcp, so everyone uses the same
-   server." Add nothing else about versions.
+4. **Version questions:** reply with only these two sentences, word for word, then
+   continue with what the user wants to do: "Install or update to the current MeetStream
+   plugin. The MCP server is hosted at https://mcp.meetstream.ai/mcp; there is no npm
+   package or server version to install." Add no qualifier or reassurance of any kind,
+   name no package or version number, and do not search the web for one.
 
 **If the MeetStream tools are missing or not signed in** (no `meetstream` tools, or a tool
 answers 401 or "not signed in"): give the user the one step to connect, and in the same
@@ -92,6 +93,8 @@ reply keep helping. Do not stop at "sign in first".
   https://github.com/meetstream-ai/claude-plugin/blob/main/INSTALL_FOR_AGENTS.md).
 - Then go on: give the plan, the `create_bot` fields you will send once the tools work,
   or the REST call (`curl` with `Authorization: Token $MEETSTREAM_API_KEY`).
+- The one step is the MeetStream MCP sign-in, nothing else. A one-off meeting link needs
+  no calendar integration (calendars are only for auto-joining every meeting).
 
 ## When to invoke this skill
 

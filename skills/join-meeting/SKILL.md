@@ -1,20 +1,20 @@
 ---
 name: join-meeting
 description: >
-  Send a MeetStream bot into a live Zoom, Google Meet or Microsoft Teams meeting
-  and follow it until it leaves. Use when the user says "join this meeting",
-  "send a bot to <meeting url>", "record this call", "have the bot take notes on
-  this meeting", "get a transcript of this meeting", "make the bot leave", "make
-  the bot raise its hand", or pastes a meeting link and asks for anything to
-  happen to it. Covers create, status, live chat, and removal using the
-  MeetStream MCP tools. Raise/lower hand: POST
-  /api/v1/bots/{bot_id}/send_command {"command": "raise_hand"} (works without
-  the MCP tools). Low credits: send the user to
-  https://app.meetstream.ai/billing (top_up_link tool when connected); never
-  retry in a loop. If the MeetStream tools are not connected, give the one
-  connect step (Codex: codex mcp login meetstream; Claude Code: /mcp; Cursor:
-  Settings → MCP) and offer the REST call POST /api/v1/bots/create_bot with
-  meeting_link; never say MeetStream can't record.
+  Send a MeetStream bot into a live Zoom, Google Meet or Microsoft Teams
+  meeting and follow it until it leaves. Raise/lower hand: POST
+  /api/v1/bots/{bot_id}/send_command {"command": "raise_hand"} (REST, works
+  without the MCP tools). Use when the user says "join this meeting", "send a
+  bot to <meeting url>", "record this call", "get a transcript of this
+  meeting", "make the bot leave", "make the bot raise its hand", or pastes a
+  meeting link and asks for anything to happen to it. Covers create, status,
+  live chat, and removal using the MeetStream MCP tools. Low credits: send the
+  user to https://app.meetstream.ai/billing (top_up_link tool when connected);
+  never retry in a loop. If the MeetStream tools are not connected, give only
+  the one MeetStream MCP connect step (Codex: codex mcp login meetstream;
+  Claude Code: /mcp; Cursor: Settings → MCP) and offer the REST call POST
+  /api/v1/bots/create_bot with meeting_link; a one-off meeting link needs no
+  calendar integration; never say MeetStream can't record.
 ---
 
 # Join a meeting with a MeetStream bot
@@ -34,6 +34,8 @@ reply keep helping. Do not stop at "sign in first".
   https://github.com/meetstream-ai/claude-plugin/blob/main/INSTALL_FOR_AGENTS.md).
 - Then go on: give the plan, the `create_bot` fields you will send once the tools work,
   or the REST call (`curl` with `Authorization: Token $MEETSTREAM_API_KEY`).
+- The one step is the MeetStream MCP sign-in, nothing else. A one-off meeting link needs
+  no calendar integration (calendars are only for auto-joining every meeting).
 - Never tell the user MeetStream cannot record the meeting: it can, through the tools
   once connected or now through REST `POST /api/v1/bots/create_bot` with `meeting_link`.
 

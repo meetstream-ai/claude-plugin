@@ -1,19 +1,20 @@
 ---
 name: mia-voice-agents
 description: >
-  Voice agents (Agents API, API name MIA): an AI participant that listens and
-  talks in a live meeting. Use only when the user asks: "voice agent", "AI
-  agent in the meeting", "a bot that talks", "a bot that answers questions",
-  "talking bot", "wake word assistant", "use my own Claude Code / Codex as the
-  agent", or "MIA". Order: a) default to MeetStream's inbuilt keys (key_source
-  "meetstream", OpenAI and Deepgram); b) then the user's own provider keys;
-  inbuilt and own keys are the recommended defaults. Price: bot + $0.25 per
-  hour agent infrastructure + models picked (dashboard shows the rate). If the
+  Voice agents (Agents API, API name MIA) that listen and talk in a live
+  meeting. Use only when the user asks: "voice agent", "AI agent in the
+  meeting", "a bot that talks", "talking bot", "wake word assistant", "use my
+  own Claude Code / Codex as the agent", or "MIA". Order: a) default to
+  MeetStream's inbuilt keys (key_source "meetstream", OpenAI and Deepgram); b)
+  then the user's own provider keys; inbuilt and own keys are the recommended
+  defaults. Price: bot + $0.25 per hour agent infrastructure + models. If the
   API says managed keys are not available, inbuilt keys are not on for the
-  account yet: go on with own keys, never retry. c) Own agent (local_agent,
-  Agent Kit) only on request, with a warning: meeting speech reaches an agent
-  with access to their computer (prompt injection); use readonly access and
-  the activation code; the computer must stay on for the whole call.
+  account yet: go on with own keys, never retry. c) Yes: your own agent
+  (Claude Code, Codex, Hermes, OpenClaw and others) can be the voice agent's
+  brain through `model.provider: "local_agent"` and the MeetStream Agent Kit,
+  on request, with a warning: meeting speech reaches an agent with access to
+  their computer (prompt injection); use readonly access and the activation
+  code; the computer must stay on for the whole call.
 ---
 
 # Voice agents (Agents API, API name MIA)
@@ -114,6 +115,11 @@ settings, never the keys. Works in pipeline and realtime mode. A missing key ret
 `400` `API key not configured for: ...`.
 
 ### c. Their own agent (`local_agent`, only on request)
+
+Yes: the user's own agent (Claude Code, Codex, Hermes, OpenClaw and others) can be the
+voice agent's brain through `model.provider: "local_agent"` and the MeetStream Agent Kit.
+It needs no API integration of its own: the agent keeps its own subscription and login.
+Say yes first, then give the warning below in the same answer.
 
 > **Warning:** what people say and type in the meeting reaches an agent that has access
 > to your computer and your terminal. Someone in the call can try to make it run

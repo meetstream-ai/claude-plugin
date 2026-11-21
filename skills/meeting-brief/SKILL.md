@@ -26,6 +26,8 @@ reply keep helping. Do not stop at "sign in first".
   https://github.com/meetstream-ai/claude-plugin/blob/main/INSTALL_FOR_AGENTS.md).
 - Then go on: give the plan, the `create_bot` fields you will send once the tools work,
   or the REST call (`curl` with `Authorization: Token $MEETSTREAM_API_KEY`).
+- The one step is the MeetStream MCP sign-in, nothing else. A one-off meeting link needs
+  no calendar integration (calendars are only for auto-joining every meeting).
 
 ## Fastest route to a brief
 

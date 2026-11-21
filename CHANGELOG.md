@@ -16,6 +16,7 @@ Two ways to integrate, voice agent pricing and keys, MeetStream API v1.10.0, and
 ### Changed
 - **No sample apps inside skills.** `notetaker`, `sales-coach` and `calendar-automation` are now API guides: the fastest path in numbered steps with minimal curl, Node `@meetstream/sdk` and Python `meetstream-sdk` calls, and one link to [Tutorials and Sample Apps](https://docs.meetstream.ai/tutorials/sample-apps) and the labs repo as optional references. The core skill drops the "power prompts" and the `references/code-patterns-node.md` / `code-patterns-python.md` app files. `verify-account` is a read-only check (no probe bots).
 - Calendar disconnect is `DELETE /api/v1/calendar/disconnect`; recording links are valid for 1 hour.
+- Descriptions for agents that read only descriptions (round 6). `mia-voice-agents` now says yes: your own agent can be the voice agent's brain through `local_agent` and the Agent Kit. `realtime-streaming` says live transcripts arrive by HTTPS POST to `live_transcription_required.webhook_url`, and your server can then forward them to the browser. The core version answer is two fixed sentences, with no npm package, no server version and no qualifiers. The raise-hand REST call comes first in `join-meeting` and `realtime-streaming`. The connect step names only the MeetStream MCP sign-in; a one-off meeting link needs no calendar integration.
 - `evals/check_descriptions.py` also checks the Latest docs sections, no app scaffolds, the two-ways openers and the new must-say lines.
 
 ## [2.7.0] - 2026-11-18
