@@ -19,7 +19,7 @@ description: >
 # Build it for your customers (multi-tenant)
 
 Your product sends MeetStream bots into your customers' meetings and keeps each
-customer's recordings and transcripts apart. This is the Bot API (flow 1): the same
+customer's recordings and transcripts apart. This is the Recording bot (track 1, the Bot API): the same
 `create_bot`, webhooks and transcript calls as a notetaker, plus a tenant tag on every
 bot. Do not add a voice agent unless the user asks for one.
 

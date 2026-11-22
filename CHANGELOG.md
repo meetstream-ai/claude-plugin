@@ -2,6 +2,20 @@
 
 All notable changes to the MeetStream Claude Code plugin.
 
+## [2.11.0] - 2026-11-22
+
+Moves every skill and top-level doc from the three flows to the build tracks (MS-2305).
+
+### Changed
+- **Build tracks replace the three flows** in every skill description, skill body, `AGENTS.md`, `CLAUDE.md`, `README.md`, `INSTALL_FOR_AGENTS.md` and the debugger agent: 1 Recording bot (1a non-realtime transcription, post-call; 1b real-time transcription, live), 2 Bridge server (your own stack, local), 3 Agents API infra (3a MeetStream's own, default keys; 3b bring your own agent infra, LiveKit; 3c bring your own keys; 3d local agent). Replies name the track.
+- **Track 2, bridge server:** a local tunnel (ngrok, cloudflared) for a laptop, and free local options: whisper.cpp or faster-whisper, NVIDIA Parakeet (parakeet-mlx), Vosk, Moonshine for speech-to-text; Ollama, LM Studio or llama.cpp (Llama, Qwen, Gemma, Mistral), or the harness's own model, for the LLM; Piper, Kokoro, Chatterbox, macOS `say` for text-to-speech. "Free to run locally; check each model's license before commercial use."
+- **Track 3a** (default keys) is the answer for "just host it", with 3c (own keys) as the fallback when a section is refused. The own-keys path is now 3c (was 3b).
+- **3b (LiveKit) and 3d (local agent through the Agent Kit and `local_agent`) are COMING SOON.** The skills describe them as coming soon, keep the prompt-injection warning for 3d, and give no setup steps: the Agent Kit install, pairing-token and `serve --command` steps are removed. "Use Claude Code as the brain" now gets track 2 (the harness's model as the bridge LLM) or 3a/3c. `check_local_agent` is named for 3d only.
+
+### Evals
+- New cases `track2-local-free-models`, `track3b-livekit-coming-soon`, `track1b-record-live-captions`; `voice-agent-own-claude-code-warned` becomes `track3d-claude-code-coming-soon`. `agent-no-infra-hosted` names 3a with the 3c fallback; `voice-agent-local-agent-config` and `agent-kit-cursor-dashboard-step` expect coming soon with no Agent Kit steps; the routing judges treat a local agent or LiveKit offered as available as a fail.
+- `evals/check_descriptions.py`: build-track must-say patterns in the descriptions, the tracks (with 3a to 3d and COMING SOON) in the first 60 lines of the top files, no old flow labels, no do-this-now steps for 3b or 3d, and LiveKit always with "coming soon".
+
 ## [2.10.1] - 2026-11-22
 
 Uses the hosted MCP 0.6.0 tools, so users finish a MeetStream build without leaving their agent (MS-2305).
