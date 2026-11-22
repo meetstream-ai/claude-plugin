@@ -1,0 +1,26 @@
+schema_version: "1.1"
+name: track3d-claude-code-coming-soon
+description: "Build tracks (MS-2305, 22 Nov 2026): the user wants Claude Code as the brain of their meeting agent. Track 3d (local agent through the Agent Kit and local_agent) is coming soon, not available: say so with the prompt-injection warning, give no setup steps for it, and offer what works now: track 2 (bridge server, with the harness's own model or a local model as the LLM) or track 3a/3c (hosted Agents API)."
+tags: [build-tracks, voice-agent, security]
+runs: 1
+execution:
+  prompt: "I want to use Claude Code as the brain of my meeting agent in Google Meet. How do I set that up?"
+  max_turns: 10
+  allowed_tools: [Read, Glob, Grep, Skill]
+graders:
+- name: coming-soon
+  type: regex
+  pattern: 'coming soon'
+  flags: i
+- name: offers-bridge
+  type: regex
+  pattern: 'bridge server|own stack'
+  flags: i
+- name: no-agent-kit-install-steps
+  type: regex
+  pattern: '(uv tool|pipx) install meetstream-agent-kit|serve --command'
+  match: not_contains
+- name: no-local-agent-config
+  type: regex
+  pattern: '\x22provider\x22\s*:\s*\x22local_agent\x22'
+  match: not_contains

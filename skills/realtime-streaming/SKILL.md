@@ -1,27 +1,28 @@
 ---
 name: realtime-streaming
 description: >
-  Stream meeting data live while the call is happening. Raise/lower hand: POST
-  /api/v1/bots/{bot_id}/send_command {"command": "raise_hand"} (works without
-  the MCP tools). Live transcripts arrive by HTTPS POST to
-  live_transcription_required.webhook_url on your server (not a WebSocket from
-  the bot); your server can then forward them to the browser (Server-Sent
-  Events or your own WebSocket). Also raw audio, live video, and two-way bot
-  control over WebSocket. Voice agent on your own stack (bridge server, flow
-  2a, recommended first for agents): the bot opens
-  live_audio_required.websocket_url (audio in) and
-  socket_connection_url.websocket_url (sendaudio, sendmsg, interrupt back);
-  run any STT, LLM and TTS, local too (Parakeet); bot price only. Use when
-  the user says "live transcription", "live captions", "stream the audio",
-  "live video from the bot", "make the bot speak", "interrupt the bot",
-  "bridge server", "websocket", "sendaudio", or wants anything during the
-  meeting rather than after it.
+  Stream meeting data live during the call (track 1b, real-time
+  transcription). Raise/lower hand: POST /api/v1/bots/{bot_id}/send_command
+  {"command": "raise_hand"} (works without the MCP tools). Live transcripts
+  arrive by HTTPS POST to live_transcription_required.webhook_url on your
+  server (not a WebSocket from the bot); your server can then forward them to
+  the browser (Server-Sent Events or your own WebSocket). Also raw audio, live
+  video, and two-way bot control over WebSocket. Voice agent on your own stack
+  (track 2, bridge server): the bot opens live_audio_required.websocket_url
+  (audio in) and socket_connection_url.websocket_url (sendaudio, sendmsg,
+  interrupt back); local tunnel (ngrok, cloudflared); free local
+  whisper.cpp/Parakeet STT, Ollama LLM or your harness's model, Piper TTS; bot
+  price only. Use for "live transcription", "live captions", "stream the
+  audio", "make the bot speak", "bridge server", "websocket", or anything
+  during the meeting rather than after it.
 ---
 
 # Real-time streaming
 
-This is the live path: data during the call. For results after the call, use
-`join-meeting` and `meeting-brief`.
+This is the live path: data during the call (track 1b, real-time transcription; name the
+track in your answer). For results after the call (track 1a), use `join-meeting` and
+`meeting-brief`. A bot that records and also shows live captions is track 1b: the normal
+recording fields plus `live_transcription_required`.
 
 ## Live captions into your app (start here for "live transcript")
 
@@ -125,14 +126,23 @@ Pace `sendaudio` slightly ahead of real time (roughly 0.8x the chunk duration) s
 queue stays fed without running away. Cancel your local send loop when you issue
 `interrupt`, or you will keep pushing audio the bot has been told to drop.
 
-## Voice agent on your own stack (bridge server, flow 2a)
+## Voice agent on your own stack (track 2, bridge server)
 
-This is the recommended first way to put an agent in a meeting when the user wants their
-own stack: any speech-to-text, LLM and voice, local or hosted (for example Parakeet for
-local speech-to-text, a local LLM and a local TTS). MeetStream charges the bot price only
-($0.35 per hour, $0.25 at volume): no agent infrastructure fee and no model tokens. For
-a hosted agent with no infrastructure work, use `mia-voice-agents` (flow 3) instead; for
-the user's own Claude Code or Codex as the brain, flow 2b in `mia-voice-agents`.
+This is the way to put an agent in a meeting when the user wants their own stack: any
+speech-to-text, LLM and voice, local or hosted. MeetStream charges the bot price only
+($0.35 per hour, $0.25 at volume): no agent infrastructure fee and no model tokens. For a
+hosted agent with no infrastructure work, use `mia-voice-agents` (track 3a, or 3c with own
+keys). Running the user's own agent CLI (Claude Code, Codex) as the brain through the Agent
+Kit is track 3d, coming soon: today, call the harness's own model from this bridge.
+
+Models for the bridge, free to run locally; check each model's license before commercial use:
+
+- Speech-to-text: whisper.cpp or faster-whisper (Whisper models), NVIDIA Parakeet
+  (parakeet-mlx on Apple silicon), Vosk, Moonshine.
+- LLM: a local model through Ollama, LM Studio or llama.cpp (Llama, Qwen, Gemma,
+  Mistral), or the model of the harness you already use (for example Claude behind
+  Claude Code).
+- Text-to-speech: Piper, Kokoro, Chatterbox, macOS `say`.
 
 1. Run a bridge server with two WebSocket endpoints, `/bridge/audio` (meeting audio in,
    binary frames) and `/bridge` (JSON commands out). Put a random secret token in both
@@ -140,8 +150,9 @@ the user's own Claude Code or Codex as the brain, flow 2b in `mia-voice-agents`.
    are public and carry no other auth. Start from the MeetStream Bridge
    starter at https://github.com/meetstream-ai/meetstream-agent (FastAPI, OpenAI Realtime
    by default; swap in local models), or build to the bridge docs.
-2. Expose it on a public `wss://` host (a tunnel such as ngrok works for local
-   development; `localhost` is not reachable from the bot). Do not start a tunnel or a
+2. Expose it on a public `wss://` host. On a laptop, use a local tunnel (ngrok or
+   cloudflared, for example `ngrok http 8000` or `cloudflared tunnel --url
+   http://localhost:8000`); `localhost` is not reachable from the bot. Do not start a tunnel or a
    long-running server in a build unless the user asked: give the commands and let the
    user run them (Codex, for example, stops background processes at the end of each turn).
 3. Send a bot with both sockets on the same host:
@@ -221,7 +232,7 @@ Before building a WebSocket server, check whether the REST path is enough:
   `POST /api/v1/bots/{bot_id}/send_command` with `{"command": "raise_hand"}` /
   `{"command": "lower_hand"}` (bot must be in the meeting, else 409; see `join-meeting`).
 - Just showing an image? Use the **`send_image`** MCP tool (public URL, not base64).
-- Only if the user asks for a bot that talks or answers: on their own stack, the bridge server above (bot price only); with no infrastructure work, the hosted voice agent (`mia-voice-agents`, flow 3, `agent_config_id`).
+- Only if the user asks for a bot that talks or answers: on their own stack, the bridge server above (bot price only); with no infrastructure work, the hosted voice agent (`mia-voice-agents`, track 3a or 3c, `agent_config_id`).
 
 Reach for WebSockets when you need raw media or custom real-time logic, not for
 one-off actions.
@@ -231,7 +242,7 @@ one-off actions.
 - Live transcription: https://docs.meetstream.ai/guides/transcription-recordings/live-transcription
 - Real-time audio WebSocket: https://docs.meetstream.ai/guides/websockets/real-time-audio-streaming
 - Meeting control WebSocket: https://docs.meetstream.ai/guides/websockets/meeting-control-patterns
-- Bridge server for a voice agent on your own stack: https://docs.meetstream.ai/guides/websockets/bridge-server-architecture
+- Bridge server for a voice agent on your own stack (track 2): https://docs.meetstream.ai/guides/websockets/bridge-server-architecture
 - Bot camera streaming: https://docs.meetstream.ai/guides/websockets/bot-camera-streaming
 
 For the latest details, fetch the page with `.md` appended, read https://docs.meetstream.ai/llms.txt, or connect the docs MCP server at https://docs.meetstream.ai/_mcp/server.

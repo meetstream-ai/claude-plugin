@@ -5,12 +5,15 @@ Some agents (for example Codex) answer from the skill descriptions without openi
 SKILL.md, so these facts must be in the description itself.
 Content rules (round 5): every skill ends with a "Latest docs" section; no sample-app
 scaffolds inside skills; no internal details in voice-agent text.
-Three flows (MS-2305, 21 Nov 2026): 1 recording (Bot API, default); 2 agents in meetings on
-the user's own stack, recommended first when an agent is asked for (2a bridge server with
-both sockets, bot price only; 2b own agent through local_agent and the Agent Kit, with the
-warning); 3 managed agent infrastructure (Agents API, MIA: inbuilt keys, then own keys).
-They open the core skill, getting-started, README, AGENTS.md and INSTALL_FOR_AGENTS.md in
-that order, and the old a/b/c voice-agent order (inbuilt keys as the default) is gone.
+Build tracks (MS-2305, 22 Nov 2026; replace the three flows): 1 Recording bot (1a non-realtime
+transcription, post-call; 1b real-time transcription, live), the default; 2 Bridge server (the
+user's own stack, local: both sockets, a local tunnel, free local STT / LLM / TTS options or the
+harness's own model, bot price only); 3 Agents API infra (MIA, hosted): 3a MeetStream's own
+default keys (recommended for "just host it"), 3b bring your own agent infra (LiveKit, COMING
+SOON), 3c bring your own keys, 3d local agent through the Agent Kit and local_agent (COMING SOON,
+with the prompt-injection warning and no do-this-now steps). They open the core skill,
+getting-started, README, AGENTS.md and INSTALL_FOR_AGENTS.md in that order; the old a/b/c order
+and the old flow labels (flow 2a/2b/3, "three flows", own keys as 3b) are gone.
 Zoom (Sid, 20 Nov 2026): no file says Zoom needs no setup or that the Zoom app is optional;
 bots join through the customer's Zoom app with OBF or ZAK.
 Signup gaps (MS-2305, 21 Nov 2026): the first-bot skills give the Zoom app step (OBF or ZAK,
@@ -35,8 +38,12 @@ ROOT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(os.pat
 MUST = {
     "meetstream": [("version answer, exact two sentences (round 6)", r"Install or update to the current MeetStream plugin\. The MCP server is hosted at https://mcp\.meetstream\.ai/mcp; there is no npm package or server version to install\."),
                    ("version answer: those two sentences only, no qualifiers", r"(only|nothing else).{0,60}(no|without) (added )?qualifier"),
-                   ("flow 1: Bot API", r"Bot API"),
-                   ("flows in order: Bot API, then own-stack bridge, then hosted Agents API", r"Bot API.{0,400}bridge.{0,300}Agents API"),
+                   ("track 1: Recording bot, 1a post-call, 1b real-time", r"Recording bot.{0,200}1a.{0,120}1b"),
+                   ("tracks in order: Recording bot, Bridge server, Agents API", r"Recording bot.{0,400}Bridge server.{0,400}Agents API"),
+                   ("track 3a default keys for just host it", r"3a.{0,160}(just host it|default)"),
+                   ("track 3c own keys", r"3c.{0,40}(own keys|bring your own keys)"),
+                   ("3b LiveKit coming soon", r"3b.{0,60}LiveKit.{0,60}COMING SOON|3b.{0,60}LiveKit.{0,60}coming soon"),
+                   ("3d local agent coming soon", r"3d.{0,160}(COMING SOON|coming soon)"),
                    ("unspecified agent: ask own stack or hosted", r"own stack.{0,120}host"),
                    ("post-call or live question", r"after the (call|meeting).{0,80}live|post-call.{0,40}live")],
     "troubleshooting": [("billing URL", r"https://app\.meetstream\.ai/billing"), ("no retry loop", r"never retry"),
@@ -52,23 +59,26 @@ MUST = {
     "realtime-streaming": [("raise-hand REST", r"POST /api/v1/bots/\{bot_id\}/send_command.*raise_hand"),
                            ("live transcripts by HTTPS POST (round 6)", r"HTTPS POST.{0,60}live_transcription_required\.webhook_url"),
                            ("server forwards to the browser (round 6)", r"forward.{0,80}browser"),
-                           ("flow 2a bridge: both sockets", r"live_audio_required\.websocket_url.{0,160}socket_connection_url\.websocket_url"),
-                           ("flow 2a bridge: any models incl. local", r"local"),
-                           ("flow 2a bridge: bot price only", r"bot price only")],
-    "mia-voice-agents": [("own stack first: bridge server", r"bridge.{0,200}(first|recommended)"),
-                         ("bridge: both sockets", r"live_audio_required.{0,80}socket_connection_url"),
-                         ("bridge: bot price only", r"bot price only"),
-                         ("hosted (flow 3): inbuilt keys first", r"MeetStream's inbuilt keys.{0,80}key_source.{0,20}meetstream"),
-                         ("inbuilt providers", r"OpenAI and Deepgram|pipeline mode only: Deepgram \(speech-to-text\) and OpenAI \(LLM and voice\)"),
+                           ("track 2 bridge: both sockets", r"live_audio_required\.websocket_url.{0,160}socket_connection_url\.websocket_url"),
+                           ("track 2 bridge: named as track 2", r"[Tt]rack 2"),
+                           ("track 2 bridge: local tunnel", r"tunnel"),
+                           ("track 2 bridge: free local models", r"[Ww]hisper.{0,200}Ollama.{0,200}Piper"),
+                           ("track 2 bridge: bot price only", r"bot price only")],
+    "mia-voice-agents": [("track 2 bridge: both sockets", r"live_audio_required.{0,80}socket_connection_url"),
+                         ("track 2 bridge: tunnel and free local models", r"tunnel.{0,200}([Ww]hisper|Parakeet).{0,200}(Ollama|LM Studio).{0,200}(Piper|Kokoro)|([Ww]hisper|Parakeet).{0,200}(Ollama|LM Studio).{0,200}(Piper|Kokoro).{0,200}tunnel"),
+                         ("track 2 bridge: harness model as the LLM", r"harness"),
+                         ("track 2 bridge: bot price only", r"bot price only"),
+                         ("track 3a: default keys, key_source meetstream", r"3a.{0,120}key_source.{0,20}meetstream"),
+                         ("track 3a recommended for just host it", r"just host it"),
+                         ("inbuilt providers per mode", r"pipeline mode only.{0,80}Deepgram.{0,80}OpenAI"),
                          ("agent infrastructure price", r"\$0\.25 per hour"),
-                         ("not-on fallback", r"not available.{0,160}own (provider )?keys"),
-                         ("own keys after inbuilt keys", r"then (the user's )?own (provider )?keys"),
-                         ("own agent stated positively (round 6)", r"Yes: your own agent \(Claude Code, Codex, Hermes, OpenClaw.{0,40}\) can be the voice agent's brain through .{0,4}model\.provider: .{0,2}local_agent.{0,4} and the MeetStream Agent Kit"),
-                         ("Agent Kit warning", r"Agent Kit.*warning.*(meeting speech|what people say).*computer"),
-                         ("computer stays on", r"computer must stay on"),
+                         ("refused section falls back to 3c", r"(refused|not available).{0,80}3c"),
+                         ("3b LiveKit coming soon", r"3b.{0,60}LiveKit.{0,60}(COMING SOON|coming soon)"),
+                         ("3d local agent coming soon", r"3d.{0,200}(COMING SOON|coming soon)"),
+                         ("3d warning: prompt injection", r"prompt injection"),
                          ("hosted bot: only agent_config_id, no bridge sockets", r"only agent_config_id")],
     "getting-started": [("post-call or live first", r"[Ff]irst ask.*after the call.*live"),
-                        ("flows in order: Bot API, bridge, Agents API", r"Bot API.{0,300}bridge.{0,300}Agents API")],
+                        ("tracks in order: Recording bot, Bridge server, Agents API", r"Recording bot.{0,300}Bridge server.{0,300}Agents API")],
 }
 
 LATEST_DOCS_LINE = re.compile(r"llms\.txt.*_mcp/server|_mcp/server.*llms\.txt")
@@ -79,7 +89,10 @@ BRIDGE_DOCS = "https://docs.meetstream.ai/guides/websockets/bridge-server-archit
 STARTER = "https://github.com/meetstream-ai/meetstream-agent"
 # Sid, 20 Nov 2026: Zoom bots join through the customer's Zoom app with OBF or ZAK; never say Zoom needs no setup.
 ZOOM_NO_SETUP = re.compile(r"[Zz]oom needs (NO|no) setup|needs no setup|\(no setup\)|no-setup|[Zz]oom app is \*{0,2}optional|own Zoom app \(optional\)|no Zoom (Marketplace )?app, no|none needs setup|zoom\.variant")
-STALE_ORDER = re.compile(r"\bsetups? [abc]\b|\(only on request\)|inbuilt keys\W{0,4}\(default\)|[Tt]wo ways to integrate")
+STALE_ORDER = re.compile(r"\bsetups? [abc]\b|\(only on request\)|inbuilt keys\W{0,4}\(default\)|[Tt]wo ways to integrate"
+                         r"|\b[Ff]lows? (1|2a|2b|3)\b|[Tt]hree flows|\b3b\W{1,6}(the user's |their |your )?own (provider )?keys")
+# Build tracks: 3b (LiveKit) and 3d (local agent) are COMING SOON, so no file gives do-this-now steps for them.
+COMING_SOON_STEPS = re.compile(r"(uv tool|pipx) install meetstream-agent-kit|serve --command|Integrations > Models > Local agent")
 
 
 def body_misses():
@@ -137,8 +150,8 @@ def body_misses():
     if not re.search(r"docs are the source of truth", core):
         misses += 1
         print("MISS meetstream: does not say the docs are the source of truth when they differ")
-    # The three flows open the core skill, getting-started and the top-level docs, in order:
-    # Bot API, then the own-stack bridge, then the hosted Agents API.
+    # The build tracks open the core skill, getting-started and the top-level docs, in order:
+    # Recording bot, then the Bridge server, then the hosted Agents API.
     tops = [os.path.join("skills", "meetstream", "SKILL.md"), os.path.join("skills", "getting-started", "SKILL.md"),
             "README.md", "AGENTS.md", "INSTALL_FOR_AGENTS.md"]
     for rel in tops:
@@ -148,10 +161,14 @@ def body_misses():
         text = open(fp, encoding="utf-8").read()
         text = re.sub(r"^---\n.*?\n---\n", "", text, flags=re.S)
         head = "\n".join(text.split("\n")[:60])
-        idx = [head.find(k) for k in ("Bot API", "bridge", "Agents API")]
+        idx = [head.find(k) for k in ("Recording bot", "Bridge server", "Agents API")]
         if min(idx) < 0 or not idx[0] < idx[1] < idx[2]:
             misses += 1
-            print(f"MISS {rel}: the first 60 lines do not give the three flows in order (Bot API, bridge, Agents API)")
+            print(f"MISS {rel}: the first 60 lines do not give the build tracks in order (Recording bot, Bridge server, Agents API)")
+        for k in ("3a", "3b", "3c", "3d", "COMING SOON"):
+            if k not in head:
+                misses += 1
+                print(f"MISS {rel}: the first 60 lines do not name {k}")
     # Every file that routes agents links the bridge docs; the bridge recipe owners also link the starter.
     for rel in tops + [os.path.join("skills", s, "SKILL.md") for s in ("mia-voice-agents", "realtime-streaming", "troubleshooting")]:
         fp = os.path.join(ROOT, rel)
@@ -175,11 +192,20 @@ def body_misses():
         for name in files:
             if name.endswith(".md"):
                 fp = os.path.join(base, name)
-                for n, line in enumerate(open(fp, encoding="utf-8"), 1):
+                lines = open(fp, encoding="utf-8").read().split("\n")
+                for n, line in enumerate(lines, 1):
+                    near = " ".join((line + " " + (lines[n] if n < len(lines) else "")).split())  # wrapped lines
                     hit = STALE_ORDER.search(line)
                     if hit and not name == "CHANGELOG.md":
                         misses += 1
                         print(f"MISS {os.path.relpath(fp, ROOT)}:{n}: old voice-agent order '{hit.group(0)}'")
+                    hit = COMING_SOON_STEPS.search(line)
+                    if hit and not name == "CHANGELOG.md":
+                        misses += 1
+                        print(f"MISS {os.path.relpath(fp, ROOT)}:{n}: do-this-now step for a coming-soon track '{hit.group(0)}'")
+                    if re.search(r"LiveKit", line) and not re.search(r"coming soon", near, re.I) and not name == "CHANGELOG.md":
+                        misses += 1
+                        print(f"MISS {os.path.relpath(fp, ROOT)}:{n}: LiveKit named without 'coming soon'")
                     hit = ZOOM_NO_SETUP.search(line)
                     if hit and not name == "CHANGELOG.md" and "Never" not in line and "Do not tell" not in line:
                         misses += 1
@@ -340,14 +366,16 @@ BUILD_BODY = {
     "realtime-streaming": [("0x04 on Google Meet", r"Google Meet.{0,200}0x04|0x04.{0,200}Google Meet"),
                            ("0x04 header offset 6", r"offset 6|\[1:5\]"), ("NoSpeaker echo", r"NoSpeaker"),
                            ("secret path token", r"(secret|random).{0,40}token"), ("remove the bot on exit", r"remove_bot"),
-                           ("no tunnels unless asked", r"[Tt]unnel.{0,200}(unless|only when) the user")],
+                           ("no tunnels unless asked", r"[Tt]unnel.{0,200}(unless|only when) the user"),
+                           ("track 2: ngrok and cloudflared", r"ngrok.{0,80}cloudflared|cloudflared.{0,80}ngrok"),
+                           ("track 2 STT options", r"whisper\.cpp.{0,300}faster-whisper.{0,300}Parakeet.{0,300}parakeet-mlx.{0,300}Vosk.{0,300}Moonshine"),
+                           ("track 2 LLM options", r"Ollama.{0,100}LM Studio.{0,100}llama\.cpp.{0,300}harness"),
+                           ("track 2 TTS options", r"Piper.{0,100}Kokoro.{0,100}Chatterbox.{0,100}`say`"),
+                           ("track 2 license line", r"[Ff]ree to run locally; check each model's license before commercial use")],
     "mia-voice-agents": [("inbuilt keys per mode", PER_MODE), ("read mia_managed", r"mia_managed"),
                          ("wake word on by default in fastest path", r"\"wake_word\": \{\"enabled\": false\}"),
-                         ("pairing token: dashboard only, stop and ask", r"(no public API|only in the dashboard).{0,300}(stop|ask the user)"),
                          ("never probe endpoints", r"[Nn]ever (probe|call) undocumented"),
-                         ("Agent Kit presets", r"agy, claude, codex, copilot, hermes, muse, openclaw"),
-                         ("serve --command for Cursor / OpenCode", r"serve --command"),
-                         ("readonly not enforced for custom commands", r"not enforced"),
+                         ("3d: no do-this-now steps", r"(no|never give).{0,40}(setup|do-this-now|\"do this now\") steps"),
                          ("commands need InMeeting", r"InMeeting")],
     "getting-started": [("inbuilt keys per mode", PER_MODE), ("when MCP tools help", r"get_transcript.{0,200}(real|actual)")],
     "troubleshooting": [("silent agent: default wake word", r"wake word.{0,80}(on by default|default)")],

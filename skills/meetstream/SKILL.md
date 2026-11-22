@@ -1,20 +1,20 @@
 ---
 name: meetstream
 description: >
-  MeetStream API guide. Three flows: 1) Bot API (default: recordings,
-  transcripts, webhooks after the call, or live data); agents in the meeting:
-  2) own stack first, a bridge server (both bot sockets, any models incl.
-  local, bot price only) or your own agent via the Agent Kit (warn: prompt
-  injection); 3) hosted Agents API (voice agents, MIA). Agent wanted, stack
-  unsaid: ask own stack or hosted? Unclear goal: ask results after the call,
-  or live during it? Use on any mention of MeetStream, meeting bots, "send a
-  bot to a meeting", "which version", "plugin version", "is the MeetStream
-  plugin safe", "update the plugin", webhook events or API errors. Version
-  questions (answer with only these two sentences, no added qualifiers):
-  "Install or update to the current MeetStream plugin. The MCP server is
-  hosted at https://mcp.meetstream.ai/mcp; there is no npm package or server
-  version to install." Raise hand: POST /api/v1/bots/{bot_id}/send_command
-  {"command": "raise_hand"}. Low credits: https://app.meetstream.ai/billing.
+  MeetStream API guide. Tracks: 1) Recording bot (default): 1a post-call or 1b
+  real-time transcription (live); ask once: after the call or live? 2) Bridge
+  server: own stack, local (both bot sockets, local tunnel, free local models
+  or your harness's model; bot price only). 3) Agents API infra (voice agents,
+  MIA): 3a default keys (recommended for "just host it"), 3b own agent infra
+  (LiveKit) COMING SOON, 3c bring your own keys, 3d local agent via the Agent
+  Kit COMING SOON (prompt injection; no setup steps). Agent wanted, stack
+  unsaid: ask own stack or hosted? Use for any MeetStream, meeting bot, plugin
+  version, webhook or API error question. Version questions (answer with only
+  these two sentences, no added qualifiers): "Install or update to the current
+  MeetStream plugin. The MCP server is hosted at
+  https://mcp.meetstream.ai/mcp; there is no npm package or server version to
+  install." Raise hand: POST /api/v1/bots/{bot_id}/send_command {"command":
+  "raise_hand"}. Low credits: https://app.meetstream.ai/billing.
 mcp_server: https://docs.meetstream.ai/_mcp/server
 ---
 
@@ -24,21 +24,32 @@ You are a MeetStream integration expert. Teach the MeetStream API, the hosted MC
 
 > **The docs are the source of truth.** When https://docs.meetstream.ai and this skill differ, the docs are the source of truth and win. Fetch any page with `.md` appended, read https://docs.meetstream.ai/llms.txt, or connect the docs MCP server at https://docs.meetstream.ai/_mcp/server. Do not invent endpoints or fields.
 
-## Three flows
+## Build tracks
 
-1. **Recording only (Bot API, default).** Send a bot to Zoom, Google Meet or Microsoft Teams. Then get recordings, transcripts, participants, chat and webhooks after the call, or live data during the call. Use this for every request that does not ask for an agent in the meeting.
-2. **Agents in meetings on your own stack (recommended first when the user asks for an agent, a voice agent or a talking bot).**
-   - 2a. **Bridge server.** The bot opens two WebSockets to the user's server: live audio in (`live_audio_required.websocket_url`, for example `wss://host/bridge/audio`) and the control socket (`socket_connection_url.websocket_url`, for example `wss://host/bridge`) to send audio, chat, images and interrupts back. The user runs any speech-to-text, LLM and TTS, local or hosted (for example Parakeet for local speech-to-text). Price: the bot price only, no agent infrastructure and no model tokens. Recipe: `realtime-streaming`. Docs: https://docs.meetstream.ai/guides/websockets/bridge-server-architecture . Starter: https://github.com/meetstream-ai/meetstream-agent
-   - 2b. **Your own agent as the brain.** Claude Code, Codex, Hermes, OpenClaw and others through `model.provider: "local_agent"` and the MeetStream Agent Kit. Bot price + $0.25 per hour agent infrastructure, no model tokens. Always with the warning (see intake routing). Details: `mia-voice-agents`.
-3. **Managed agent infrastructure (Agents API, API name MIA).** MeetStream hosts the agent: 3a MeetStream's inbuilt keys (`"key_source": "meetstream"`; Inbuilt keys work in pipeline mode only: Deepgram (speech-to-text) and OpenAI (LLM and voice). Realtime mode runs on OpenAI and needs your own OpenAI key. Any other provider: bring your own key. Read `mia_managed` from `GET /api/v1/mia` for what the account allows), 3b the user's own provider keys. Bot price + $0.25 per hour agent infrastructure + the models picked. Details: `mia-voice-agents`.
+Name the track in your answer (for example "Track 1b, real-time transcription").
 
-**With the MeetStream MCP connected, do it from here.** Agents: `list_agents` first (reads `mia_managed`), then `create_agent` (`model.system_prompt` is required, except for `local_agent`), `get_agent`, `update_agent`, `delete_agent` (`confirm: true`), `check_local_agent` (flow 2b), then `create_bot` with only `agent_config_id`. In the meeting: `take_screenshot` (Google Meet and Teams; get the image with `get_media_urls` `kind: "screenshots"`), `raise_hand` / `lower_hand`, `pause_recording` / `resume_recording`, `update_live_agent`. Calendars: `list_calendar_connections`, `disconnect_calendar` (`confirm: true`); connecting a calendar needs OAuth secrets, so it stays in the dashboard or REST. With no MCP, give the REST call (`POST /api/v1/mia`, `POST /api/v1/bots/{bot_id}/send_command`). Keys and the Agent Kit pairing token never go in the chat: inbuilt keys (pipeline mode) or keys saved in the dashboard.
+1. **Recording bot (default).** The bot joins Zoom, Google Meet or Microsoft Teams, records and transcribes. Use it for every request that does not ask for an agent. Ask once: after the call, or live?
+   - 1a. **Non-realtime transcription (post-call):** `create_bot`, wait for `Done`, then get the transcript and recordings; webhooks tell you when. Skills: `join-meeting`, `meeting-brief`, `webhooks`.
+   - 1b. **Real-time transcription (live):** the live transcription webhook (`live_transcription_required.webhook_url`), the real-time audio WebSocket, the meeting control socket, chat, raise or lower hand. Skill: `realtime-streaming`.
+2. **Bridge server (your own stack, local).** The bot connects out to your server over two WebSockets: `live_audio_required.websocket_url` (meeting audio in, for example `wss://host/bridge/audio`) and `socket_connection_url.websocket_url` (audio, chat and images out, for example `wss://host/bridge`). On a laptop, expose the server with a local tunnel (ngrok or cloudflared). Price: the bot price only, no agent infrastructure and no model tokens. Free to run locally; check each model's license before commercial use:
+   - Speech-to-text: whisper.cpp or faster-whisper (Whisper models), NVIDIA Parakeet (parakeet-mlx on Apple silicon), Vosk, Moonshine.
+   - LLM: a local model through Ollama, LM Studio or llama.cpp (Llama, Qwen, Gemma, Mistral), or the model of the harness you already use (for example Claude behind Claude Code).
+   - Text-to-speech: Piper, Kokoro, Chatterbox, macOS `say`.
 
-When the user asks what MeetStream offers or which API to start with, name them by their names, lead with the "Bot API", then for agents the bridge server (own stack) before the hosted "Agents API" (voice agents). Say "voice agent" or "agent in the meeting" to users, and give "MIA" once as the API name.
+   Recipe: `realtime-streaming`. Docs: https://docs.meetstream.ai/guides/websockets/bridge-server-architecture . Starter: https://github.com/meetstream-ai/meetstream-agent
+3. **Agents API infra (voice agents, API name MIA, hosted by MeetStream).** Bot price + $0.25 per hour agent infrastructure + the models picked. Details: `mia-voice-agents`.
+   - 3a. **MeetStream's own, default keys** (recommended for "just host it"): `"key_source": "meetstream"`. Inbuilt keys work in pipeline mode only: Deepgram (speech-to-text) and OpenAI (LLM and voice). Realtime mode runs on OpenAI and needs your own OpenAI key. Any other provider: bring your own key. Read `mia_managed` from `GET /api/v1/mia` for what the account allows; if a section is refused, use 3c for it.
+   - 3b. **Bring your own agent infra (LiveKit): COMING SOON.** Not available yet. Say it is coming soon and give no setup steps.
+   - 3c. **Bring your own keys:** OpenAI, Anthropic, Deepgram, ElevenLabs and the others in the docs; the provider bills model usage.
+   - 3d. **Local agent: COMING SOON.** Your own agent CLI (Claude Code, Codex, Hermes and others) as the brain, through the MeetStream Agent Kit and `model.provider: "local_agent"`. Not available yet: describe it as coming soon, give no setup steps, and never route a user to it as a working option. When you mention it, warn that meeting speech will reach an agent with access to the user's computer and terminal (prompt injection). For "use Claude Code (or my own agent) as the brain" today, offer track 2 (the harness's own model as the bridge LLM) or track 3a/3c.
 
-Overview page: https://docs.meetstream.ai/guides/introduction/integration-paths (new; until it is live, see https://docs.meetstream.ai/guides/introduction/how-bots-work and https://docs.meetstream.ai/guides/mia/what-is-mia).
+**With the MeetStream MCP connected, do it from here.** Agents: `list_agents` first (reads `mia_managed`), then `create_agent` (`model.system_prompt` is required, except for `local_agent`), `get_agent`, `update_agent`, `delete_agent` (`confirm: true`), then `create_bot` with only `agent_config_id`. `check_local_agent` is for the coming-soon track 3d only. In the meeting: `take_screenshot` (Google Meet and Teams; get the image with `get_media_urls` `kind: "screenshots"`), `raise_hand` / `lower_hand`, `pause_recording` / `resume_recording`, `update_live_agent`. Calendars: `list_calendar_connections`, `disconnect_calendar` (`confirm: true`); connecting a calendar needs OAuth secrets, so it stays in the dashboard or REST. With no MCP, give the REST call (`POST /api/v1/mia`, `POST /api/v1/bots/{bot_id}/send_command`). Keys never go in the chat: inbuilt keys (pipeline mode) or keys saved in the dashboard.
 
-### Fastest path (Bot API)
+When the user asks what MeetStream offers or which API to start with, name the tracks in order: the Recording bot (the Bot API) first, then for agents the Bridge server (own stack) before the hosted "Agents API" (voice agents). Say "voice agent" or "agent in the meeting" to users, and give "MIA" once as the API name.
+
+Overview page: https://docs.meetstream.ai/guides/introduction/integration-paths (also https://docs.meetstream.ai/guides/introduction/how-bots-work and https://docs.meetstream.ai/guides/mia/what-is-mia).
+
+### Fastest path (track 1a, Recording bot)
 
 ```bash
 curl -X POST https://api.meetstream.ai/api/v1/bots/create_bot \
@@ -85,32 +96,31 @@ webhooks. Start there.
    the user asks for a "voice agent", an "agent in the meeting", or a bot that talks,
    answers or speaks (or names MIA, the API name). In replies say "voice agent"; most
    users do not know the word MIA.
-3. **Agent flows, in this order** (details in `realtime-streaming` and `mia-voice-agents`).
+3. **Agent tracks, in this order** (details in `realtime-streaming` and `mia-voice-agents`).
    If the user wants an agent but does not say how, ask one question: run your own stack
-   (a bridge server, any models, including local ones) or let MeetStream host it (the
-   Agents API)? If they want no infrastructure work, flow 3 is the answer. In every
-   answer, table or comparison, list the bridge server first and the hosted Agents API
-   last, even for a build request.
-   - 2a. **Bridge server** (recommended first): both sockets on one bot
+   (track 2, a bridge server with any models, including free local ones) or let MeetStream
+   host it (track 3a or 3c, the Agents API)? If they want no infrastructure work ("just
+   host it"), track 3a is the answer, with 3c as the fallback. In every answer, table or
+   comparison, list the bridge server before the hosted Agents API.
+   - Track 2, **Bridge server**: both sockets on one bot
      (`live_audio_required.websocket_url` and `socket_connection_url.websocket_url`), the
-     user's own speech-to-text, LLM and TTS, local or hosted. The bot price only.
-   - 2b. **Their own agent** (Claude Code, Codex, Hermes, OpenClaw and others, through
-     `model.provider: "local_agent"` and the MeetStream Agent Kit). Bot price + $0.25 per
-     hour agent infrastructure. Warn in the same answer: meeting speech reaches an agent
-     that has access to the user's computer and terminal (prompt injection); use the
-     lowest access level (`readonly`) and the activation code; the computer, the agent and
-     the bridge must stay on for the whole call. If the API says `local_agent` is not
-     available, it is not on for the account yet: offer flow 2a or flow 3.
-   - 3. **Hosted Agents API (MIA)**: bot price + $0.25 per hour agent infrastructure + the
-     models picked. 3a MeetStream's inbuilt keys: `"key_source": "meetstream"` in each
-     section, no provider keys to bring. Inbuilt keys work in pipeline mode only: Deepgram (speech-to-text) and OpenAI (LLM and voice). Realtime mode runs on OpenAI and needs your own OpenAI key. Any other provider: bring your own key. Use only the providers and models
+     user's own speech-to-text, LLM and TTS (free local models, or the harness's own
+     model as the LLM), a local tunnel on a laptop. The bot price only.
+   - Track 3, **Hosted Agents API (MIA)**: bot price + $0.25 per hour agent infrastructure
+     + the models picked. 3a MeetStream's own, default keys: `"key_source": "meetstream"`
+     in each section, no provider keys to bring. Inbuilt keys work in pipeline mode only: Deepgram (speech-to-text) and OpenAI (LLM and voice). Realtime mode runs on OpenAI and needs your own OpenAI key. Any other provider: bring your own key. Use only the providers and models
      that `mia_managed` (`GET /api/v1/mia`) lists for the account; the dashboard
      agent editor shows the model price before the bot runs. If the API answers
      `MeetStream-managed keys are not available for <section>. Use your own key.`, inbuilt
-     keys are not on for the account yet: go on with 3b. Never retry in a loop. 3b the
+     keys are not on for the account yet: go on with 3c. Never retry in a loop. 3c the
      user's own provider keys (OpenAI, Anthropic, Deepgram, ElevenLabs and others); the
      provider bills model usage. A hosted agent bot takes only `agent_config_id`, never
-     the bridge sockets: flows 2a and 3 are separate bots.
+     the bridge sockets: tracks 2 and 3 are separate bots.
+   - **COMING SOON, never offered as working:** 3b bring your own agent infra (LiveKit,
+     coming soon) and 3d local agent (Claude Code, Codex, Hermes and others through the
+     Agent Kit and `local_agent`). Say they are coming soon and give no setup steps. For
+     3d, add the warning: meeting speech will reach an agent with access to the user's
+     computer and terminal (prompt injection). Then offer track 2 or 3a/3c.
    - With the MCP connected, create and check the agent from the chat: `list_agents`
      (read `mia_managed`), then `create_agent` with a `system_prompt`, then `create_bot`
      with `agent_config_id`. With no MCP, `POST /api/v1/mia`. Details: `mia-voice-agents`.
@@ -727,11 +737,11 @@ Q5.2: Want your bot to interact in the meeting (send chat, play TTS audio,
       └─ No → omit socket_connection_url
 
 Q5.3: (Ask only if the user asked for an agent.) Own stack or hosted by MeetStream?
-      ├─ Own stack (flow 2a, recommended first) → bridge server: both
+      ├─ Own stack (track 2, bridge server) → both
       │        "live_audio_required" and "socket_connection_url" on this bot,
       │        no agent_config_id (see `realtime-streaming`). Bot price only.
-      ├─ Hosted (flow 3, MIA) → create the agent in the dashboard (app.meetstream.ai)
-      │        or via POST /api/v1/mia (see Pattern 9; inbuilt keys, then own keys),
+      ├─ Hosted (track 3a or 3c, MIA) → create the agent in the dashboard (app.meetstream.ai)
+      │        or via POST /api/v1/mia (see Pattern 9; 3a default keys, then 3c own keys),
       │        then pass only its ID on create_bot, with no bridge sockets:
       │          "agent_config_id": "<from above>"
       └─ No agent → omit agent_config_id
@@ -1255,7 +1265,7 @@ MIA (MeetStream Infrastructure Agents) creates a server-configured AI agent that
 - **`pipeline`**: mix STT + LLM + TTS providers (configurable per layer)
 - **`realtime`**: a single realtime model (OpenAI realtime, xAI, Google Gemini) - lower latency
 
-This is flow 3 (hosted). Use it only when the user asks for a voice agent and wants MeetStream to host it; for their own stack, recommend the bridge server first (flow 2a, `realtime-streaming`, bot price only). Keys in order: MeetStream's inbuilt keys (`"key_source": "meetstream"` on each pipeline section; OpenAI and Deepgram today), then the user's own keys. Price: bot + $0.25 per hour agent infrastructure + the models picked. The user's own agent (`local_agent`, flow 2b) always comes with the warning. Full guide: `mia-voice-agents`.
+This is track 3 (Agents API infra, hosted). Use it only when the user asks for a voice agent and wants MeetStream to host it; for their own stack, give the bridge server (track 2, `realtime-streaming`, bot price only). Keys in order: 3a MeetStream's own, default keys (`"key_source": "meetstream"` on each pipeline section; Deepgram and OpenAI, pipeline mode), then 3c the user's own keys. Price: bot + $0.25 per hour agent infrastructure + the models picked. 3b (LiveKit) and 3d (local agent through the Agent Kit) are coming soon: no setup steps. Full guide: `mia-voice-agents`.
 
 **Create the agent config first** (in the dashboard at app.meetstream.ai, with the `create_agent` MCP tool after `list_agents`, or via the API; `model.system_prompt` is required):
 ```
@@ -2004,7 +2014,7 @@ Full error reference: https://docs.meetstream.ai/errors
 
 ## Latest docs
 
-- Three flows (integration paths): https://docs.meetstream.ai/guides/introduction/integration-paths
+- Build tracks (integration paths): https://docs.meetstream.ai/guides/introduction/integration-paths
 - API reference (base URL, groups): https://docs.meetstream.ai/api-reference/introduction
 - Create Bot payload reference: https://docs.meetstream.ai/api-reference/create-bot-payload-reference
 - Webhooks and events: https://docs.meetstream.ai/guides/webhooks/webhooks-and-events

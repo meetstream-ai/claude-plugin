@@ -1,0 +1,23 @@
+schema_version: "1.1"
+name: track3b-livekit-coming-soon
+description: "Build tracks (MS-2305, 22 Nov 2026): the user wants to plug in their own LiveKit agent. Track 3b (bring your own agent infrastructure, LiveKit) is coming soon: say so, give no setup steps, and offer track 2 (bridge server) or track 3c (hosted, own keys) now."
+tags: [build-tracks, voice-agent]
+runs: 1
+execution:
+  prompt: "I already have a LiveKit voice agent. Can MeetStream use my LiveKit agent in Zoom and Google Meet calls? How?"
+  max_turns: 10
+  allowed_tools: [Read, Glob, Grep, Skill]
+graders:
+- name: coming-soon
+  type: regex
+  pattern: 'coming soon'
+  flags: i
+- name: offers-bridge
+  type: regex
+  pattern: 'bridge server|own stack|socket_connection_url'
+  flags: i
+- name: no-bot-sent
+  type: tool_used
+  tool: mcp__plugin_meetstream_meetstream__create_bot
+  min: 0
+  max: 0

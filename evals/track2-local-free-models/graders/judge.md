@@ -1,0 +1,6 @@
+---
+type: llm
+weight: 2
+---
+PASS if the reply routes this to the bridge server (the user's own stack): the user runs a server, exposes it from the laptop with a local tunnel (ngrok or cloudflared), and creates the bot with both `live_audio_required.websocket_url` (meeting audio in) and `socket_connection_url.websocket_url` (audio, chat and images back). It names free models that run locally for each part: speech-to-text (for example whisper.cpp or faster-whisper, NVIDIA Parakeet, Vosk, Moonshine), an LLM through Ollama, LM Studio or llama.cpp (for example Llama, Qwen, Gemma, Mistral), and text-to-speech (for example Piper, Kokoro, Chatterbox, macOS `say`). It says these are free to run locally but each model's license must be checked before commercial use, and that MeetStream charges only the bot price for this track (no agent infrastructure fee, no model tokens).
+FAIL if the reply sends the user to a hosted voice agent (`agent_config_id`, `POST /api/v1/mia`, `key_source`) as the way to run local models, says local models are not possible, gives only one of the two sockets, omits the tunnel for the laptop, names no local text-to-speech option, omits the license check before commercial use, adds the $0.25 agent infrastructure fee to this track, or invents prices.

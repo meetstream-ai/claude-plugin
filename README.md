@@ -6,7 +6,7 @@
 
 **Meeting bots for Zoom, Google Meet and Microsoft Teams: recordings, transcripts and live data from your agent or your app, plus agents that talk in the meeting, on your own stack or hosted.**
 
-[![Plugin Version](https://img.shields.io/badge/plugin-v2.10.1-5C4EFF?style=for-the-badge)](https://github.com/meetstream-ai/claude-plugin)
+[![Plugin Version](https://img.shields.io/badge/plugin-v2.11.0-5C4EFF?style=for-the-badge)](https://github.com/meetstream-ai/claude-plugin)
 [![Live-Tested](https://img.shields.io/badge/endpoints-live--tested-10B981?style=for-the-badge)](https://github.com/meetstream-ai/claude-plugin/commits/main)
 [![MIT License](https://img.shields.io/badge/license-MIT-yellow?style=for-the-badge)](LICENSE)
 [![Get API Key](https://img.shields.io/badge/get%20api%20key-app.meetstream.ai-0EA5E9?style=for-the-badge)](https://app.meetstream.ai/api-keys)
@@ -15,13 +15,19 @@
 
 ---
 
-## Three flows
+## Build tracks
 
-1. **Recording only (Bot API, default).** A bot joins Zoom, Google Meet or Microsoft Teams. You get recordings, transcripts, participants, chat and webhooks after the call, or live data during the call. Use this for every request that does not ask for an agent in the meeting.
-2. **Agents in meetings on your own stack (recommended first when the user asks for an agent, a voice agent or a talking bot).**
-   - 2a. **Bridge server.** The bot opens two WebSockets to your server: live audio in (`live_audio_required.websocket_url`) and the control socket (`socket_connection_url.websocket_url`) to send audio, chat, images and interrupts back. Run any speech-to-text, LLM and TTS, local or hosted (for example Parakeet for local speech-to-text). Price: the bot price only, no agent infrastructure and no model tokens. [Bridge server docs](https://docs.meetstream.ai/guides/websockets/bridge-server-architecture), starter: [meetstream-ai/meetstream-agent](https://github.com/meetstream-ai/meetstream-agent).
-   - 2b. **Your own agent as the brain.** Claude Code, Codex, Hermes, OpenClaw and others through `model.provider: "local_agent"` and the MeetStream Agent Kit. The bot plus $0.25 per hour for the agent infrastructure, no model tokens. Warning: meeting speech reaches an agent that has access to your computer and terminal (prompt injection); keep the computer, the agent and the bridge on for the whole call, and use the lowest access level. [Your own agent](https://docs.meetstream.ai/guides/features/mia-screen-sharing-and-custom-agents).
-3. **Managed agent infrastructure (Agents API, API name MIA).** MeetStream hosts the voice agent: MeetStream's inbuilt keys (no provider account; Inbuilt keys work in pipeline mode only: Deepgram (speech-to-text) and OpenAI (LLM and voice). Realtime mode runs on OpenAI and needs your own OpenAI key. Any other provider: bring your own key.) or your own provider keys. The bot plus $0.25 per hour for the agent infrastructure, plus the models you pick ([pricing and keys](https://docs.meetstream.ai/guides/mia/pricing-and-keys)). A hosted agent bot takes only `agent_config_id`, never the bridge sockets.
+1. **Recording bot (default).** A bot joins Zoom, Google Meet or Microsoft Teams, records and transcribes. Use this for every request that does not ask for an agent. Ask once: after the call, or live?
+   - 1a. **Non-realtime transcription (post-call):** `create_bot`, wait for `Done`, then get the transcript and recordings; webhooks tell you when.
+   - 1b. **Real-time transcription (live):** the live transcription webhook, the real-time audio WebSocket, the meeting control socket, chat, raise or lower hand.
+2. **Bridge server (your own stack, local).** The bot connects out to your server over two WebSockets: `live_audio_required.websocket_url` (meeting audio in) and `socket_connection_url.websocket_url` (audio, chat and images out). On a laptop, expose it with a local tunnel (ngrok, cloudflared). Price: the bot price only, no agent infrastructure and no model tokens. Free to run locally; check each model's license before commercial use: speech-to-text with whisper.cpp or faster-whisper, NVIDIA Parakeet (parakeet-mlx on Apple silicon), Vosk or Moonshine; an LLM through Ollama, LM Studio or llama.cpp (Llama, Qwen, Gemma, Mistral), or the model of the harness you already use; text-to-speech with Piper, Kokoro, Chatterbox or macOS `say`. [Bridge server docs](https://docs.meetstream.ai/guides/websockets/bridge-server-architecture), starter: [meetstream-ai/meetstream-agent](https://github.com/meetstream-ai/meetstream-agent).
+3. **Agents API infra (voice agents, API name MIA, hosted by MeetStream).** The bot plus $0.25 per hour for the agent infrastructure, plus the models you pick ([pricing and keys](https://docs.meetstream.ai/guides/mia/pricing-and-keys)). A hosted agent bot takes only `agent_config_id`, never the bridge sockets.
+   - 3a. **MeetStream's own, default keys** (recommended for "just host it"): no provider account. Inbuilt keys work in pipeline mode only: Deepgram (speech-to-text) and OpenAI (LLM and voice). Realtime mode runs on OpenAI and needs your own OpenAI key. Any other provider: bring your own key. If a section is refused, use 3c.
+   - 3b. **Bring your own agent infra (LiveKit): COMING SOON.** Not available yet; no setup steps.
+   - 3c. **Bring your own keys:** OpenAI, Anthropic, Deepgram, ElevenLabs and others in the docs.
+   - 3d. **Local agent: COMING SOON.** Your own agent CLI (Claude Code, Codex, Hermes and others) as the brain through the MeetStream Agent Kit and `model.provider: "local_agent"`. Not available yet; no setup steps. When it ships, meeting speech will reach an agent with access to your computer and terminal (prompt injection). Today, use track 2 (with your harness's own model as the LLM) or track 3a/3c.
+
+If the user wants an agent and does not say which, ask once: run your own stack (track 2), or let MeetStream host it (track 3a/3c)? Never present 3b or 3d as available.
 
 Overview: [Integration paths](https://docs.meetstream.ai/guides/introduction/integration-paths).
 
@@ -54,7 +60,7 @@ The skills give the fastest path first: the shortest working request (curl, Node
 | Live captions or coaching | *"stream live captions from my Google Meet into my web app"* | `realtime-streaming`, `sales-coach` |
 | Calendar auto-join | *"auto-record every meeting on my Google Calendar"* | `calendar-automation` |
 | Recordings and per-speaker audio | *"download the recording and each speaker's audio"* | `recordings-and-media` |
-| Agent on your own stack (on request) | *"build a voice agent on my own models with local Parakeet"* | `realtime-streaming` (bridge server) |
+| Agent on your own stack (on request) | *"build a voice agent on free local models on my laptop"* | `realtime-streaming` (track 2, bridge server) |
 | Hosted voice agent (on request) | *"host a voice agent that answers questions in my Zoom calls"* | `mia-voice-agents` |
 | Recording for your customers (SaaS) | *"bots join our customers' calls, recordings per customer in our app"* | `for-your-customers` |
 | Agent recipes by job (on request) | *"an agent in our standup that only talks when someone says its name"* | `mia-voice-agents` |
@@ -66,7 +72,7 @@ The skills give the fastest path first: the shortest working request (curl, Node
 
 ```
 skills/
-├── meetstream/             <- Core skill: three flows, routing, API reference, lifecycle, decision tree
+├── meetstream/             <- Core skill: build tracks, routing, API reference, lifecycle, decision tree
 ├── getting-started/        <- First-time setup: sign in or API key, then post-call or live
 ├── join-meeting/           <- Send a bot to a meeting (now or later), chat, raise hand
 ├── meeting-brief/          <- After the call: notes, decisions, action items
@@ -78,14 +84,14 @@ skills/
 ├── recordings-and-media/   <- Recordings, per-participant audio/video, retention
 ├── webhooks/               <- Webhook events, signatures, local development
 ├── platform-setup/         <- Zoom (your Zoom app, OBF or ZAK), Google Meet, Teams, WhatsApp (Beta), signed-in bots
-├── mia-voice-agents/       <- Agents in meetings: flow picker, own agent (Agent Kit), hosted Agents API, Grok and Gemini, recipes by job
+├── mia-voice-agents/       <- Agents in meetings: track picker, bridge (track 2), hosted Agents API (3a/3c; 3b, 3d coming soon), Grok and Gemini, recipes
 ├── migrate-from-recall/    <- Recall.ai to MeetStream
 ├── verify-account/         <- Read-only account check: key, balance, providers
 ├── test-bot/               <- Send a test bot + watch webhooks live
 └── troubleshooting/        <- 401/403/422/202, missing transcripts, bots that never join
 
 .mcp.json, mcp.json         <- Hosted MeetStream MCP server (browser sign-in, no key to copy): bots, transcripts,
-                               voice agents (list_agents, create_agent, check_local_agent), take_screenshot, calendars
+                               voice agents (list_agents, create_agent), take_screenshot, calendars
 .cursor-plugin/             <- Cursor manifest (same skills, same server)
 
 agents/
