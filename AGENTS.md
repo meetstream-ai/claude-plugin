@@ -112,7 +112,7 @@ Install from the local path, restart Claude Code, then confirm with `/mcp` that 
 - Every link must resolve. Dead documentation links in a shipped skill are worse than no link.
 - No sample apps or full app scaffolds in skills: give the fastest path (numbered steps, minimal curl / `@meetstream/sdk` / `meetstream-sdk` calls) and link https://docs.meetstream.ai/tutorials/sample-apps and the labs repo as optional references.
 - Every skill ends with a `## Latest docs` section (2 to 5 docs URLs plus the `.md` / llms.txt / docs MCP line). When a skill and the docs differ, the docs win. `python3 evals/check_descriptions.py .` checks this.
-- Do not describe an MCP tool that does not exist. MIA agent configs, calendar connection, Google signed-in bots, Zoom authenticated joins (`zoom.zak_url` / `zoom.obf_url`), storage config, pause/resume and raise/lower hand (`send_command`) are **REST-only** - route to REST rather than implying a tool.
+- Do not describe an MCP tool that does not exist. The hosted MCP (0.6.0) has 39 tools, including voice agents (`list_agents`, `get_agent`, `create_agent`, `update_agent`, `delete_agent`, `check_local_agent`, `update_live_agent`), in-meeting control (`take_screenshot`, `raise_hand` / `lower_hand`, `pause_recording` / `resume_recording`) and calendars (`list_calendar_connections`, `disconnect_calendar`). When the MCP is connected, skills use these tools; with no MCP, they give the REST call. Connecting a calendar (OAuth secrets), Google and Teams signed-in bot account setup, Zoom app setup, storage config, provider keys and the Agent Kit pairing token are **REST or dashboard only** - route there rather than implying a tool. Full list: the README of https://github.com/meetstream-ai/meetstream-mcp
 
 ### Releasing
 

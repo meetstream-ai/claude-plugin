@@ -115,7 +115,7 @@ POST /api/v1/bots/{bot_id}/pause_recording     (empty body)
 POST /api/v1/bots/{bot_id}/resume_recording    (empty body)
 ```
 
-REST only, not MCP tools. Use these for privacy windows - a break, an off-record
+With the MCP connected, the `pause_recording` / `resume_recording` tools do the same. Use these for privacy windows - a break, an off-record
 discussion, someone reading out a credential. The bot stays in the meeting.
 
 ## Retention

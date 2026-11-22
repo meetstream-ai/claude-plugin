@@ -1,0 +1,1 @@
+{"agent_config_id": "4f2b9c1e-8d3a-4e6b-9a10-2c7d5e8f1a33", "agent_name": "{{input.agent_name}}", "mode": "{{input.mode}}", "status": "created", "next_steps": "Send it to a meeting with create_bot: meeting_link and agent_config_id only (no bridge sockets)."}

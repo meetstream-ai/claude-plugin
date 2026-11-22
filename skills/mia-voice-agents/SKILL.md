@@ -3,14 +3,14 @@ name: mia-voice-agents
 description: >
   Agents that talk in a meeting ("voice agent", "bot that talks", "MIA").
   Stack not said: ask own stack or hosted? 2a) bridge server first: the bot
-  opens live_audio_required + socket_connection_url to your server; any
+  opens live_audio_required + socket_connection_url; any
   models, local too; bot price only. 2b) Yes: your own agent (Claude Code, Codex, Hermes, OpenClaw and others) can be the voice agent's brain through `model.provider: "local_agent"` and the MeetStream Agent Kit, with a
   warning: meeting speech reaches an agent with access to their computer
-  (prompt injection); the computer must stay on for the whole call. 3) hosted Agents API (MIA): MeetStream's inbuilt
-  keys (key_source "meetstream"; Inbuilt keys work in pipeline mode only: Deepgram (speech-to-text) and OpenAI (LLM and voice). Realtime mode runs on OpenAI and needs your own OpenAI key. Any other provider: bring your own key. Check mia_managed), then own provider
+  (prompt injection); the computer must stay on. 3) hosted Agents API (MIA): MeetStream's inbuilt
+  keys (key_source "meetstream"; Inbuilt keys work in pipeline mode only: Deepgram (speech-to-text) and OpenAI (LLM and voice). Realtime mode runs on OpenAI and needs your own OpenAI key. Any other provider: bring your own key.), then own provider
   keys; bot + $0.25 per hour + models. If not available: own keys, never
   retry. Hosted bot: only agent_config_id. Grok:
-  xAI.
+  xAI. MCP: list_agents, then create_agent (system_prompt required).
 ---
 
 # Agents in meetings (voice agents; Agents API, API name MIA)
@@ -22,6 +22,42 @@ meeting" to users, and give "MIA" once as the API name of the hosted Agents API 
 For recordings, transcripts and live data with no agent, use the Bot API (flow 1:
 `join-meeting`, `meeting-brief`, `realtime-streaming`). Bring agents in only when the
 user asks for an agent, a voice agent or a bot that talks.
+
+## With the MeetStream MCP connected: create and check agents from here
+
+When the `meetstream` MCP tools are connected, create, check and change agents with them,
+so the user never leaves the chat. With no MCP, give the REST call in each step below.
+
+| Step | MCP tool | REST (no MCP) |
+|---|---|---|
+| 1. Read the account's agents and inbuilt keys first | `list_agents` (agent configs and `mia_managed`: `enabled`, then the providers and models per section; no prices) | `GET /api/v1/mia` |
+| 2. Create the agent | `create_agent` (`agent_name`, `mode`, `model` with `system_prompt`; in pipeline mode also `transcriber` and `voice`) | `POST /api/v1/mia` |
+| 3. Your own agent (2b): test the bridge | `check_local_agent` (`agent_config_id`) | `GET /api/v1/mia?agent_config_id=<id>&check=local_agent` |
+| 4. Send it to the meeting | `create_bot` with only `meeting_link` and `agent_config_id` | `POST /api/v1/bots/create_bot` |
+| Read one, change one | `get_agent`; `update_agent` (each section you send replaces that section; a `mode` change needs the full config) | `GET /api/v1/mia?agent_config_id=<id>`; `PUT /api/v1/mia` |
+| Delete one | `delete_agent` with `confirm: true`, only after the user says yes | `DELETE /api/v1/mia?agent_config_id=<id>` |
+| See what the bot sees | `take_screenshot` (`bot_id`; Google Meet and Teams), then `get_media_urls` with `kind: "screenshots"` | `POST /api/v1/bots/{bot_id}/send_command` `{"command": "screenshot"}`, then `GET /api/v1/bots/{bot_id}/screenshots` |
+| Change a running agent | `update_live_agent` | `POST /api/v1/bots/{bot_id}/update_mia` |
+
+Rules for both paths:
+
+- **`model.system_prompt` is required** for every agent except `local_agent`. Without it
+  the API answers `400` `Missing model.system_prompt.` Write a short prompt from what the
+  user wants the agent to do.
+- **`voice.voice_id` is required in pipeline mode** (`400` `Missing voice.voice_id.`), even
+  on an inbuilt key: for example `nova` for OpenAI, or an ElevenLabs voice id from the
+  dashboard agent editor's voice list.
+- **Keys never go in the chat.** Prefer inbuilt keys (`"key_source": "meetstream"`, pipeline
+  mode, only what `mia_managed` lists) or keys the user saved in the dashboard under
+  Configure > Integrations. Never ask the user to paste a provider key; the tools never
+  return key values. `create_agent` refuses `key_source: "meetstream"` in realtime mode:
+  use pipeline mode, or realtime with the user's own OpenAI key saved in the dashboard.
+- **The pairing token is dashboard-only** (flow 2b). `create_agent` refuses a pairing token
+  and returns the next steps for `local_agent`: stop and ask the user to save the token in
+  the dashboard, then wait for them to confirm (see flow 2b).
+- If inbuilt keys are not on (`enabled: false`, or the API says MeetStream-managed keys
+  are not available), say so and continue with the user's own keys. Never retry the same
+  request in a loop.
 
 ## Pick the flow first
 
@@ -98,7 +134,7 @@ Give this warning in the same answer whenever you offer flow 2b. Steps:
    "Integrations API" (`missing LocalAgentKey`). Never probe undocumented or admin
    endpoints, never type the token into a web form for the user, and never write the token
    into a file, a README or a reply. Then wait: ask the user to confirm it is saved.
-3. Create the agent:
+3. Create the agent (`create_agent` when the MCP is connected, else `POST /api/v1/mia`):
    ```json
    {
      "agent_name": "My agent in the meeting",
@@ -118,8 +154,9 @@ Give this warning in the same answer whenever you offer flow 2b. Steps:
    `system_prompt` are optional. If saving it fails with a message that `local_agent`
    is not available, the own-agent setup is not on for the account yet: say so and offer
    the bridge server (flow 2a) or the hosted agent (flow 3). Never retry in a loop.
-4. Test the link before the call: `GET /api/v1/mia?agent_config_id=<id>&check=local_agent`
-   (`status: "ok"`; others such as `login_expired`, `unreachable`, `token_rejected`).
+4. Test the link before the call: the `check_local_agent` MCP tool, or
+   `GET /api/v1/mia?agent_config_id=<id>&check=local_agent` (`status: "ok"`; others such as
+   `no_token`, `login_expired`, `unreachable`, `token_rejected`, each with the fix).
 5. Send the bot with `agent_config_id`. In the meeting, the owner pastes the 6-digit
    activation code that the bridge shows into the chat (single use, 5 minutes). The code
    works on Google Meet; on Zoom and Teams set `require_code: false` and use `owner_names`.
@@ -131,19 +168,19 @@ Agents" (https://docs.meetstream.ai/guides/features/mia-screen-sharing-and-custo
 
 ## Flow 3: hosted Agents API (MIA)
 
-MeetStream hosts the agent, so the user hosts nothing. Agent configs are REST-only (no MCP
-tools): create the config with `POST /api/v1/mia`, then send a bot with only
-`agent_config_id` (the `create_bot` MCP tool or REST).
+MeetStream hosts the agent, so the user hosts nothing. With the MCP connected: `list_agents`,
+then `create_agent`, then `create_bot` with only `agent_config_id`. With no MCP: create the
+config with `POST /api/v1/mia`, then send a bot with only `agent_config_id`.
 
 ### Fastest path (flow 3)
 
-0. Check what inbuilt keys your account has: `GET /api/v1/mia` and read `mia_managed`
+0. Check what inbuilt keys your account has: `list_agents` (MCP) or `GET /api/v1/mia`, and read `mia_managed`
    (`enabled`, then `sections.transcriber`, `sections.model`, `sections.voice` with their
    providers and models). Use only those with `"key_source": "meetstream"`. If
    `enabled` is false or a section is missing, use your own keys (3b) for it. Do not quote
    any prices from that response; the dashboard agent editor shows the rate.
 1. Create the agent (3a, inbuilt keys; swap in the providers `mia_managed` lists for your
-   account):
+   account). With the MCP, pass the same fields to `create_agent`:
    ```bash
    curl -X POST https://api.meetstream.ai/api/v1/mia \
      -H "Authorization: Token $MEETSTREAM_API_KEY" -H "Content-Type: application/json" \
@@ -396,7 +433,8 @@ that decides the mode for you.
 `voice`, `transcriber` and `wake_word` are pipeline-only. In realtime mode the voice
 lives inside `model`.
 
-Other operations: `GET /mia` (list, or one via `?agent_config_id=`),
+MCP tools for the same operations: `list_agents`, `get_agent`, `update_agent`,
+`delete_agent` (`confirm: true`). REST: `GET /mia` (list, or one via `?agent_config_id=`),
 `PUT /mia` (update, body includes `agent_config_id`),
 `DELETE /mia?agent_config_id=...`. `GET` masks secrets (`****` + last four characters);
 sending the mask back on `PUT` keeps the stored value.
@@ -434,7 +472,7 @@ harder tasks). The Anthropic key is saved in the dashboard under model integrati
 
 ### Changing a running agent
 
-`POST /api/v1/bots/{bot_id}/update_mia` (REST) with at least one of `agent_config_params`
+`update_live_agent` (MCP) or `POST /api/v1/bots/{bot_id}/update_mia` (REST) with at least one of `agent_config_params`
 (merged), `system_prompt` (replaces the instructions), `wake_word_enabled`, `wake_words`.
 A plain 200 `{"status": "accepted"}` means accepted for delivery, not applied. Add
 `"wait_for_ack": true` to get the agent's answer: `status` is `applied`,
@@ -475,10 +513,11 @@ agent in a sales call is usually a bad experience.
 
 ## Testing an agent
 
-1. Create the config, note the `agent_config_id`.
+1. Create the config (`create_agent`, or `POST /api/v1/mia`), note the `agent_config_id`.
 2. Use `create_bot` (MCP tool) with `meeting_link` + `agent_config_id`.
 3. Follow with `get_bot_status` until `Recording`.
-4. Join the meeting yourself and talk to it.
+4. Join the meeting yourself and talk to it. To see what the bot sees, `take_screenshot`
+   (Google Meet and Teams), then `get_media_urls` with `kind: "screenshots"`.
 5. `remove_bot` when done.
 
 If the agent joins but never speaks, check in this order: is `agent_config_id` actually

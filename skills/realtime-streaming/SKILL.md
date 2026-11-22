@@ -216,8 +216,8 @@ separate bots.
 Before building a WebSocket server, check whether the REST path is enough:
 
 - Just posting a message? Use the **`send_chat_message`** MCP tool.
-- Raising the bot's hand? There is no MCP tool, but the REST call works now (header
-  `Authorization: Token <API key>`), even when the MCP tools are not connected:
+- Raising the bot's hand? Use the **`raise_hand`** / **`lower_hand`** MCP tool. With no
+  MCP (or in app code), the REST call works now (header `Authorization: Token <API key>`):
   `POST /api/v1/bots/{bot_id}/send_command` with `{"command": "raise_hand"}` /
   `{"command": "lower_hand"}` (bot must be in the meeting, else 409; see `join-meeting`).
 - Just showing an image? Use the **`send_image`** MCP tool (public URL, not base64).

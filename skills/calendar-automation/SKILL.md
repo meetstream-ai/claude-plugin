@@ -25,8 +25,12 @@ Two paths, one skill:
 ## From your agent (MCP tools + REST)
 
 Two MCP tools cover the day-to-day: **`list_calendar_events`** and
-**`schedule_calendar_bot`**. Everything else (connecting a calendar, auto-schedule,
-disconnect) is REST only.
+**`schedule_calendar_bot`**. **`list_calendar_connections`** shows the connected Google and
+Outlook accounts and their status (no tokens), and **`disconnect_calendar`** (`confirm:
+true`, only after the user says yes; by default it also deletes the synced events and the
+bots scheduled from them) disconnects one. Connecting a calendar needs OAuth secrets, so
+it stays in the dashboard or REST (never ask for the secrets in the chat); auto-schedule is
+REST.
 
 ### The flow
 

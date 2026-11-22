@@ -391,8 +391,50 @@ def build_misses():
     return misses
 
 
+# MCP 0.6.0 (MS-2305): with the MCP connected, skills create and check agents with the MCP tools.
+MCP_BODY = {
+    "mia-voice-agents": [("list_agents first", r"list_agents"), ("create_agent", r"create_agent"),
+                         ("check_local_agent", r"check_local_agent"), ("take_screenshot", r"take_screenshot"),
+                         ("system_prompt required", r"system_prompt.{0,40}required"),
+                         ("REST fallback with no MCP", r"no MCP.{0,200}POST /api/v1/mia|POST /api/v1/mia.{0,200}no MCP")],
+    "meetstream": [("list_agents", r"list_agents"), ("create_agent", r"create_agent"), ("take_screenshot", r"take_screenshot")],
+    "getting-started": [("list_agents", r"list_agents"), ("create_agent", r"create_agent")],
+    "troubleshooting": [("check_local_agent", r"check_local_agent"), ("missing system_prompt 400", r"Missing model\.system_prompt")],
+}
+MCP_DESC = {"mia-voice-agents": [("MCP: list_agents then create_agent", r"list_agents.{0,80}create_agent")]}
+STALE_MCP = re.compile(r"[Aa]gent configs are REST-only|[Tt]here is no MCP tool|REST only, not MCP tools|MIA agent configs, calendar connection")
+
+
+def mcp_misses():
+    misses = 0
+    for skill, checks in MCP_BODY.items():
+        body = read_skill(skill)
+        for label, pattern in checks:
+            ok = re.search(pattern, body, re.S) is not None
+            misses += not ok
+            print(f"{'ok  ' if ok else 'MISS'} {skill} body: {label}")
+    for skill, checks in MCP_DESC.items():
+        desc = description(os.path.join(ROOT, "skills", skill, "SKILL.md"))
+        for label, pattern in checks:
+            ok = re.search(pattern, desc, re.S) is not None
+            misses += not ok
+            print(f"{'ok  ' if ok else 'MISS'} {skill}: {label}")
+    for base, _, files in os.walk(ROOT):
+        if "/.git" in base or "/evals" in base:
+            continue
+        for name in files:
+            if name.endswith(".md") and name != "CHANGELOG.md":
+                fp = os.path.join(base, name)
+                for n, line in enumerate(open(fp, encoding="utf-8"), 1):
+                    hit = STALE_MCP.search(line)
+                    if hit:
+                        misses += 1
+                        print(f"MISS {os.path.relpath(fp, ROOT)}:{n}: stale MCP wording '{hit.group(0)}'")
+    return misses
+
+
 def main():
-    misses = version_wording_misses() + body_misses() + round6_misses() + signup_misses() + build_misses()
+    misses = version_wording_misses() + body_misses() + round6_misses() + signup_misses() + build_misses() + mcp_misses()
     for skill, checks in MUST.items():
         desc = description(os.path.join(ROOT, "skills", skill, "SKILL.md"))
         for label, pattern in checks:
