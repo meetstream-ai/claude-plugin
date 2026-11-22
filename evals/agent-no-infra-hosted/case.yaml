@@ -1,7 +1,7 @@
 schema_version: "1.1"
 name: agent-no-infra-hosted
-description: "The user wants a voice agent with no infrastructure work: flow 3, the hosted Agents API (MIA) with MeetStream's inbuilt keys (OpenAI and Deepgram), the fallback to own keys when inbuilt keys are not on, and only agent_config_id on the bot."
-tags: [three-flows, voice-agent]
+description: "Build tracks (MS-2305, 22 Nov 2026): the user wants a voice agent with no infrastructure work (\"just host it\"): track 3a, the hosted Agents API (MIA) with MeetStream's own default keys (pipeline mode: Deepgram and OpenAI), the fallback to track 3c (bring your own keys) when a section is refused, and only agent_config_id on the bot. The reply names the tracks."
+tags: [build-tracks, voice-agent]
 runs: 1
 execution:
   prompt: "I want a voice agent that answers questions in my Google Meet calls, but I don't want to run any servers or infrastructure, and I don't have any AI provider accounts. Just host it for me. How do I set it up?"
@@ -11,6 +11,12 @@ graders:
 - name: inbuilt-keys
   type: regex
   pattern: 'key_source'
+- name: track-3a
+  type: regex
+  pattern: '\b3a\b'
+- name: fallback-track-3c
+  type: regex
+  pattern: '\b3c\b'
 - name: agent-config-id
   type: regex
   pattern: 'agent_config_id'

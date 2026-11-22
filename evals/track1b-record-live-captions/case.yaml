@@ -1,0 +1,25 @@
+schema_version: "1.1"
+name: track1b-record-live-captions
+description: "Build tracks (MS-2305, 22 Nov 2026): a recording bot with live captions is track 1b (real-time transcription): record plus live_transcription_required.webhook_url with a streaming provider; no agent. The reply names the track."
+tags: [build-tracks, live]
+runs: 1
+execution:
+  prompt: "I need a bot that records my Zoom meetings and also shows live captions in my app while the meeting is happening. Which MeetStream setup is that, and what do I send? Don't send a bot."
+  max_turns: 10
+  allowed_tools: [Read, Glob, Grep, Skill]
+graders:
+- name: track-1b
+  type: regex
+  pattern: '\b1b\b'
+- name: live-transcription-field
+  type: regex
+  pattern: 'live_transcription_required'
+- name: no-voice-agent
+  type: regex
+  pattern: '\bagent_config_id\b|\x22key_source\x22'
+  match: not_contains
+- name: no-bot-sent
+  type: tool_used
+  tool: mcp__plugin_meetstream_meetstream__create_bot
+  min: 0
+  max: 0

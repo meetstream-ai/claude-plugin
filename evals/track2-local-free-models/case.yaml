@@ -1,0 +1,39 @@
+schema_version: "1.1"
+name: track2-local-free-models
+description: "Build track 2 (MS-2305, 22 Nov 2026): a voice agent on the user's own local models is the bridge server, with free local speech-to-text, LLM and text-to-speech options, the full option lists from the skill (including Vosk or Moonshine and Chatterbox or macOS say), the license note, both bot sockets and a local tunnel (ngrok or cloudflared) for a laptop."
+tags: [build-tracks, voice-agent]
+runs: 1
+execution:
+  prompt: "I want a voice agent in my Google Meet calls that runs on free models on my own laptop, no paid AI APIs. Which models can I use, and how do I connect it to MeetStream? Don't send a bot."
+  max_turns: 10
+  allowed_tools: [Read, Glob, Grep, Skill]
+graders:
+- name: both-sockets
+  type: regex
+  pattern: 'live_audio_required[\s\S]*socket_connection_url|socket_connection_url[\s\S]*live_audio_required'
+- name: local-tunnel
+  type: regex
+  pattern: 'ngrok|cloudflared'
+  flags: i
+- name: free-local-tts
+  type: regex
+  pattern: 'Piper|Kokoro|Chatterbox'
+- name: full-stt-options
+  type: regex
+  pattern: 'Vosk|Moonshine'
+- name: full-tts-options
+  type: regex
+  pattern: 'Chatterbox|macOS\W{0,3}`?say'
+- name: license-note
+  type: regex
+  pattern: 'licen[cs]e'
+  flags: i
+- name: not-the-hosted-agent
+  type: regex
+  pattern: '\x22key_source\x22\s*:\s*\x22meetstream\x22'
+  match: not_contains
+- name: no-bot-sent
+  type: tool_used
+  tool: mcp__plugin_meetstream_meetstream__create_bot
+  min: 0
+  max: 0

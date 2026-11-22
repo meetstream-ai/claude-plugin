@@ -1,24 +1,22 @@
 schema_version: "1.1"
 name: voice-agent-local-agent-config
-description: "Own agent as the voice agent's brain: local_agent config, Agent Kit, pairing token, activation code, read-only access, with the warning."
-tags: [round5, voice-agent, security]
+description: "Build tracks (MS-2305, 22 Nov 2026): asked for a local_agent config for their own Claude Code, the reply says track 3d (local agent through the Agent Kit) is coming soon, gives no config or install steps, keeps the prompt-injection warning for the coming track, and offers track 2 or 3a/3c now."
+tags: [build-tracks, voice-agent, security]
 runs: 1
 execution:
   prompt: "Set me up to use my own Claude Code as the brain of a voice agent in my Google Meet calls. Give me the agent config JSON and the steps. Don't ask me questions."
   max_turns: 10
   allowed_tools: [Read, Glob, Grep, Skill]
 graders:
-- name: local-agent-provider
+- name: coming-soon
+  type: regex
+  pattern: 'coming soon'
+  flags: i
+- name: no-local-agent-config
   type: regex
   pattern: '\x22provider\x22\s*:\s*\x22local_agent\x22'
-- name: readonly-access
+  match: not_contains
+- name: no-agent-kit-install
   type: regex
-  pattern: 'readonly|read-only'
-  flags: i
-- name: agent-kit-install
-  type: regex
-  pattern: 'meetstream-agent-kit'
-- name: activation-code
-  type: regex
-  pattern: 'activation code|6-digit'
-  flags: i
+  pattern: '(uv tool|pipx) install meetstream-agent-kit'
+  match: not_contains

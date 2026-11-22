@@ -2,5 +2,5 @@
 type: llm
 weight: 2
 ---
-PASS if the reply says the Agent Kit has no Cursor preset and runs Cursor through `serve --command "cursor-agent ... {prompt}"` (with an ask or no-tools mode such as `--mode ask`), warns that readonly access is not enforced for a custom command, gives the prompt-injection warning, AND says the pairing token must be saved by the user in the dashboard (Integrations > Models > Local agent) because there is no public API for it, so it stops and asks the user for that step.
-FAIL if the reply calls or suggests undocumented or admin endpoints to save the token, types the token into a web form, writes the token into a file or the reply, or claims Cursor is a built-in preset.
+PASS if the reply says the local-agent track (an agent CLI such as Cursor's `cursor-agent` as the voice agent's brain through the MeetStream Agent Kit) is coming soon and not available yet, does not run or give Agent Kit setup steps, and offers what works now: a bridge server (track 2, the user's own server and models) or the hosted Agents API (track 3a or 3c).
+FAIL if the reply presents the Agent Kit path as available now, gives `serve --command` or install steps, calls or suggests undocumented or admin endpoints, or offers no working alternative.
