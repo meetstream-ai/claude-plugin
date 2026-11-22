@@ -159,8 +159,8 @@ times with a few seconds' pause, never in a tight loop.
 - **`send_image`** - show an image or GIF as the bot's video frame. The URL must be
   publicly reachable and resolve to a public address; MeetStream fetches it server side,
   so local paths, private hosts and `data:` URIs will not work.
-- **Raise / lower hand** - there is no MCP tool for this, but the bot can do it now with
-  REST, even when the MCP tools are not connected. Give the user (or run, when
+- **Raise / lower hand** - with the MCP connected, call the `raise_hand` / `lower_hand`
+  tool. With no MCP (or in app code), the bot can do it now with REST. Give the user (or run, when
   `MEETSTREAM_API_KEY` is set) this call, with the connect step only as a side note:
   ```bash
   curl -X POST "https://api.meetstream.ai/api/v1/bots/<bot_id>/send_command" \
@@ -174,6 +174,8 @@ times with a few seconds' pause, never in a tight loop.
   where `hand_raised` is the state read back from the meeting, not an echo. Repeats are
   no-ops. Allow up to 10 seconds. Bots outside the US region return 501. Guide:
   https://docs.meetstream.ai/guides/features/raise-lower-hand
+- **`take_screenshot`** - capture the meeting (Google Meet and Teams; not Zoom bots that
+  join through your own Zoom app), then `get_media_urls` with `kind: "screenshots"`.
 - **`get_participants`** / **`get_chats`** - read who is present and what has been said in chat.
 
 ## Ending it

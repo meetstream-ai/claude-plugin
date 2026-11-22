@@ -6,7 +6,7 @@
 
 **Meeting bots for Zoom, Google Meet and Microsoft Teams: recordings, transcripts and live data from your agent or your app, plus agents that talk in the meeting, on your own stack or hosted.**
 
-[![Plugin Version](https://img.shields.io/badge/plugin-v2.10.0-5C4EFF?style=for-the-badge)](https://github.com/meetstream-ai/claude-plugin)
+[![Plugin Version](https://img.shields.io/badge/plugin-v2.10.1-5C4EFF?style=for-the-badge)](https://github.com/meetstream-ai/claude-plugin)
 [![Live-Tested](https://img.shields.io/badge/endpoints-live--tested-10B981?style=for-the-badge)](https://github.com/meetstream-ai/claude-plugin/commits/main)
 [![MIT License](https://img.shields.io/badge/license-MIT-yellow?style=for-the-badge)](LICENSE)
 [![Get API Key](https://img.shields.io/badge/get%20api%20key-app.meetstream.ai-0EA5E9?style=for-the-badge)](https://app.meetstream.ai/api-keys)
@@ -84,7 +84,8 @@ skills/
 ├── test-bot/               <- Send a test bot + watch webhooks live
 └── troubleshooting/        <- 401/403/422/202, missing transcripts, bots that never join
 
-.mcp.json, mcp.json         <- Hosted MeetStream MCP server (browser sign-in, no key to copy)
+.mcp.json, mcp.json         <- Hosted MeetStream MCP server (browser sign-in, no key to copy): bots, transcripts,
+                               voice agents (list_agents, create_agent, check_local_agent), take_screenshot, calendars
 .cursor-plugin/             <- Cursor manifest (same skills, same server)
 
 agents/

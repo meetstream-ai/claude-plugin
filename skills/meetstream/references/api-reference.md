@@ -269,7 +269,7 @@ Response 200:
 
 **`update_mia`** - see [POST `/bots/{bot_id}/update_mia`](#post-botsbot_idupdate_mia); the same body plus `"command": "update_mia"` works here.
 
-Other commands: `screenshot` (on Zoom only for bots that join without the user's own Zoom app), `pause_recording`, `resume_recording`, `sendmsg`, `sendimg`, `sendimg_url`, `interrupt`. On Zoom and Teams, chat sent while the bot is in the lobby is held and posted on admission; Google Meet returns 409.
+Other commands: `screenshot` (MCP tool `take_screenshot`; on Zoom only for bots that join without the user's own Zoom app), `pause_recording`, `resume_recording`, `sendmsg`, `sendimg`, `sendimg_url`, `interrupt`. On Zoom and Teams, chat sent while the bot is in the lobby is held and posted on admission; Google Meet returns 409.
 
 ---
 
@@ -719,15 +719,17 @@ Login object: `{ login_id, domain, email, is_active, lease_status, last_session_
 
 All MIA operations use the same path `/api/v1/mia` (singular). The HTTP method distinguishes the operation.
 
+MCP tools for the same operations (use them when the MeetStream MCP is connected): `list_agents` (`GET`, with `mia_managed`, no prices), `get_agent`, `create_agent` (`POST`), `update_agent` (`PUT`; a `mode` change needs the full config), `delete_agent` (`DELETE`, `confirm: true`), `check_local_agent` (`?check=local_agent`). `create_agent` refuses `key_source: "meetstream"` in realtime mode and never takes the Agent Kit pairing token.
+
 ### POST `/api/v1/mia` - Create
 
 **Required:**
 - `agent_name` (string)
 - `mode` (string) - `"pipeline"` or `"realtime"`
-- `model` (object) - see below
+- `model` (object) - see below. `model.system_prompt` is required except with `local_agent`: without it the API returns `400` `{"message": "Missing model.system_prompt."}`
 
 **Optional:**
-- `voice` (object, **pipeline only**)
+- `voice` (object, **pipeline only**; `voice.voice_id` is required in pipeline mode: `400` `{"message": "Missing voice.voice_id."}`)
 - `transcriber` (object, **pipeline only**)
 - `agent` (object) - `response_type` (`"voice"` / `"chat"` / `"action"`, default `"voice"`), `first_message` (string), `mcp_servers` (array), `tools` (`current_time`, `weather_now`, `screen`: Google Meet only, vision-capable model), `desktop` (Google Meet, with `screen`, opt-in), `chat_input`, `quiet_actions`, `speak_only_when_asked` (pipeline) - all default `false`
 - `audio` (object) - `sample_rate`, `num_channels`

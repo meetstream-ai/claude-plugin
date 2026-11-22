@@ -1,0 +1,39 @@
+schema_version: "1.1"
+name: mcp-create-hosted-agent
+description: "MCP 0.6.0: with the MeetStream MCP connected, 'create a hosted voice agent for me from here' reads list_agents (mia_managed) first, then calls create_agent with model.system_prompt, in pipeline mode with inbuilt keys from the listed providers (or a note on keys saved in the dashboard). No REST hand-off, no key asked in chat, no bot sent."
+tags: [mcp-0.6.0, voice-agent]
+runs: 1
+execution:
+  prompt: "Create a hosted voice agent for me from here. It should answer product questions in my Google Meet calls. I don't want to run any servers or open the dashboard. Go ahead and create it now; you don't need to ask me to confirm."
+  max_turns: 12
+  allowed_tools: [Read, Glob, Grep, Skill]
+graders:
+- name: read-list-agents
+  type: tool_used
+  tool: mcp__plugin_meetstream_meetstream__list_agents
+  min: 1
+- name: list-agents-before-create
+  type: tool_order
+  before: mcp__plugin_meetstream_meetstream__list_agents
+  after: mcp__plugin_meetstream_meetstream__create_agent
+- name: created-with-system-prompt
+  type: tool_used
+  tool: mcp__plugin_meetstream_meetstream__create_agent
+  input_match: '"system_prompt":\s*"[^"]{10,}'
+  min: 1
+  max: 2
+- name: pipeline-mode
+  type: tool_used
+  tool: mcp__plugin_meetstream_meetstream__create_agent
+  input_match: '"mode":\s*"pipeline"'
+  min: 1
+- name: voice-id-set
+  type: tool_used
+  tool: mcp__plugin_meetstream_meetstream__create_agent
+  input_match: '"voice_id":\s*"[^"]+'
+  min: 1
+- name: no-bot-sent
+  type: tool_used
+  tool: mcp__plugin_meetstream_meetstream__create_bot
+  min: 0
+  max: 0

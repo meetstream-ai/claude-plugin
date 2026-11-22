@@ -2,6 +2,23 @@
 
 All notable changes to the MeetStream Claude Code plugin.
 
+## [2.10.1] - 2026-11-22
+
+Uses the hosted MCP 0.6.0 tools, so users finish a MeetStream build without leaving their agent (MS-2305).
+
+### Changed
+- **Voice agents from the chat** (`mia-voice-agents`, `meetstream`, `getting-started`): with the MCP connected, the agent calls `list_agents` first (reads `mia_managed`: whether inbuilt keys are on and which providers and models), then `create_agent`, `get_agent`, `update_agent` (a `mode` change needs the full config), `delete_agent` (`confirm: true`), `check_local_agent` for a `local_agent` bridge, and `create_bot` with only `agent_config_id`. With no MCP, each step gives the REST call (`POST /api/v1/mia` and the others).
+- **`model.system_prompt` is required** for every agent except `local_agent` (live: `400` `Missing model.system_prompt.`). The skills, `references/api-reference.md` and `troubleshooting` say so. `voice.voice_id` is required in pipeline mode (live: `400` `Missing voice.voice_id.`), even on an inbuilt key.
+- **Keys stay out of the chat:** inbuilt keys in pipeline mode or keys saved in the dashboard; `create_agent` refuses `key_source: "meetstream"` in realtime mode and never takes the Agent Kit pairing token (stop and ask the user to save it in the dashboard).
+- **In-meeting and calendar tools:** `take_screenshot` (then `get_media_urls` `kind: "screenshots"`), `raise_hand` / `lower_hand`, `pause_recording` / `resume_recording`, `list_calendar_connections`, `disconnect_calendar` (`confirm: true`). `join-meeting`, `realtime-streaming`, `recordings-and-media` and `calendar-automation` no longer say these are REST only; the REST calls stay as the no-MCP path.
+- `troubleshooting`: `check_local_agent` statuses (`no_token`, `login_expired`, `unreachable`) with the fix; `get_agent` / `update_agent` to fix a silent agent.
+- `AGENTS.md`, `README.md`, `INSTALL_FOR_AGENTS.md`: the tool lists match the hosted MCP (39 tools).
+
+### Evals
+- New case `mcp-create-hosted-agent`: "create a hosted voice agent for me from here" with the MCP available uses `list_agents`, then `create_agent` with a `system_prompt` and a `voice_id` in pipeline mode, and sends no bot. Its mocks add the nine 0.6.0 tools for this case only.
+- `evals/check_descriptions.py` checks the MCP tool steps, the required `system_prompt`, and that no file says agent configs, raise hand or pause are REST only.
+- `raise-hand-rest`: the grader no longer requires the reply to say the MCP cannot raise the hand (it can, with `raise_hand`); the mock server still has no `raise_hand` tool, so the case still checks the REST call.
+
 ## [2.10.0] - 2026-11-21
 
 Closes the coverage gaps found in what new developers ask for (MS-2305).

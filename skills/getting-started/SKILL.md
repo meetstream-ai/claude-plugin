@@ -86,6 +86,16 @@ real data from the user's account. Before you write a parser, call `get_transcri
 `get_bot_detail`) on a real `bot_id` to see the actual response shape; this is how test
 builds found the participant-keyed transcript format.
 
+**Finish from this agent, with no dashboard trip:** with the MCP connected, the user can do
+the whole build from here. Voice agents: `list_agents` (reads `mia_managed`, the inbuilt
+keys on for the account), then `create_agent` (`model.system_prompt` is required), then
+`create_bot` with `agent_config_id`; `check_local_agent` tests a `local_agent` bridge.
+In the meeting: `take_screenshot`, `raise_hand` / `lower_hand`, `pause_recording` /
+`resume_recording`. Calendars: `list_calendar_connections`, `disconnect_calendar`. Two
+things stay in the dashboard: provider keys (or use inbuilt keys in pipeline mode) and the
+Agent Kit pairing token. Never ask for either in the chat. With no MCP, give the REST call
+(details in `mia-voice-agents` and `meetstream`).
+
 ## Two ways in: pick by what the user wants
 
 - **Use MeetStream from this agent** (send bots, get notes): no key needed. This plugin includes the hosted MeetStream MCP server. Sign in once: Claude Code `/mcp` → `meetstream` → **Authenticate**; Codex `codex mcp login meetstream`; Cursor Settings → MCP → **Connect**. The browser opens app.meetstream.ai; the user signs in or signs up and clicks **Allow**. Check with the `list_bots` tool, then ask the routing question below (after the meeting or live?) and hand over to `join-meeting` or `realtime-streaming`. New accounts start with $5 of credit.
@@ -126,7 +136,7 @@ webhooks. Start there.
      and the bridge must stay on for the whole call.
    - 3. **Hosted Agents API (MIA)**: bot price + $0.25 per hour agent infrastructure + the
      models picked. 3a MeetStream's inbuilt keys (`"key_source": "meetstream"`).
-     Inbuilt keys work in pipeline mode only: Deepgram (speech-to-text) and OpenAI (LLM and voice). Realtime mode runs on OpenAI and needs your own OpenAI key. Any other provider: bring your own key. Read `mia_managed` from `GET /api/v1/mia` and use only what it lists. If the API says MeetStream-managed keys are not available, inbuilt
+     Inbuilt keys work in pipeline mode only: Deepgram (speech-to-text) and OpenAI (LLM and voice). Realtime mode runs on OpenAI and needs your own OpenAI key. Any other provider: bring your own key. Read `mia_managed` from `list_agents` (MCP) or `GET /api/v1/mia` and use only what it lists; create the agent with `create_agent` (MCP) or `POST /api/v1/mia`. If the API says MeetStream-managed keys are not available, inbuilt
      keys are not on for the account yet: go on with 3b, the user's own provider keys
      (the provider bills model usage). Never retry in a loop. The hosted bot takes only
      `agent_config_id`, never the bridge sockets.

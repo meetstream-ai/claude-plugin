@@ -136,6 +136,7 @@ Say, in two lines: MeetStream is installed and signed in, and they can now say t
 
 - "Send a bot to <meeting link> and take notes."
 - "Get the notes from my last meeting."
+- "Create a hosted voice agent for my next call." (the agent uses `list_agents`, then `create_agent`, from the chat)
 
 If they ask what MeetStream can do, ask one question: results after the meeting (recording, transcript, notes) or something live during the call (live transcript, chat)? Do not suggest a voice agent unless they ask for one; if they do, follow the three flows above (own stack on a bridge server first, the hosted Agents API when they want no infrastructure work). If `create_bot` answers `Low credits please recharge`, give them https://app.meetstream.ai/billing.
 

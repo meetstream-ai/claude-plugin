@@ -153,9 +153,11 @@ First find which of the three flows the bot uses (flow 1, recording only, has no
   `sendaudio` at 48 kHz only. Docs:
   https://docs.meetstream.ai/guides/websockets/bridge-server-architecture
 - **Flow 2b, your own agent** (`model.provider: "local_agent"`): the computer, the agent
-  and the Agent Kit bridge must be running; test with
-  `GET /api/v1/mia?agent_config_id=<id>&check=local_agent`; on Google Meet the owner
-  pastes the activation code in the chat.
+  and the Agent Kit bridge must be running; test with the `check_local_agent` MCP tool
+  (or `GET /api/v1/mia?agent_config_id=<id>&check=local_agent`), which returns the status
+  (`ok`, `no_token`, `login_expired`, `unreachable` and others) and the fix; `no_token`
+  means the user must save the pairing token in the dashboard (never in the chat). On
+  Google Meet the owner pastes the activation code in the chat.
 - **Flow 3, hosted agent** (`agent_config_id`): the bot must carry only
   `agent_config_id`. `socket_connection_url` or `live_audio_required` on the same bot is
   the usual cause of a silent agent: remove them (a bridge is a separate bot). Then check
@@ -164,7 +166,11 @@ First find which of the three flows the bot uses (flow 1, recording only, has no
   `"wake_word": {"enabled": false}` (or the user says the wake word). Then
   `speak_only_when_asked`, and the keys: `MeetStream-managed keys are not
   available` means inbuilt keys are not on for the account yet, so use your own provider
-  keys; never retry in a loop. Details: `mia-voice-agents`.
+  keys; never retry in a loop. With the MCP connected, read the saved config with
+  `get_agent` (or `list_agents`) and fix it with `update_agent`; `take_screenshot` shows
+  what the bot sees (Google Meet and Teams). Details: `mia-voice-agents`.
+- **Creating the agent fails** with `400` `Missing model.system_prompt.`: add a
+  `system_prompt` to `model` (required for every agent except `local_agent`).
 
 ## "My polling loop hangs" or "the duplicate check takes minutes"
 
