@@ -1,6 +1,6 @@
 schema_version: "1.1"
 name: agent-kit-cursor-dashboard-step
-description: "Build tracks (MS-2305, 22 Nov 2026): asked to wire the Cursor agent CLI in as the voice agent's brain through the Agent Kit, the reply says track 3d is coming soon, gives no Agent Kit steps, never probes undocumented or admin endpoints, and offers track 2 or 3a/3c now."
+description: "Build tracks (MS-2305, 22 Nov 2026): asked to wire the Cursor agent CLI in as the voice agent's brain through the old Agent Kit, the reply says track 3d (meetstream setup over the relay) is coming soon, gives no setup steps, never probes undocumented or admin endpoints, and offers track 2 or 3a/3c now."
 tags: [build-tracks, voice-agent, agent-kit]
 runs: 1
 execution:
@@ -14,7 +14,8 @@ graders:
   flags: i
 - name: no-serve-command-steps
   type: regex
-  pattern: 'serve --command|(uv tool|pipx) install meetstream-agent-kit'
+  pattern: 'serve --command|serve --tunnel|pairing token|Bridge URL|(uv tool|pipx) install meetstream-agent-kit'
+  flags: i
   match: not_contains
 - name: no-admin-probe
   type: regex

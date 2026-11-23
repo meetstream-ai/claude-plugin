@@ -15,7 +15,9 @@ End-to-end smoke test for a MeetStream integration: send a bot to a real meeting
 
 ## Step 0: Auth check (DO THIS FIRST)
 
-If `MEETSTREAM_API_KEY` is missing or invalid, **invoke the `getting-started` skill first.** Walks the user through signup at https://app.meetstream.ai → API key → env var.
+If `MEETSTREAM_API_KEY` is missing or invalid (or `meetstream auth status --json --no-input` exits 2), **invoke the `getting-started` skill first.** Walks the user through signup at https://app.meetstream.ai → API key → env var, or `meetstream login`.
+
+**Install the CLI** (when this agent runs commands for the user): `npx -y @meetstream/cli <command>` works with no install; or `npm install -g @meetstream/cli`, `pipx install meetstream-cli`, `brew install meetstream-ai/tap/meetstream`. Sign in with `meetstream login` (it opens the browser and stores a key; never ask for the key in the chat) or set `MEETSTREAM_API_KEY`. Always pass `--json --no-input`. Exit codes: 0 ok, 1 API error, 2 usage or not signed in, 3 not ready yet, 4 transcript failed. JSON shapes: `skills/meetstream/references/meetstream-cli.md`.
 
 ## What to do
 
@@ -43,6 +45,17 @@ echo "$UUID" > /tmp/test_bot_uuid
 ```
 
 ## Step 2: Send the bot
+
+With the CLI:
+
+```bash
+WEBHOOK="https://webhook.site/$(cat /tmp/test_bot_uuid)"
+meetstream join "$MEETING_LINK" -n "Test Bot - delete me" -t meetstream_streaming \
+  -c "$WEBHOOK" --retention-hours 24 --attr test_run=true \
+  --waiting-room-timeout 600 --everyone-left-timeout 600 --json --no-input
+```
+
+Without the CLI:
 
 ```bash
 WEBHOOK="https://webhook.site/$(cat /tmp/test_bot_uuid)"
@@ -105,7 +118,10 @@ for r in reversed(d.get('data', [])):
 done
 ```
 
-For local webhook URLs (not webhook.site), the user should `tail -f` their server logs directly.
+For local webhook URLs (not webhook.site), the user should `tail -f` their server logs directly,
+or run `meetstream listen --json` (one JSON line per event on port 3333; the bot still needs
+a public URL that forwards to it). To follow only the status: `meetstream bots status
+<bot_id> --watch --json --no-input`.
 
 ## Step 4: Cleanup prompt
 
@@ -119,7 +135,7 @@ Status: <final bot_status>
 Events received: <count>
 
 Want to delete the recording + transcript now? (y/N)
-  → If y: DELETE /bots/<bot_id>/delete (DESTRUCTIVE - data gone forever)
+  → If y: meetstream bots delete <bot_id> --yes, or DELETE /bots/<bot_id>/delete (DESTRUCTIVE - data gone forever)
   → If n: data auto-expires after the retention period (default 30 days)
 ```
 

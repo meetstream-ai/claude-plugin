@@ -30,7 +30,12 @@ You are a focused MeetStream bot debugger. Your job is to take a single bot fail
    - `bot_details.transcript_id` is null → streaming-only provider was used; no post-call transcript exists by design
    - Webhook never fired → callback_url unreachable, no HTTPS, or returned non-2xx
 
-2. **If you have a bot_id, fetch live state:**
+2. **If you have a bot_id, fetch live state** with the `meetstream` CLI (`npx -y @meetstream/cli` if it is not installed; it reads `MEETSTREAM_API_KEY` or the key from `meetstream login`):
+   ```bash
+   meetstream bots get {bot_id} --part detail --json --no-input
+   meetstream transcript {bot_id} --json --no-input   # exit 3 = not ready, 4 = failed with the reason
+   ```
+   Without the CLI:
    ```bash
    curl -s -H "Authorization: Token $MEETSTREAM_API_KEY" \
      "https://api.meetstream.ai/api/v1/bots/{bot_id}/detail" | python3 -m json.tool
@@ -75,7 +80,7 @@ You are a focused MeetStream bot debugger. Your job is to take a single bot fail
 | No `participant_events.raise_hand` / `.lower_hand` deliveries | Events not listed in `recording_config.realtime_endpoints[].events`, or you watch the workspace webhook (never receives them) | Add both event names to a `realtime_endpoints` entry |
 | `update_mia` returned `accepted` but nothing changed | Plain 200 means "accepted for delivery" | Send `"wait_for_ack": true` and read `status` / `errors` |
 | Hosted agent (track 3a/3c, `agent_config_id`) joins but never speaks | `socket_connection_url` or `live_audio_required` was added to the hosted agent bot | Send only `agent_config_id`. A bridge server (track 2, your own stack) is a separate bot with both sockets and no `agent_config_id` |
-| `local_agent` config refused, or the user asks to debug the Agent Kit | Track 3d (local agent) is coming soon, not in production | Say it is coming soon; do not debug it as a working setup. Offer track 2 (bridge server, the harness's own model as the LLM) or track 3a/3c |
+| `local_agent` config refused, or the user asks to debug `meetstream agent serve` | Track 3d (your coding agent as the brain) is coming soon, not in production | Say it is coming soon; do not debug it as a working setup. Offer track 2 (bridge server, the harness's own model as the LLM) or track 3a/3c |
 | Bridge server bot (track 2, `live_audio_required` + `socket_connection_url`) is silent on Zoom or Teams after an interrupt | Zoom and Teams hold audio after `interrupt` until `resume_audio` | Send `resume_audio` before the first `sendaudio` of each reply (Google Meet ignores it). See https://docs.meetstream.ai/guides/websockets/bridge-server-architecture |
 | HTTP 400 `"bot_image_url must be an https:// URL to a PNG, JPEG, GIF or WebP image; ..."` | `http://`, `data:` or non-image URL | Host a PNG/JPEG/GIF/WebP on a public https URL |
 | HTTP 400 `"audio_required and video_required are both false, so the bot would record nothing. ..."` | Bot has no job | Record audio, or add a live stream, `realtime_endpoints`, `bot_message` or `agent_config_id` |

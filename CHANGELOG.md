@@ -2,6 +2,21 @@
 
 All notable changes to the MeetStream Claude Code plugin.
 
+## [3.0.0] - 2026-11-23
+
+The skills, the debugger agent and the top-level docs become thin wrappers over the `meetstream` CLI 1.0 (`meetstream <command> --json --no-input`) and the hosted MCP (MS-2371).
+
+### Changed
+- **The `meetstream` CLI is the local way in; the hosted MCP stays the chat-style way in.** With no MCP, `join-meeting`, `meeting-brief`, `recordings-and-media`, `test-bot`, `verify-account`, `calendar-automation`, `mia-voice-agents`, `realtime-streaming`, `webhooks`, `troubleshooting` and the debugger agent run `meetstream join`, `bots list/status/get/say/hand/remove/delete`, `transcript --wait`, `recordings`, `balance`, `mia list/get/apply`, `calendar connect/auto-join/events/schedule`, `listen`, `auth status` instead of hand-written `curl`. The REST and SDK examples for app code (notetaker, sales coach, calendar and bridge scaffolds) stay.
+- **Install the CLI** step where a skill runs commands: `npx -y @meetstream/cli <command>` with no install, or `npm install -g @meetstream/cli`, `pipx install meetstream-cli`, `brew install meetstream-ai/tap/meetstream`; sign in with `meetstream login` (the key never goes in the chat). Exit codes 0 to 4.
+- **CLI per track:** 1a `meetstream join` then `transcript --wait`; 1b `--live-transcript-webhook` with `meetstream listen` (a public URL or tunnel today); 2 `--live-audio-ws` and `--socket-ws`; 3a `meetstream setup --mode hosted`; 3c `meetstream setup --mode byok`. Calendar one-click connect is coming soon; today `calendar connect --own-app`.
+- **Track 3d** is now "your coding agent as MIA's brain through `meetstream setup` and `meetstream agent serve` over the MeetStream relay", still COMING SOON with the prompt-injection warning. Every Agent Kit, pairing-token and Bridge URL mention is removed.
+- Old CLI commands replaced: `meetstream bot create` is `meetstream join`; `meetstream auth set-key` is `meetstream login`.
+
+### Added
+- `skills/meetstream/references/meetstream-cli.md`: the CLI's own SKILL.md (commands and JSON shapes), copied verbatim from github.com/meetstream-ai/cli.
+- Eval `cli-join-no-mcp`. `evals/check_descriptions.py` checks the CLI reference, the install step and `--json --no-input` in the command skills, and fails on Agent Kit, pairing token, Bridge URL, `serve --tunnel`, the wrong PyPI names and old CLI commands. The 3d eval graders expect the `meetstream setup` wording.
+
 ## [2.11.1] - 2026-11-23
 
 JigsawStack has rebranded as Interfaze (MS-2382).

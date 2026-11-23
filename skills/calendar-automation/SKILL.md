@@ -19,7 +19,7 @@ description: >
 
 Two paths, one skill:
 
-- **From the user's agent, now:** the MCP tools `list_calendar_events` and `schedule_calendar_bot`, plus a few REST calls (next section). Works for Google and Outlook.
+- **From the user's agent, now:** the MCP tools `list_calendar_events` and `schedule_calendar_bot`, plus the `meetstream` CLI for connecting and auto-join (next section). Works for Google and Outlook.
 - **Inside an app the user builds:** the fastest path further down (the same REST calls, from the user's code).
 
 ## From your agent (MCP tools + REST)
@@ -31,6 +31,21 @@ true`, only after the user says yes; by default it also deletes the synced event
 bots scheduled from them) disconnects one. Connecting a calendar needs OAuth secrets, so
 it stays in the dashboard or REST (never ask for the secrets in the chat); auto-schedule is
 REST.
+
+### With the `meetstream` CLI (Google)
+
+The user runs the connect step in their own terminal, so the OAuth secrets never go in the chat:
+
+```bash
+meetstream calendar connect --own-app --client-id <id> --client-secret <secret> --refresh-token <token>
+meetstream calendar auto-join on --json --no-input        # every meeting with a join link gets a bot
+meetstream calendar events --json --no-input              # upcoming events
+meetstream calendar schedule <event-id> --json --no-input # or one event only; unschedule <event-id> undoes it
+```
+
+One-click Google sign-in (`meetstream calendar connect` with no `--own-app`) is coming soon;
+today use `--own-app` with the values from the OAuth setup below. `meetstream calendar
+auto-join off` turns auto-join off. **Install the CLI** (when this agent runs commands for the user): `npx -y @meetstream/cli <command>` works with no install; or `npm install -g @meetstream/cli`, `pipx install meetstream-cli`, `brew install meetstream-ai/tap/meetstream`. Sign in with `meetstream login` (it opens the browser and stores a key; never ask for the key in the chat) or set `MEETSTREAM_API_KEY`. Always pass `--json --no-input`. Exit codes: 0 ok, 1 API error, 2 usage or not signed in, 3 not ready yet, 4 transcript failed. JSON shapes: `skills/meetstream/references/meetstream-cli.md`.
 
 ### The flow
 

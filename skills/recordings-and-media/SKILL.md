@@ -15,6 +15,10 @@ description: >
 
 **`get_media_urls`** (MCP tool) returns presigned URLs for audio, video,
 per-participant streams and screenshots. That is the one call for most needs.
+From a terminal, the `meetstream` CLI does the same: `meetstream recordings <bot-id> --json
+--no-input` (`{bot_id, audio, video, streams?, audio_streams?}`) and `meetstream bots get
+<bot-id> --part audio-streams|screenshots --json --no-input` (run it with
+`npx -y @meetstream/cli` if it is not installed; sign in with `meetstream login`).
 
 Media is only ready after the matching webhook fires: `audio.processed` for audio,
 `video.processed` for video. Asking earlier returns "not ready" - wait, do not retry

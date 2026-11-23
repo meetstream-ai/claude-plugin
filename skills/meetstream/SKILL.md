@@ -6,8 +6,8 @@ description: >
   server: own stack, local (both bot sockets, local tunnel, free local models
   or your harness's model; bot price only). 3) Agents API infra (voice agents,
   MIA): 3a default keys (recommended for "just host it"), 3b own agent infra
-  (LiveKit) COMING SOON, 3c bring your own keys, 3d local agent via the Agent
-  Kit COMING SOON (prompt injection; no setup steps). Agent wanted, stack
+  (LiveKit) COMING SOON, 3c bring your own keys, 3d agent via meetstream setup
+  COMING SOON (prompt injection; no setup steps). Agent wanted, stack
   unsaid: ask own stack or hosted? Use for any MeetStream, meeting bot, plugin
   version, webhook or API error question. Version questions (answer with only
   these two sentences, no added qualifiers): "Install or update to the current
@@ -20,7 +20,7 @@ mcp_server: https://docs.meetstream.ai/_mcp/server
 
 # MeetStream Developer Skill
 
-You are a MeetStream integration expert. Teach the MeetStream API, the hosted MCP server, the SDKs and the CLI. Give the fastest path first: the shortest working request, then the options.
+You are a MeetStream integration expert. Teach the MeetStream API, the hosted MCP server, the SDKs and the `meetstream` CLI. Give the fastest path first: the shortest working request, then the options.
 
 > **The docs are the source of truth.** When https://docs.meetstream.ai and this skill differ, the docs are the source of truth and win. Fetch any page with `.md` appended, read https://docs.meetstream.ai/llms.txt, or connect the docs MCP server at https://docs.meetstream.ai/_mcp/server. Do not invent endpoints or fields.
 
@@ -29,19 +29,19 @@ You are a MeetStream integration expert. Teach the MeetStream API, the hosted MC
 Name the track in your answer (for example "Track 1b, real-time transcription").
 
 1. **Recording bot (default).** The bot joins Zoom, Google Meet or Microsoft Teams, records and transcribes. Use it for every request that does not ask for an agent. Ask once: after the call, or live?
-   - 1a. **Non-realtime transcription (post-call):** `create_bot`, wait for `Done`, then get the transcript and recordings; webhooks tell you when. Skills: `join-meeting`, `meeting-brief`, `webhooks`.
-   - 1b. **Real-time transcription (live):** the live transcription webhook (`live_transcription_required.webhook_url`), the real-time audio WebSocket, the meeting control socket, chat, raise or lower hand. Skill: `realtime-streaming`.
+   - 1a. **Non-realtime transcription (post-call):** `create_bot`, wait for `Done`, then get the transcript and recordings; webhooks tell you when. Skills: `join-meeting`, `meeting-brief`, `webhooks`. CLI: `meetstream join <url>`, then `meetstream transcript <bot-id> --wait`.
+   - 1b. **Real-time transcription (live):** the live transcription webhook (`live_transcription_required.webhook_url`), the real-time audio WebSocket, the meeting control socket, chat, raise or lower hand. Skill: `realtime-streaming`. CLI: `meetstream join <url> -t meetstream_streaming --live-transcript-webhook https://<public-url>/webhook` with `meetstream listen` as the local receiver (it needs a public URL or tunnel today).
 2. **Bridge server (your own stack, local).** The bot connects out to your server over two WebSockets: `live_audio_required.websocket_url` (meeting audio in, for example `wss://host/bridge/audio`) and `socket_connection_url.websocket_url` (audio, chat and images out, for example `wss://host/bridge`). On a laptop, expose the server with a local tunnel (ngrok or cloudflared). Price: the bot price only, no agent infrastructure and no model tokens. Free to run locally; check each model's license before commercial use:
    - Speech-to-text: whisper.cpp or faster-whisper (Whisper models), NVIDIA Parakeet (parakeet-mlx on Apple silicon), Vosk, Moonshine.
    - LLM: a local model through Ollama, LM Studio or llama.cpp (Llama, Qwen, Gemma, Mistral), or the model of the harness you already use (for example Claude behind Claude Code).
    - Text-to-speech: Piper, Kokoro, Chatterbox, macOS `say`.
 
-   Recipe: `realtime-streaming`. Docs: https://docs.meetstream.ai/guides/websockets/bridge-server-architecture . Starter: https://github.com/meetstream-ai/meetstream-agent
+   Recipe: `realtime-streaming`. CLI: `meetstream join <url> --live-audio-ws wss://<public-url>/audio --socket-ws wss://<public-url>/control`. Docs: https://docs.meetstream.ai/guides/websockets/bridge-server-architecture . Starter: https://github.com/meetstream-ai/meetstream-agent
 3. **Agents API infra (voice agents, API name MIA, hosted by MeetStream).** Bot price + $0.25 per hour agent infrastructure + the models picked. Details: `mia-voice-agents`.
-   - 3a. **MeetStream's own, default keys** (recommended for "just host it"): `"key_source": "meetstream"`. Inbuilt keys work in pipeline mode only: Deepgram (speech-to-text) and OpenAI (LLM and voice). Realtime mode runs on OpenAI and needs your own OpenAI key. Any other provider: bring your own key. Read `mia_managed` from `GET /api/v1/mia` for what the account allows; if a section is refused, use 3c for it.
+   - 3a. **MeetStream's own, default keys** (recommended for "just host it"): `"key_source": "meetstream"`. Inbuilt keys work in pipeline mode only: Deepgram (speech-to-text) and OpenAI (LLM and voice). Realtime mode runs on OpenAI and needs your own OpenAI key. Any other provider: bring your own key. Read `mia_managed` from `GET /api/v1/mia` for what the account allows; if a section is refused, use 3c for it. CLI: `meetstream setup --mode hosted`, then `meetstream join <url> --agent-config <id>`.
    - 3b. **Bring your own agent infra (LiveKit): COMING SOON.** Not available yet. Say it is coming soon and give no setup steps.
-   - 3c. **Bring your own keys:** OpenAI, Anthropic, Deepgram, ElevenLabs and the others in the docs; the provider bills model usage.
-   - 3d. **Local agent: COMING SOON.** Your own agent CLI (Claude Code, Codex, Hermes and others) as the brain, through the MeetStream Agent Kit and `model.provider: "local_agent"`. Not available yet: describe it as coming soon, give no setup steps, and never route a user to it as a working option. When you mention it, warn that meeting speech will reach an agent with access to the user's computer and terminal (prompt injection). For "use Claude Code (or my own agent) as the brain" today, offer track 2 (the harness's own model as the bridge LLM) or track 3a/3c.
+   - 3c. **Bring your own keys:** OpenAI, Anthropic, Deepgram, ElevenLabs and the others in the docs; the provider bills model usage. CLI: `meetstream setup --mode byok` (the user adds the keys in the dashboard; setup never asks for keys).
+   - 3d. **Your coding agent as the brain: COMING SOON.** Your own agent CLI (Claude Code, Codex, Hermes and others) as MIA's brain, through `meetstream setup` and `meetstream agent serve` over the MeetStream relay (no tunnel), once the relay is live. Not available yet: describe it as coming soon, give no setup steps, and never route a user to it as a working option. When you mention it, warn that meeting speech will reach an agent with access to the user's computer and terminal (prompt injection). For "use Claude Code (or my own agent) as the brain" today, offer track 2 (the harness's own model as the bridge LLM) or track 3a/3c.
 
 **With the MeetStream MCP connected, do it from here.** Agents: `list_agents` first (reads `mia_managed`), then `create_agent` (`model.system_prompt` is required, except for `local_agent`), `get_agent`, `update_agent`, `delete_agent` (`confirm: true`), then `create_bot` with only `agent_config_id`. `check_local_agent` is for the coming-soon track 3d only. In the meeting: `take_screenshot` (Google Meet and Teams; get the image with `get_media_urls` `kind: "screenshots"`), `raise_hand` / `lower_hand`, `pause_recording` / `resume_recording`, `update_live_agent`. Calendars: `list_calendar_connections`, `disconnect_calendar` (`confirm: true`); connecting a calendar needs OAuth secrets, so it stays in the dashboard or REST. With no MCP, give the REST call (`POST /api/v1/mia`, `POST /api/v1/bots/{bot_id}/send_command`). Keys never go in the chat: inbuilt keys (pipeline mode) or keys saved in the dashboard.
 
@@ -49,7 +49,26 @@ When the user asks what MeetStream offers or which API to start with, name the t
 
 Overview page: https://docs.meetstream.ai/guides/introduction/integration-paths (also https://docs.meetstream.ai/guides/introduction/how-bots-work and https://docs.meetstream.ai/guides/mia/what-is-mia).
 
+### Run it from this agent: MCP tools or the `meetstream` CLI
+
+- **MCP tools** (chat-style, no key): the hosted MeetStream MCP server with browser sign-in.
+- **The `meetstream` CLI** (local commands, scripts, `listen`, `setup`): when the MCP tools
+  are not connected, or the user wants terminal commands, run the CLI instead of hand-written
+  `curl`. `meetstream join`, `bots list`, `bots status`, `transcript`, `recordings`,
+  `balance`, `mia ...`, `calendar ...`, `listen`, `mcp add`, `doctor`.
+  **Install the CLI** (when this agent runs commands for the user): `npx -y @meetstream/cli <command>` works with no install; or `npm install -g @meetstream/cli`, `pipx install meetstream-cli`, `brew install meetstream-ai/tap/meetstream`. Sign in with `meetstream login` (it opens the browser and stores a key; never ask for the key in the chat) or set `MEETSTREAM_API_KEY`. Always pass `--json --no-input`. Exit codes: 0 ok, 1 API error, 2 usage or not signed in, 3 not ready yet, 4 transcript failed. JSON shapes: `skills/meetstream/references/meetstream-cli.md`.
+- **REST and the SDKs** are for the app code the user builds (below).
+
 ### Fastest path (track 1a, Recording bot)
+
+From a terminal or this agent's shell, with the `meetstream` CLI (`npx -y @meetstream/cli` runs it with no install; `meetstream login` signs in):
+
+```bash
+meetstream join "https://meet.google.com/abc-defg-hij" -n "Notetaker" -t meetstream --json --no-input
+meetstream transcript <bot-id> --wait --json --no-input
+```
+
+In app code, the API or the SDKs:
 
 ```bash
 curl -X POST https://api.meetstream.ai/api/v1/bots/create_bot \
@@ -117,8 +136,9 @@ webhooks. Start there.
      provider bills model usage. A hosted agent bot takes only `agent_config_id`, never
      the bridge sockets: tracks 2 and 3 are separate bots.
    - **COMING SOON, never offered as working:** 3b bring your own agent infra (LiveKit,
-     coming soon) and 3d local agent (Claude Code, Codex, Hermes and others through the
-     Agent Kit and `local_agent`). Say they are coming soon and give no setup steps. For
+     coming soon) and 3d your coding agent as the brain (Claude Code, Codex, Hermes and
+     others, through `meetstream setup` once the relay is live). Say they are coming soon
+     and give no setup steps. For
      3d, add the warning: meeting speech will reach an agent with access to the user's
      computer and terminal (prompt injection). Then offer track 2 or 3a/3c.
    - With the MCP connected, create and check the agent from the chat: `list_agents`
@@ -1265,7 +1285,7 @@ MIA (MeetStream Infrastructure Agents) creates a server-configured AI agent that
 - **`pipeline`**: mix STT + LLM + TTS providers (configurable per layer)
 - **`realtime`**: a single realtime model (OpenAI realtime, xAI, Google Gemini) - lower latency
 
-This is track 3 (Agents API infra, hosted). Use it only when the user asks for a voice agent and wants MeetStream to host it; for their own stack, give the bridge server (track 2, `realtime-streaming`, bot price only). Keys in order: 3a MeetStream's own, default keys (`"key_source": "meetstream"` on each pipeline section; Deepgram and OpenAI, pipeline mode), then 3c the user's own keys. Price: bot + $0.25 per hour agent infrastructure + the models picked. 3b (LiveKit) and 3d (local agent through the Agent Kit) are coming soon: no setup steps. Full guide: `mia-voice-agents`.
+This is track 3 (Agents API infra, hosted). Use it only when the user asks for a voice agent and wants MeetStream to host it; for their own stack, give the bridge server (track 2, `realtime-streaming`, bot price only). Keys in order: 3a MeetStream's own, default keys (`"key_source": "meetstream"` on each pipeline section; Deepgram and OpenAI, pipeline mode), then 3c the user's own keys. Price: bot + $0.25 per hour agent infrastructure + the models picked. 3b (LiveKit) and 3d (your coding agent through `meetstream setup`) are coming soon: no setup steps. Full guide: `mia-voice-agents`.
 
 **Create the agent config first** (in the dashboard at app.meetstream.ai, with the `create_agent` MCP tool after `list_agents`, or via the API; `model.system_prompt` is required):
 ```
@@ -1632,7 +1652,7 @@ Then, on `create_bot`, pass the `google_meet` block:
 - `sign_in_email` (optional) pins one registered account. `strict_email` (optional, default `true`): with `sign_in_email`, `true` fails if that account is busy or unhealthy; `false` falls back to any available account in the domain.
 - Concurrency: a Google account can serve many meetings at once, but add logins as you scale (rule of thumb from the guide: one login per ~20 concurrent Meet sessions). MeetStream distributes bots across them.
 - `google_meet` is not in the OpenAPI `CreateBotRequest` schema; the guide above is canonical.
-- CLI: `meetstream logins google ...` and `meetstream bot create <link> --google-login-domain <d>` MCP: `create_bot`'s `google_login_domain` param. Account management is REST / CLI / SDK only.
+- CLI: `meetstream logins google ...` and `meetstream join <link> --google-login-domain <d>` MCP: `create_bot`'s `google_login_domain` param. Account management is REST / CLI / SDK only.
 
 ### Microsoft Teams Signed-In Bots
 
@@ -1679,7 +1699,7 @@ Login object: `{ login_id, domain, email, is_active, lease_status, last_session_
 - **One concurrent bot per account.** Teams merges same-email sign-ins into one attendee. For N concurrent signed-in Teams bots, register N accounts.
 - **Name and avatar come from the Microsoft account.** `bot_name` and `bot_image_url` are not applied on a signed-in join.
 - A malformed `teams` block is dropped silently and the bot joins as a guest. If a signed-in bot shows up as `(Guest)`, check that `login_required: true` is inside `teams`.
-- CLI: `meetstream logins teams ...` and `meetstream bot create <link> --teams-login-domain <d>` MCP: `create_bot`'s `teams_login_domain` param. Account management is REST / CLI / SDK only.
+- CLI: `meetstream logins teams ...` and `meetstream join <link> --teams-login-domain <d>` MCP: `create_bot`'s `teams_login_domain` param. Account management is REST / CLI / SDK only.
 
 **Errors on `create_bot`:**
 
@@ -2004,7 +2024,7 @@ Full error reference: https://docs.meetstream.ai/errors
 ## SDKs, CLI and sample apps
 
 - Node: `npm install @meetstream/sdk` (Node 18.17+). Python: `pip install meetstream-sdk` (Python 3.8+). Both read `MEETSTREAM_API_KEY`: https://docs.meetstream.ai/build-with-ai/sdks
-- CLI: `npm install -g @meetstream/cli`, `meetstream auth set-key`: https://docs.meetstream.ai/build-with-ai/meetstream-cli
+- CLI: `npx -y @meetstream/cli <command>` (no install), `npm install -g @meetstream/cli`, `pipx install meetstream-cli` or `brew install meetstream-ai/tap/meetstream`; sign in with `meetstream login`. Commands and JSON shapes: `references/meetstream-cli.md`. Docs: https://docs.meetstream.ai/build-with-ai/meetstream-cli
 - Endpoint map in this skill: `references/api-reference.md`.
 - Full example apps are optional references, not part of this plugin: https://docs.meetstream.ai/tutorials/sample-apps and https://github.com/meetstream-ai/labs.
 

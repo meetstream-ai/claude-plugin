@@ -3,18 +3,19 @@ name: join-meeting
 description: >
   Send a MeetStream bot into a live Zoom, Google Meet or Microsoft Teams
   meeting and follow it until it leaves. Raise/lower hand: POST
-  /api/v1/bots/{bot_id}/send_command {"command": "raise_hand"} (REST, works
-  without the MCP tools). Use when the user says "join this meeting", "send a
-  bot to <meeting url>", "record this call", "get a transcript of this
-  meeting", "make the bot leave", "make the bot raise its hand", or pastes a
-  meeting link and asks for anything to happen to it. Covers create, status,
-  live chat, and removal using the MeetStream MCP tools. Low credits: send the
-  user to https://app.meetstream.ai/billing (top_up_link tool when connected);
-  never retry in a loop. If the MeetStream tools are not connected, give only
-  the one MeetStream MCP connect step (Codex: codex mcp login meetstream;
-  Claude Code: /mcp; Cursor: Settings → MCP) and offer the REST call POST
-  /api/v1/bots/create_bot with meeting_link; a one-off meeting link needs no
-  calendar integration; never say MeetStream can't record.
+  /api/v1/bots/{bot_id}/send_command {"command": "raise_hand"} (REST). Use
+  when the user says "join this meeting", "send a bot to <meeting url>",
+  "record this call", "get a transcript of this meeting", "make the bot
+  leave", "make the bot raise its hand", or pastes a meeting link. Covers
+  create, status, chat and removal with the MCP tools, or in a terminal the
+  meetstream CLI (meetstream join <url>, meetstream transcript <id> --wait).
+  Low credits: send the user to https://app.meetstream.ai/billing
+  (top_up_link tool when connected); never retry in a loop. If the MeetStream
+  tools are not connected, give only the one MCP connect step (Codex: codex
+  mcp login meetstream; Claude Code: /mcp; Cursor: Settings → MCP) and offer
+  the CLI or the REST call POST /api/v1/bots/create_bot with meeting_link; a
+  one-off meeting link needs no calendar integration; never say MeetStream
+  can't record.
 ---
 
 # Join a meeting with a MeetStream bot
@@ -33,11 +34,13 @@ reply keep helping. Do not stop at "sign in first".
   to `meetstream`. Codex: `codex mcp login meetstream` (full steps:
   https://github.com/meetstream-ai/claude-plugin/blob/main/INSTALL_FOR_AGENTS.md).
 - Then go on: give the plan, the `create_bot` fields you will send once the tools work,
-  or the REST call (`curl` with `Authorization: Token $MEETSTREAM_API_KEY`).
+  or run the CLI (next section), or give the REST call (`curl` with
+  `Authorization: Token $MEETSTREAM_API_KEY`).
 - The one step is the MeetStream MCP sign-in, nothing else. A one-off meeting link needs
   no calendar integration (calendars are only for auto-joining every meeting).
 - Never tell the user MeetStream cannot record the meeting: it can, through the tools
-  once connected or now through REST `POST /api/v1/bots/create_bot` with `meeting_link`.
+  once connected, or now through the CLI (`meetstream join <url>`) or REST
+  `POST /api/v1/bots/create_bot` with `meeting_link`.
 
 ## The short path
 
@@ -46,6 +49,27 @@ reply keep helping. Do not stop at "sign in first".
 3. When the meeting ends, **`get_transcript`** with the `bot_id`.
 
 That is the whole flow. Everything below is detail you need when it is not that simple.
+
+## Without the MCP: the `meetstream` CLI
+
+The same flow from the terminal (track 1a):
+
+```bash
+meetstream bots list --json --no-input                                  # reuse a bot already in this meeting
+meetstream join "<meeting-url>" -n "Acme Notetaker" -t meetstream --json --no-input   # prints the bot_id
+meetstream bots status <bot-id> --json --no-input                       # --watch polls every 5 seconds
+meetstream transcript <bot-id> --wait --json --no-input                 # exit 3 = not ready, 4 = transcript failed
+meetstream recordings <bot-id> --json --no-input                        # audio and video links
+```
+
+In the meeting: `meetstream bots say <bot-id> "<message>"`, `meetstream bots hand <bot-id> up`
+(or `down`), `meetstream bots remove <bot-id>` (the bot leaves). `meetstream bots delete
+<bot-id> --yes` erases the data: only after the user confirms. `join` takes the
+`create_bot` options as flags (`--video`, `--video-layout`, `--join-at`, `--callback`,
+`--waiting-room-timeout`, `--zoom-obf-url`, `--zoom-zak-url`, `--storage-id`,
+`--idempotency-key`); `meetstream join --help` lists them.
+
+**Install the CLI** (when this agent runs commands for the user): `npx -y @meetstream/cli <command>` works with no install; or `npm install -g @meetstream/cli`, `pipx install meetstream-cli`, `brew install meetstream-ai/tap/meetstream`. Sign in with `meetstream login` (it opens the browser and stores a key; never ask for the key in the chat) or set `MEETSTREAM_API_KEY`. Always pass `--json --no-input`. Exit codes: 0 ok, 1 API error, 2 usage or not signed in, 3 not ready yet, 4 transcript failed. JSON shapes: `skills/meetstream/references/meetstream-cli.md`.
 
 **Tell the user before the first bot:**
 - **Someone must admit it.** The bot asks to join like a guest. The host (on Google Meet,
@@ -160,7 +184,8 @@ times with a few seconds' pause, never in a tight loop.
   publicly reachable and resolve to a public address; MeetStream fetches it server side,
   so local paths, private hosts and `data:` URIs will not work.
 - **Raise / lower hand** - with the MCP connected, call the `raise_hand` / `lower_hand`
-  tool. With no MCP (or in app code), the bot can do it now with REST. Give the user (or run, when
+  tool. From a terminal: `meetstream bots hand <bot_id> up --json --no-input`. With no MCP
+  (or in app code), the bot can do it now with REST. Give the user (or run, when
   `MEETSTREAM_API_KEY` is set) this call, with the connect step only as a side note:
   ```bash
   curl -X POST "https://api.meetstream.ai/api/v1/bots/<bot_id>/send_command" \

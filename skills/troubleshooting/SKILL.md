@@ -19,6 +19,12 @@ description: >
 
 # Troubleshooting MeetStream
 
+With the `meetstream` CLI, check the setup first: `meetstream auth status --json --no-input`
+(key valid?), then `meetstream bots get <bot-id> --part detail --json --no-input` for one
+bot. CLI exit codes: 1 API error (the JSON `error.message` is the API's), 2 usage or not
+signed in, 3 not ready yet, 4 the transcript run failed (`transcript_failed` with the
+reason). Run it with `npx -y @meetstream/cli` if it is not installed.
+
 Most error responses are `{"message": "..."}`. Read it and show it to the user - it
 usually names the exact problem. The bot data endpoints (audio, video, speaker timeline,
 chats, participants, screenshots), `remove_bot`, `stop_status` and `/transcriptions`
@@ -152,8 +158,8 @@ First find which build track the bot uses (track 1, the recording bot, has no ag
   Zoom and Teams audio stays held after an `interrupt` until you do. Google Meet plays
   `sendaudio` at 48 kHz only. Docs:
   https://docs.meetstream.ai/guides/websockets/bridge-server-architecture
-- **Track 3d, local agent** (`model.provider: "local_agent"`): COMING SOON, not in
-  production. Do not debug it as a working setup or give setup steps; offer track 2 or
+- **Track 3d, your coding agent as the brain** (`model.provider: "local_agent"`, set up
+  with `meetstream setup`): COMING SOON, not in production. Do not debug it as a working setup or give setup steps; offer track 2 or
   track 3a/3c. The `check_local_agent` MCP tool belongs to this coming-soon track only.
 - **Track 3, hosted agent** (3a or 3c, `agent_config_id`): the bot must carry only
   `agent_config_id`. `socket_connection_url` or `live_audio_required` on the same bot is

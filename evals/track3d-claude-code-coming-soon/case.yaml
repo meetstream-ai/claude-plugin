@@ -1,6 +1,6 @@
 schema_version: "1.1"
 name: track3d-claude-code-coming-soon
-description: "Build tracks (MS-2305, 22 Nov 2026): the user wants Claude Code as the brain of their meeting agent. Track 3d (local agent through the Agent Kit and local_agent) is coming soon, not available: say so with the prompt-injection warning, give no setup steps for it, and offer what works now: track 2 (bridge server, with the harness's own model or a local model as the LLM) or track 3a/3c (hosted Agents API)."
+description: "Build tracks (MS-2305, 22 Nov 2026): the user wants Claude Code as the brain of their meeting agent. Track 3d (the user's coding agent as MIA's brain through meetstream setup and the MeetStream relay) is coming soon, not available: say so with the prompt-injection warning, give no setup steps for it, and offer what works now: track 2 (bridge server, with the harness's own model or a local model as the LLM) or track 3a/3c (hosted Agents API)."
 tags: [build-tracks, voice-agent, security]
 runs: 1
 execution:
@@ -18,7 +18,8 @@ graders:
   flags: i
 - name: no-agent-kit-install-steps
   type: regex
-  pattern: '(uv tool|pipx) install meetstream-agent-kit|serve --command'
+  pattern: '(uv tool|pipx) install meetstream-agent-kit|serve --command|serve --tunnel|pairing token|Bridge URL'
+  flags: i
   match: not_contains
 - name: no-local-agent-config
   type: regex
