@@ -99,7 +99,7 @@ OLD_KIT = re.compile(r"meetstream-agent-kit|Agent Kit|[Pp]airing token|Bridge UR
                      r"|pipx install meetstream(?![-\w])|uvx meetstream(?![-\w])|auth set-key|meetstream bot create")
 CLI_REF = os.path.join("skills", "meetstream", "references", "meetstream-cli.md")
 # Skills that run commands for the user give the CLI install step and the agent flags.
-CLI_SKILLS = ("meetstream", "getting-started", "join-meeting", "verify-account", "test-bot", "calendar-automation", "mia-voice-agents")
+CLI_SKILLS = ("meetstream", "cli-workflows", "getting-started", "join-meeting", "verify-account", "test-bot", "calendar-automation", "mia-voice-agents")
 
 
 def cli_misses():

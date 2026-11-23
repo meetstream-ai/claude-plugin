@@ -2,6 +2,11 @@
 
 All notable changes to the MeetStream Claude Code plugin.
 
+## [3.1.0] - 2026-11-23
+
+### Added
+- Skill `cli-workflows`: every `meetstream` CLI 1.x workflow step by step, checked command by command against the CLI: install and sign-in, recording bot and transcript, live webhooks with `listen`, talking in the meeting (`bots say`, `show-image`, `hand`), bridge server, Zoom (`--zoom-obf-url`, `--zoom-zak-url`), signed-in bots (`logins`), calendar auto-join, MIA hosted and BYOK `setup`, track 3d (coming soon), and agent tools (`mcp add`, `skill`, `docs`, `balance`). The core and getting-started skills route terminal work to it.
+
 ## [3.0.0] - 2026-11-23
 
 The skills, the debugger agent and the top-level docs become thin wrappers over the `meetstream` CLI 1.0 (`meetstream <command> --json --no-input`) and the hosted MCP (MS-2371).

@@ -2024,7 +2024,7 @@ Full error reference: https://docs.meetstream.ai/errors
 ## SDKs, CLI and sample apps
 
 - Node: `npm install @meetstream/sdk` (Node 18.17+). Python: `pip install meetstream-sdk` (Python 3.8+). Both read `MEETSTREAM_API_KEY`: https://docs.meetstream.ai/build-with-ai/sdks
-- CLI: `npx -y @meetstream/cli <command>` (no install), `npm install -g @meetstream/cli`, `pipx install meetstream-cli` or `brew install meetstream-ai/tap/meetstream`; sign in with `meetstream login`. Commands and JSON shapes: `references/meetstream-cli.md`. Docs: https://docs.meetstream.ai/build-with-ai/meetstream-cli
+- CLI: `npx -y @meetstream/cli <command>` (no install), `npm install -g @meetstream/cli`, `pipx install meetstream-cli` or `brew install meetstream-ai/tap/meetstream`; sign in with `meetstream login`. Commands and JSON shapes: `references/meetstream-cli.md`. Step-by-step CLI workflows: skill `cli-workflows`. Docs: https://docs.meetstream.ai/build-with-ai/meetstream-cli
 - Endpoint map in this skill: `references/api-reference.md`.
 - Full example apps are optional references, not part of this plugin: https://docs.meetstream.ai/tutorials/sample-apps and https://github.com/meetstream-ai/labs.
 
