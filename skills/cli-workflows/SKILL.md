@@ -90,8 +90,8 @@ Parakeet, Ollama, Piper or Kokoro). A laptop needs a tunnel for these URLs. Neve
 sockets to a MIA bot (`--agent-config`).
 
 ## W6 · Zoom
-Zoom bots join through the customer's own Zoom app (set up in MeetStream first); never say Zoom
-needs no setup. For meetings outside that app's Zoom account, pass a token URL:
+Zoom always needs setup: bots join through the customer's own Zoom app, set up in MeetStream
+first. For meetings outside that app's Zoom account, pass a token URL:
 ```bash
 meetstream join https://zoom.us/j/123 --zoom-obf-url https://<your-service>/obf --json   # or --zoom-zak-url
 ```
