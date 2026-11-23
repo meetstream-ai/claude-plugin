@@ -1,0 +1,36 @@
+{
+  "name": "meetstream",
+  "version": "3.2.0",
+  "description": "Meeting bots for Zoom, Google Meet and Microsoft Teams: send a bot to a call, then get the recording, the transcript, the participants and the chat, or stream live data during the call. Includes the hosted MeetStream MCP server (browser sign-in) and skills for notetakers, sales coaches, calendar auto-recording and voice agents.",
+  "author": {
+    "name": "MeetStream",
+    "email": "sidhdharth@meetstream.ai",
+    "url": "https://meetstream.ai"
+  },
+  "homepage": "https://meetstream.ai",
+  "repository": "https://github.com/meetstream-ai/meetstream-plugin",
+  "license": "MIT",
+  "keywords": [
+    "meetstream",
+    "meeting-bot",
+    "meeting-bot-api",
+    "meeting-transcription",
+    "real-time-transcription",
+    "ai-notetaker",
+    "meeting-recorder",
+    "speaker-diarization",
+    "calendar-automation",
+    "voice-agent",
+    "zoom",
+    "google-meet",
+    "microsoft-teams",
+    "webhooks",
+    "mcp"
+  ],
+  "icon": "icon.png",
+  "privacyPolicyUrl": "https://meetstream.ai/privacy-policy",
+  "termsOfServiceUrl": "https://meetstream.ai/terms-of-use",
+  "supportUrl": "https://meetstream.ai/contact",
+  "documentationUrl": "https://docs.meetstream.ai",
+  "mcpServers": "./.mcp.json"
+}

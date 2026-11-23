@@ -12,7 +12,7 @@ set -euo pipefail
 
 MCP_NAME="meetstream"
 MCP_URL="https://mcp.meetstream.ai/mcp"
-REPO="meetstream-ai/claude-plugin"
+REPO="meetstream-ai/meetstream-plugin"
 
 if [ -t 1 ]; then G=$'\033[32m' Y=$'\033[33m' R=$'\033[31m' B=$'\033[1m' N=$'\033[0m'; else G="" Y="" R="" B="" N=""; fi
 ok()   { echo "${G}✓${N} $*"; }

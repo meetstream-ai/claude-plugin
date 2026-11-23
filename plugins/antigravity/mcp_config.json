@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "meetstream": {
+      "serverUrl": "https://mcp.meetstream.ai/mcp"
+    }
+  }
+}

@@ -39,10 +39,10 @@ claude mcp add --transport http meetstream https://mcp.meetstream.ai/mcp
 
 With a key instead: add `--header "Authorization: Bearer $MEETSTREAM_API_KEY"`.
 
-The [MeetStream Claude plugin](https://github.com/meetstream-ai/claude-plugin) installs the skills and this MCP server in one step:
+The [MeetStream Claude plugin](https://github.com/meetstream-ai/meetstream-plugin) installs the skills and this MCP server in one step:
 
 ```sh
-/plugin marketplace add meetstream-ai/claude-plugin
+/plugin marketplace add meetstream-ai/meetstream-plugin
 ```
 
 ### Claude (desktop and web)
@@ -93,9 +93,44 @@ Use `https://mcp.meetstream.ai/sse` with the same sign-in or key options. Everyt
 - adding or changing bot, transcription, calendar or MIA behaviour
 - relying on any request field, response field, provider name or status code
 
+## Install in any harness
+
+Every harness uses the same hosted MCP server, `https://mcp.meetstream.ai/mcp`, with browser sign-in (OAuth): the client opens app.meetstream.ai, you sign in and click **Allow**, and no key is copied. The skills come from this repository. Store builds live in `plugins/` and are generated from `skills/` and `listing/` by `scripts/build_stores.py`.
+
+| Harness | Install | Sign in |
+|---|---|---|
+| Claude Code | `/plugin marketplace add meetstream-ai/meetstream-plugin`, then `/plugin install meetstream@meetstream-ai` | `/mcp` → `meetstream` → **Authenticate** |
+| Claude (Directory) | Install **MeetStream** from the Claude plugin directory when it is listed (build: `plugins/claude-directory`) | Connect when asked |
+| Codex | `codex plugin marketplace add meetstream-ai/meetstream-plugin`, then `/plugins` → **meetstream** | `codex mcp login meetstream` |
+| ChatGPT | OpenAI plugin directory when it is listed (build: `plugins/agent-plugin`) | Connect when asked |
+| Cursor | Cursor Marketplace when it is listed, or Settings → Plugins → Add marketplace `meetstream-ai/meetstream-plugin` (build: `plugins/cursor`) | Settings → MCP → **Connect** |
+| Copilot CLI | `copilot plugin install meetstream-ai/meetstream-plugin` (full plugin), or `copilot plugin install meetstream-ai/meetstream-plugin:plugins/agent-plugin` (skills and MCP only) | `/mcp` → sign in to `meetstream` |
+| Gemini CLI | `gemini extensions install https://github.com/meetstream-ai/meetstream-plugin` (reads `gemini-extension.json`, `skills/`, `agents/`) | `/mcp auth meetstream` |
+| Antigravity | Copy `plugins/antigravity` to `~/.gemini/config/plugins/meetstream`, or run `agy plugin import claude` after the Claude Code install | Sign in when the first tool runs |
+| OpenCode | Add the `opencode.json` snippet below; copy `skills/*` to `.opencode/skills/` (project) or `~/.config/opencode/skills/` | `opencode mcp auth meetstream` |
+| Cline | Follow [`llms-install.md`](llms-install.md) (remote server by URL); skills from `.claude/skills/` or `.cline/skills/` | Sign in when Cline asks |
+| Kiro | Powers panel → **Add Custom Power** → `https://github.com/meetstream-ai/meetstream-plugin/tree/main/plugins/agent-plugin` | Sign in when Kiro asks |
+| Goose | Add the remote extension (Streamable HTTP) `https://mcp.meetstream.ai/mcp`, or pick it from the official MCP Registry; skills from `.agents/skills/` | Sign in when Goose asks |
+| Hermes | `hermes plugins install meetstream-ai/hermes-meetstream --enable` (native plugin with live meeting chat; source in `plugins/hermes`) | Hermes asks for a MeetStream API key |
+| OpenClaw | `openclaw plugins install meetstream --marketplace meetstream-ai/meetstream-plugin`, or `./setup --host openclaw` | `openclaw mcp login meetstream` |
+| Warp | Settings → MCP → add the URL (Warp also reads a project `.mcp.json`) | One-click sign-in |
+| Amp | `amp skill add https://github.com/meetstream-ai/meetstream-plugin`, then add the MCP URL in Amp's MCP settings | Sign in when Amp asks |
+| Zed, VS Code | Add the server from the official MCP Registry (`io.github.meetstream-ai/meetstream-mcp`) or by URL (Zed: Settings → AI → MCP Servers) | Standard MCP OAuth prompt |
+
+OpenCode `opencode.json`:
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "meetstream": { "type": "remote", "url": "https://mcp.meetstream.ai/mcp" }
+  }
+}
+```
+
 ## Working in this repo
 
-There is no build and no test runner. The plugin is declarative: JSON manifests plus Markdown skills.
+The plugin is declarative: JSON manifests plus Markdown skills. Edit `skills/`, `agents/`, `.claude-plugin/plugin.json` and `listing/` only. The store builds in `plugins/` (except `plugins/hermes`), `gemini-extension.json` and `.cursor-plugin/marketplace.json` are generated: run `python3 scripts/build_stores.py` after a change and commit the result. CI runs `python3 scripts/build_stores.py --check` and fails when they differ. `plugins/hermes` is the native Hermes Python plugin; run its tests as in `.github/workflows/validate.yml`.
 
 ```
 .claude-plugin/plugin.json       plugin manifest (name, version, metadata)
@@ -124,7 +159,7 @@ Install from the local path, restart Claude Code, then confirm with `/mcp` that 
 
 ### Releasing
 
-Bump `version` in `.claude-plugin/plugin.json`, add a `CHANGELOG.md` entry, then commit. Users pull the new version through the marketplace, so a version that does not change is a version nobody receives.
+Bump `version` in `.claude-plugin/plugin.json` and `.cursor-plugin/plugin.json`, add a `CHANGELOG.md` entry, run `python3 scripts/build_stores.py` (it copies the version into every store build), then commit. Users pull the new version through the marketplace, so a version that does not change is a version nobody receives.
 
 ## API rules that are easy to get wrong
 
@@ -168,6 +203,6 @@ These are live-verified. Do not "fix" code that follows them.
 - Docs: https://docs.meetstream.ai
 - MCP server: https://github.com/meetstream-ai/meetstream-mcp (hosted at `https://mcp.meetstream.ai/mcp`)
 - CLI: [`meetstream`](https://github.com/meetstream-ai/cli) (`npm install -g @meetstream/cli`, `pipx install meetstream-cli`, `brew install meetstream-ai/tap/meetstream`)
-- Claude Code plugin: https://github.com/meetstream-ai/claude-plugin
+- Claude Code plugin: https://github.com/meetstream-ai/meetstream-plugin
 - Cursor plugin: https://github.com/meetstream-ai/meetstream-cursor-plugin
 - Runnable examples: https://github.com/meetstream-ai/labs
