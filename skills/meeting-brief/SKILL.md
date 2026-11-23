@@ -23,7 +23,7 @@ answers 401 or "not signed in"): give the user the one step to connect, and in t
 reply keep helping. Do not stop at "sign in first".
 - Claude Code: `/mcp` → `meetstream` → sign in. Cursor: Settings → MCP → **Connect** next
   to `meetstream`. Codex: `codex mcp login meetstream` (full steps:
-  https://github.com/meetstream-ai/claude-plugin/blob/main/INSTALL_FOR_AGENTS.md).
+  https://github.com/meetstream-ai/meetstream-plugin/blob/main/INSTALL_FOR_AGENTS.md).
 - Then go on: give the plan, the `create_bot` fields you will send once the tools work,
   or run the `meetstream` CLI: `meetstream transcript <bot-id> --wait --json --no-input`
   (`npx -y @meetstream/cli` if it is not installed; sign in with `meetstream login`), or

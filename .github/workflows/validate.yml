@@ -24,9 +24,17 @@ jobs:
         run: claude plugin validate --strict skills
       - name: JSON manifests parse
         run: |
-          for f in .claude-plugin/*.json .cursor-plugin/*.json .mcp.json mcp.json; do
+          for f in .claude-plugin/*.json .cursor-plugin/*.json .mcp.json mcp.json gemini-extension.json listing/listing.json $(find plugins -name '*.json' -not -path '*/node_modules/*'); do
             python3 -m json.tool "$f" > /dev/null || { echo "bad JSON: $f"; exit 1; }
           done
+      - name: Generated store folders match the generator
+        run: python3 scripts/build_stores.py --check
+      - name: Validate the Claude Directory build
+        # Not --strict: the Directory-only manifest fields (icon, privacyPolicyUrl, ...) are
+        # warnings in the Claude Code validator.
+        run: |
+          claude plugin validate plugins/claude-directory
+          claude plugin validate --strict plugins/claude-directory/skills
       - name: Versions match across manifests
         run: |
           v1=$(python3 -c "import json;print(json.load(open('.claude-plugin/plugin.json'))['version'])")
@@ -38,3 +46,24 @@ jobs:
         run: python3 evals/check_descriptions.py .
       - name: setup script parses
         run: bash -n setup
+
+  hermes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          path: repo
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          repository: NousResearch/hermes-agent
+          ref: v0.23.1
+          path: hermes-agent
+      - uses: astral-sh/setup-uv@e92bafb6253dcd438e0484186d7669ea7a8ca1cc  # v6.4.3
+      - name: Install Hermes
+        working-directory: hermes-agent
+        run: uv sync --extra messaging
+      - name: Hermes plugin unit tests
+        working-directory: repo/plugins/hermes
+        run: PYTHONPATH=$GITHUB_WORKSPACE/hermes-agent $GITHUB_WORKSPACE/hermes-agent/.venv/bin/python -m unittest discover -s tests -v
+      - name: Hermes catalog validation
+        run: hermes-agent/.venv/bin/hermes plugins validate repo/plugins/hermes

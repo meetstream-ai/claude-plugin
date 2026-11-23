@@ -29,7 +29,7 @@ Pick the user's agent.
 **Claude Code**
 
 ```bash
-claude plugin marketplace add meetstream-ai/claude-plugin
+claude plugin marketplace add meetstream-ai/meetstream-plugin
 claude plugin install meetstream@meetstream-ai
 ```
 
@@ -38,7 +38,7 @@ Then ask the user to restart Claude Code.
 **Codex**
 
 ```bash
-codex plugin marketplace add meetstream-ai/claude-plugin
+codex plugin marketplace add meetstream-ai/meetstream-plugin
 codex plugin add meetstream@meetstream-ai
 ```
 
@@ -47,7 +47,7 @@ If `codex plugin` is not available, clone the repo (below) and run `./setup --ho
 **Copilot CLI**
 
 ```bash
-copilot plugin install meetstream-ai/claude-plugin
+copilot plugin install meetstream-ai/meetstream-plugin
 ```
 
 **Hermes:** use the Hermes plugin, which also answers in the meeting chat live:
@@ -104,7 +104,7 @@ If OpenCode also loads a `CLAUDE.md` that conflicts with the task, start it with
 **OpenClaw, Muse Code (or any agent above as a fallback):** clone the repo once, then run `setup` for the agent:
 
 ```bash
-git clone https://github.com/meetstream-ai/claude-plugin.git ~/.meetstream-plugin
+git clone https://github.com/meetstream-ai/meetstream-plugin.git ~/.meetstream-plugin
 ~/.meetstream-plugin/setup --host <openclaw|muse|codex|claude|copilot|opencode>
 ```
 

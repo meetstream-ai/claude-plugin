@@ -1,0 +1,76 @@
+name: meetstream
+label: Hermes in Meetings
+kind: platform
+version: 0.7.1
+requires_hermes: ">=0.23.0"
+author: MeetStream
+description: >
+  Hermes in Meetings, powered by MeetStream. Hermes joins your Zoom, Google Meet and Microsoft Teams
+  calls as a visible bot, records and transcribes them, and does the follow-up work afterwards.
+  Hermes can post messages while the bot is in a call and retrieve the saved chat afterwards.
+  Find recent meetings and schedule individual synced calendar occurrences. Setup uses a MeetStream API key. Workspace webhooks, calendar auto-join and storage are configured
+  in the MeetStream dashboard.
+provides_tools:
+  - meetstream_join
+  - meetstream_status
+  - meetstream_recover_brief
+  - meetstream_chat
+  - meetstream_transcript
+  - meetstream_leave
+  - meetstream_find_meetings
+  - meetstream_calendar
+  - meetstream_schedule_event
+provides_hooks:
+  - pre_llm_call
+  - pre_tool_call
+requires_env:
+  - name: MEETSTREAM_API_KEY
+    description: "MeetStream API key (starts with ms_)"
+    prompt: "MeetStream API key"
+    url: "https://app.meetstream.ai/api-key"
+    password: true
+    secret: true
+optional_env:
+  - name: MEETSTREAM_BRIEF_WEBHOOK_SECRET
+    description: "Signing secret for the optional MeetStream workspace webhook"
+    password: true
+    secret: true
+  - name: MEETSTREAM_ALLOWED_USERS
+    description: >-
+      Display names of the people who may ask Hermes questions in the meeting chat, comma-separated,
+      as they appear in the call (case-insensitive). Hermes also applies its gateway-wide
+      authorization rules. Names are chosen by participants, so do not rely on this list for security.
+    prompt: "Meeting participants who may ask Hermes questions (comma-separated names, or empty)"
+    password: false
+config_schema:
+  api_key:
+    type: secret
+    env: MEETSTREAM_API_KEY
+    label: "MeetStream API key"
+    description: "Create one at https://app.meetstream.ai/api-key"
+  bot_name:
+    type: str
+    default: "Hermes"
+    label: "Bot name"
+    description: "Display name of the bot in the call. People address it by this name in the chat."
+  transcription:
+    type: str
+    choices: [meetstream, meeting_captions, deepgram, assemblyai, none]
+    default: meetstream
+    label: "Transcription"
+    description: "Transcription provider for calls Hermes joins. meetstream adds $0.10 per hour; deepgram and assemblyai need your own key saved in the MeetStream dashboard."
+  join_message:
+    type: str
+    default: ""
+    label: "Join message"
+    description: "Optional chat text after the recording notice. {name} is replaced by the bot name."
+  status_gifs:
+    type: bool
+    default: false
+    label: "Google Meet status GIFs"
+    description: "Show Hermes activity on its Google Meet tile for newly joined calls."
+  status_gif_base_url:
+    type: str
+    default: ""
+    label: "Hosted status GIF directory"
+    description: "Public HTTPS directory containing the three packaged GIFs for animated playback."

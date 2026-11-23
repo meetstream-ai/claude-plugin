@@ -34,6 +34,12 @@ import sys
 
 ROOT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 
+
+def _generated(base):
+    """True for plugins/ (store builds generated from skills/ by scripts/build_stores.py, and the
+    separate Hermes plugin). The source files are checked once, at the repo root."""
+    return os.path.relpath(base, ROOT).split(os.sep)[0] == "plugins"
+
 # skill -> list of (label, regex that must match the description)
 MUST = {
     "meetstream": [("version answer, exact two sentences (round 6)", r"Install or update to the current MeetStream plugin\. The MCP server is hosted at https://mcp\.meetstream\.ai/mcp; there is no npm package or server version to install\."),
@@ -119,7 +125,7 @@ def cli_misses():
             if not re.search(pat, t):
                 print(f"MISS {skill}: CLI {label}"); misses += 1
     for root, dirs, files in os.walk(ROOT):
-        dirs[:] = [d for d in dirs if d not in (".git", "evals", "node_modules")]
+        dirs[:] = [d for d in dirs if d not in (".git", "evals", "node_modules") and not _generated(os.path.join(root, d))]
         for name in files:
             if not name.endswith(".md") or name == "CHANGELOG.md":
                 continue
@@ -223,7 +229,7 @@ def body_misses():
             print(f"MISS realtime-streaming: bridge recipe does not give the control command {cmd}")
     # The old voice-agent order (a/b/c with inbuilt keys as the default, own agent only on request) is gone.
     for base, _, files in os.walk(ROOT):
-        if "/.git" in base or "/evals" in base:
+        if "/.git" in base or "/evals" in base or _generated(base):
             continue
         for name in files:
             if name.endswith(".md"):
@@ -304,7 +310,7 @@ def round6_misses():
         misses += 1
         print("MISS mia-voice-agents: description hedges on the own agent")
     for base, _, files in os.walk(ROOT):
-        if "/.git" in base or "/evals" in base:
+        if "/.git" in base or "/evals" in base or _generated(base):
             continue
         for name in files:
             if name.endswith((".md", ".json")):
@@ -436,7 +442,7 @@ def build_misses():
                     misses += 1
                     print(f"MISS {os.path.relpath(fp, ROOT)}:{n}: stale shape '{hit.group(0)}'")
     for base, _, files in os.walk(ROOT):
-        if "/.git" in base or "/evals" in base:
+        if "/.git" in base or "/evals" in base or _generated(base):
             continue
         for name in files:
             if name.endswith(".md") and name != "CHANGELOG.md":
@@ -484,7 +490,7 @@ def mcp_misses():
             misses += not ok
             print(f"{'ok  ' if ok else 'MISS'} {skill}: {label}")
     for base, _, files in os.walk(ROOT):
-        if "/.git" in base or "/evals" in base:
+        if "/.git" in base or "/evals" in base or _generated(base):
             continue
         for name in files:
             if name.endswith(".md") and name != "CHANGELOG.md":

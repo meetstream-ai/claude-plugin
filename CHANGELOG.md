@@ -2,6 +2,26 @@
 
 All notable changes to the MeetStream Claude Code plugin.
 
+## [3.2.0] - 2026-11-23
+
+One repository for every plugin store (MS-2371). The root Claude Code plugin, its marketplace and the canonical `skills/` and `agents/` do not change place, so existing Claude Code, Codex and Copilot installs keep working.
+
+### Added
+- `scripts/build_stores.py` (Python standard library only) with one rule table per store. It writes generated, committed builds from `skills/`, `agents/`, `listing/listing.json` and `listing/brand/`:
+  - `plugins/claude-directory/`: strict Claude Directory build for an unverified org. Only `.md`, `.json` and `.png` files plus `LICENSE`; skill frontmatter is `name` and `description` only; the MCP server has no headers; reads of the API key from the environment become `YOUR_API_KEY` or MCP sign-in; download-and-run commands point to the CLI install page; the debugger agent keeps only `Read`, `Grep` and `Glob`; icon and policy URLs in the manifest.
+  - `plugins/cursor/` (`.cursor-plugin/plugin.json`, skills, agent, MCP file, logo) and a root `.cursor-plugin/marketplace.json` that points to it.
+  - `plugins/agent-plugin/`: Agent Plugins 1.0 build for the OpenAI directory (ChatGPT and Codex), Kiro, Hermes and Goose, with the OpenAI `interface`, 5 positive and 3 negative review cases and OAuth with dynamic client registration.
+  - `plugins/antigravity/` (`.antigravity-plugin/plugin.json`, `mcp_config.json` with `serverUrl`) and `plugins/openclaw/` (`openclaw.plugin.json`).
+  - Root `gemini-extension.json` for the Gemini CLI gallery.
+- `plugins/hermes/`: the native Hermes plugin, moved here from `meetstream-ai/hermes-meetstream` with its tests.
+- `llms-install.md` for the Cline MCP Marketplace, and `listing/brand/` icons (512, 400 and 48 px).
+- README and AGENTS.md: "Install in any harness" table.
+- CI: the generator `--check`, JSON parsing of every manifest, `claude plugin validate` on the Claude Directory build, and the Hermes tests and catalog validation.
+
+### Changed
+- The repository is now `meetstream-ai/meetstream-plugin` (renamed from `claude-plugin`; the old URL redirects). Manifests and docs use the new URL.
+- `evals/check_descriptions.py` skips `plugins/`, so the generated copies are not checked twice.
+
 ## [3.1.0] - 2026-11-23
 
 ### Added

@@ -1,0 +1,134 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "meetstream",
+  "version": "3.2.0",
+  "description": "Meeting bots for Zoom, Google Meet and Microsoft Teams: send a bot to a call, then get the recording, the transcript, the participants and the chat, or stream live data during the call. Includes the hosted MeetStream MCP server (browser sign-in) and skills for notetakers, sales coaches, calendar auto-recording and voice agents.",
+  "author": {
+    "name": "MeetStream",
+    "email": "sidhdharth@meetstream.ai",
+    "url": "https://meetstream.ai"
+  },
+  "homepage": "https://meetstream.ai",
+  "repository": "https://github.com/meetstream-ai/meetstream-plugin",
+  "license": "MIT",
+  "keywords": [
+    "meetstream",
+    "meeting-bot",
+    "meeting-bot-api",
+    "meeting-transcription",
+    "real-time-transcription",
+    "ai-notetaker",
+    "meeting-recorder",
+    "speaker-diarization",
+    "calendar-automation",
+    "voice-agent",
+    "zoom",
+    "google-meet",
+    "microsoft-teams",
+    "webhooks",
+    "mcp"
+  ],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "MeetStream",
+        "shortDescription": "Meeting bots for your agent",
+        "longDescription": "MeetStream is meeting-bot infrastructure. A bot joins a Zoom, Google Meet or Microsoft Teams call as a visible participant, records it and transcribes it. Ask your agent to send a bot to a meeting link, then get the transcript, an AI summary, the recording, the participants and the in-meeting chat. Build tracks: 1) the Recording bot, with post-call or real-time transcription; 2) the Bridge server, for an agent in the meeting on your own stack; 3) the hosted Agents API for voice agents (bring-your-own-infra and local-agent options are coming soon). Zoom bots join through your own Zoom app with an OBF or ZAK token, so set up a Zoom Meeting SDK app before the first Zoom bot. Sign in once in the browser through the hosted MeetStream MCP server; no API key is pasted into the chat.",
+        "developerName": "MeetStream",
+        "category": "productivity",
+        "capabilities": [
+          "Send a recording bot to a Zoom, Google Meet or Microsoft Teams meeting",
+          "Get transcripts, AI summaries, recordings, participants and chat after a call",
+          "Stream live transcripts and meeting events during a call",
+          "Schedule bots for Google Calendar meetings",
+          "Create and manage hosted voice agents"
+        ],
+        "websiteURL": "https://meetstream.ai",
+        "supportURL": "https://meetstream.ai/contact",
+        "privacyPolicyURL": "https://meetstream.ai/privacy-policy",
+        "termsOfServiceURL": "https://meetstream.ai/terms-of-use",
+        "defaultPrompt": [
+          "Send a bot to my next meeting and give me notes afterwards",
+          "Get the transcript and action items from my last recorded meeting",
+          "Show my recent MeetStream bots and their status"
+        ],
+        "brandColor": "#E8620C",
+        "logo": "./assets/icon.png",
+        "composerIcon": "./assets/icon.png"
+      },
+      "review": {
+        "test_cases": {
+          "positive": [
+            {
+              "description": "Send a recording bot to a meeting the reviewer starts",
+              "prompt": "Send a MeetStream bot named Notetaker to my meeting at <REVIEWER_TEST_MEETING_URL> and record it.",
+              "tools_triggered": [
+                "create_bot"
+              ],
+              "expected_behavior": "Calls create_bot with the meeting link and bot name, returns the bot_id and tells the user that the host must admit the bot."
+            },
+            {
+              "description": "List recent bots",
+              "prompt": "Show my recent MeetStream bots and their status.",
+              "tools_triggered": [
+                "list_bots"
+              ],
+              "expected_behavior": "Calls list_bots and shows each bot with its meeting link, status and creation time. An empty list is a valid answer."
+            },
+            {
+              "description": "Get a transcript of a finished meeting",
+              "prompt": "Get the transcript of my most recent recorded meeting.",
+              "tools_triggered": [
+                "list_bots",
+                "get_transcript"
+              ],
+              "expected_behavior": "Calls list_bots to find the latest bot with status Done, then get_transcript for that bot_id, and shows the transcript with speaker names."
+            },
+            {
+              "description": "Summarize a finished meeting",
+              "prompt": "What were the action items in my last meeting?",
+              "tools_triggered": [
+                "list_bots",
+                "get_bot_summary"
+              ],
+              "expected_behavior": "Calls list_bots, then get_bot_summary for the latest finished bot, and lists the action items from the summary."
+            },
+            {
+              "description": "Check the credit balance",
+              "prompt": "How much MeetStream credit do I have left?",
+              "tools_triggered": [
+                "get_balance"
+              ],
+              "expected_behavior": "Calls get_balance and reports the balance. If the balance is low, gives the billing link from top_up_link or the response."
+            }
+          ],
+          "negative": [
+            {
+              "description": "Unrelated weather question",
+              "prompt": "What is the weather in Paris tomorrow?",
+              "tools_triggered": [],
+              "expected_behavior": "The plugin is not used. No MeetStream tool is called."
+            },
+            {
+              "description": "General coding task",
+              "prompt": "Write a Python function that reverses a string.",
+              "tools_triggered": [],
+              "expected_behavior": "The plugin is not used. No MeetStream tool is called."
+            },
+            {
+              "description": "Translation request",
+              "prompt": "Translate 'good morning' into French.",
+              "tools_triggered": [],
+              "expected_behavior": "The plugin is not used. No MeetStream tool is called."
+            }
+          ]
+        },
+        "demo_recording_url": "TODO-BEFORE-SUBMISSION: reviewer-accessible demo video URL"
+      },
+      "commerce": false,
+      "publication": {
+        "release_notes": "Skills for MeetStream meeting bots (recording, transcripts, live data, calendar, voice agents) and the hosted MeetStream MCP server with OAuth sign-in."
+      }
+    }
+  }
+}

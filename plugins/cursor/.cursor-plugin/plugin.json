@@ -1,0 +1,42 @@
+{
+  "$schema": "https://cursor.com/schemas/cursor-plugin/plugin.json",
+  "name": "meetstream",
+  "displayName": "MeetStream",
+  "version": "3.2.0",
+  "description": "Meeting bots for Zoom, Google Meet and Microsoft Teams: send a bot to a call, then get the recording, the transcript, the participants and the chat, or stream live data during the call. Includes the hosted MeetStream MCP server (browser sign-in) and skills for notetakers, sales coaches, calendar auto-recording and voice agents.",
+  "author": {
+    "name": "MeetStream.ai",
+    "email": "hello@meetstream.ai"
+  },
+  "homepage": "https://docs.meetstream.ai",
+  "repository": "https://github.com/meetstream-ai/meetstream-plugin",
+  "license": "MIT",
+  "keywords": [
+    "meetstream",
+    "meeting-bot",
+    "meeting-bot-api",
+    "zoom",
+    "google-meet",
+    "microsoft-teams",
+    "transcription",
+    "real-time-transcription",
+    "speaker-diarization",
+    "ai-notetaker",
+    "meeting-summary",
+    "meeting-recording",
+    "per-participant-audio",
+    "voice-agent",
+    "mia",
+    "conversational-ai",
+    "speech-to-speech",
+    "wake-word",
+    "calendar-automation",
+    "webhooks",
+    "websockets",
+    "mcp"
+  ],
+  "logo": "assets/logo.png",
+  "skills": "./skills",
+  "agents": "./agents",
+  "mcpServers": "./mcp.json"
+}
