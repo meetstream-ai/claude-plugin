@@ -10,7 +10,7 @@ transcription, post-call; 1b real-time transcription, live), the default; 2 Brid
 user's own stack, local: both sockets, a local tunnel, free local STT / LLM / TTS options or the
 harness's own model, bot price only); 3 Agents API infra (MIA, hosted): 3a MeetStream's own
 default keys (recommended for "just host it"), 3b bring your own agent infra (LiveKit, COMING
-SOON), 3c bring your own keys, 3d local agent through the Agent Kit and local_agent (COMING SOON,
+SOON), 3c bring your own keys, 3d the user's coding agent through meetstream setup (COMING SOON,
 with the prompt-injection warning and no do-this-now steps). They open the core skill,
 getting-started, README, AGENTS.md and INSTALL_FOR_AGENTS.md in that order; the old a/b/c order
 and the old flow labels (flow 2a/2b/3, "three flows", own keys as 3b) are gone.
@@ -93,6 +93,42 @@ STALE_ORDER = re.compile(r"\bsetups? [abc]\b|\(only on request\)|inbuilt keys\W{
                          r"|\b[Ff]lows? (1|2a|2b|3)\b|[Tt]hree flows|\b3b\W{1,6}(the user's |their |your )?own (provider )?keys")
 # Build tracks: 3b (LiveKit) and 3d (local agent) are COMING SOON, so no file gives do-this-now steps for them.
 COMING_SOON_STEPS = re.compile(r"(uv tool|pipx) install meetstream-agent-kit|serve --command|Integrations > Models > Local agent")
+# meetstream CLI wrappers (MS-2371, 23 Nov 2026): the Go CLI replaces the Node CLI 0.x and the Python Agent Kit.
+# No file names the Agent Kit, its pairing token, a Bridge URL or serve --tunnel, the wrong PyPI names, or old CLI commands.
+OLD_KIT = re.compile(r"meetstream-agent-kit|Agent Kit|[Pp]airing token|Bridge URL|serve --tunnel"
+                     r"|pipx install meetstream(?![-\w])|uvx meetstream(?![-\w])|auth set-key|meetstream bot create")
+CLI_REF = os.path.join("skills", "meetstream", "references", "meetstream-cli.md")
+# Skills that run commands for the user give the CLI install step and the agent flags.
+CLI_SKILLS = ("meetstream", "getting-started", "join-meeting", "verify-account", "test-bot", "calendar-automation", "mia-voice-agents")
+
+
+def cli_misses():
+    misses = 0
+    ref = os.path.join(ROOT, CLI_REF)
+    if not os.path.exists(ref):
+        print(f"MISS {CLI_REF}: missing (copy SKILL.md from github.com/meetstream-ai/cli)"); misses += 1
+    else:
+        t = open(ref, encoding="utf-8").read()
+        for label, pat in (("copied-from note", r"\A<!-- Copied verbatim from SKILL\.md in github\.com/meetstream-ai/cli"),
+                           ("agent flags", r"--json --no-input"), ("exit codes", r"`3` not ready")):
+            if not re.search(pat, t):
+                print(f"MISS {CLI_REF}: {label}"); misses += 1
+    for skill in CLI_SKILLS:
+        t = open(os.path.join(ROOT, "skills", skill, "SKILL.md"), encoding="utf-8").read()
+        for label, pat in (("no-install CLI run", r"npx -y @meetstream/cli"), ("agent flags", r"--json --no-input")):
+            if not re.search(pat, t):
+                print(f"MISS {skill}: CLI {label}"); misses += 1
+    for root, dirs, files in os.walk(ROOT):
+        dirs[:] = [d for d in dirs if d not in (".git", "evals", "node_modules")]
+        for name in files:
+            if not name.endswith(".md") or name == "CHANGELOG.md":
+                continue
+            fp = os.path.join(root, name)
+            for i, line in enumerate(open(fp, encoding="utf-8"), 1):
+                m = OLD_KIT.search(line)
+                if m:
+                    print(f"MISS {os.path.relpath(fp, ROOT)}:{i}: old CLI or Agent Kit text {m.group(0)!r}"); misses += 1
+    return misses
 
 
 def body_misses():
@@ -462,7 +498,7 @@ def mcp_misses():
 
 
 def main():
-    misses = version_wording_misses() + body_misses() + round6_misses() + signup_misses() + build_misses() + mcp_misses()
+    misses = version_wording_misses() + body_misses() + round6_misses() + signup_misses() + build_misses() + mcp_misses() + cli_misses()
     for skill, checks in MUST.items():
         desc = description(os.path.join(ROOT, "skills", skill, "SKILL.md"))
         for label, pattern in checks:

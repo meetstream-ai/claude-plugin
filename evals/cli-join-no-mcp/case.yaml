@@ -1,0 +1,20 @@
+schema_version: "1.1"
+name: cli-join-no-mcp
+description: "meetstream CLI wrappers (MS-2371, 23 Nov 2026): with no MCP, a terminal user gets the meetstream CLI (join, then transcript --wait; npx -y @meetstream/cli with no install; meetstream login), not hand-written curl or old Node CLI commands."
+tags: [cli, routing]
+runs: 1
+execution:
+  prompt: "I don't use the MeetStream MCP. Give me the terminal commands to send a bot to https://meet.google.com/abc-defg-hij now and get the transcript after the call."
+  max_turns: 8
+  allowed_tools: [Read, Glob, Grep, Skill]
+graders:
+- name: cli-join
+  type: regex
+  pattern: 'meetstream join'
+- name: cli-transcript
+  type: regex
+  pattern: 'meetstream transcript'
+- name: no-old-cli
+  type: regex
+  pattern: 'meetstream bot create|auth set-key|meetstream-agent-kit|pipx install meetstream(?![-\w])|uvx meetstream(?![-\w])'
+  match: not_contains

@@ -34,6 +34,13 @@ you host. MeetStream does not stream transcripts to the browser directly, and th
 must never reach the browser. If you would rather run your own speech-to-text, take the
 raw audio over the `live_audio_required` WebSocket instead (below).
 
+To try it from a terminal with the `meetstream` CLI (`npx -y @meetstream/cli` if it is not
+installed): `meetstream listen --json` runs a local receiver (one JSON line per event,
+`127.0.0.1:3333/webhook`), and `meetstream join <url> -t meetstream_streaming
+--live-transcript-webhook https://<public-url>/webhook --json --no-input` sends the bot. The
+bot needs a public URL that reaches the receiver: today that is a tunnel (ngrok or
+cloudflared) the user runs.
+
 Four separate channels, often confused with each other. Pick by what the user
 actually needs.
 
@@ -132,8 +139,8 @@ This is the way to put an agent in a meeting when the user wants their own stack
 speech-to-text, LLM and voice, local or hosted. MeetStream charges the bot price only
 ($0.35 per hour, $0.25 at volume): no agent infrastructure fee and no model tokens. For a
 hosted agent with no infrastructure work, use `mia-voice-agents` (track 3a, or 3c with own
-keys). Running the user's own agent CLI (Claude Code, Codex) as the brain through the Agent
-Kit is track 3d, coming soon: today, call the harness's own model from this bridge.
+keys). Running the user's own agent CLI (Claude Code, Codex) as the brain through
+`meetstream setup` is track 3d, coming soon: today, call the harness's own model from this bridge.
 
 Models for the bridge, free to run locally; check each model's license before commercial use:
 
@@ -155,7 +162,13 @@ Models for the bridge, free to run locally; check each model's license before co
    http://localhost:8000`); `localhost` is not reachable from the bot. Do not start a tunnel or a
    long-running server in a build unless the user asked: give the commands and let the
    user run them (Codex, for example, stops background processes at the end of each turn).
-3. Send a bot with both sockets on the same host:
+3. Send a bot with both sockets on the same host. From a terminal, with the `meetstream` CLI:
+   ```bash
+   meetstream join "https://meet.google.com/abc-defg-hij" -n "Assistant" \
+     --live-audio-ws wss://your-bridge.example/bridge/audio \
+     --socket-ws wss://your-bridge.example/bridge --json --no-input
+   ```
+   In app code, the API or SDK:
    ```bash
    curl -X POST https://api.meetstream.ai/api/v1/bots/create_bot \
      -H "Authorization: Token $MEETSTREAM_API_KEY" -H "Content-Type: application/json" \

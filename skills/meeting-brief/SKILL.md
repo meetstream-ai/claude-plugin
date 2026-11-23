@@ -25,7 +25,9 @@ reply keep helping. Do not stop at "sign in first".
   to `meetstream`. Codex: `codex mcp login meetstream` (full steps:
   https://github.com/meetstream-ai/claude-plugin/blob/main/INSTALL_FOR_AGENTS.md).
 - Then go on: give the plan, the `create_bot` fields you will send once the tools work,
-  or the REST call (`curl` with `Authorization: Token $MEETSTREAM_API_KEY`).
+  or run the `meetstream` CLI: `meetstream transcript <bot-id> --wait --json --no-input`
+  (`npx -y @meetstream/cli` if it is not installed; sign in with `meetstream login`), or
+  give the REST call (`curl` with `Authorization: Token $MEETSTREAM_API_KEY`).
 - The one step is the MeetStream MCP sign-in, nothing else. A one-off meeting link needs
   no calendar integration (calendars are only for auto-joining every meeting).
 
@@ -35,6 +37,10 @@ reply keep helping. Do not stop at "sign in first".
    in the brief comes from here.
 2. **`get_speaker_timeline`** - who spoke and for how long.
 3. **`get_participants`** - the attendee list.
+
+With the CLI instead of the MCP tools: `meetstream transcript <bot-id> --wait`, `meetstream
+bots timeline <bot-id>` and `meetstream bots get <bot-id> --part participants`, each with
+`--json --no-input` (exit 3 = not ready yet, 4 = the transcript run failed).
 
 MeetStream has no built-in meeting summary (`get_bot_summary` only says so): write the
 brief yourself from the transcript.

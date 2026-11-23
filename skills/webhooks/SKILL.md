@@ -135,6 +135,10 @@ ngrok http 3000          # then use the https URL + your path
 cloudflared tunnel --url http://localhost:3000
 ```
 
+No server yet? `meetstream listen --json` (the `meetstream` CLI; `npx -y @meetstream/cli
+listen --json` with no install) receives on `127.0.0.1:3333/webhook` and prints one JSON
+line per event; point the tunnel at port 3333.
+
 Two failure modes to check before debugging your code:
 - The tunnel returns an interstitial page and MeetStream sees a 200 that never reached
   your handler. Verify with a request that echoes a value your handler generated.

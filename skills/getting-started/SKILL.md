@@ -7,7 +7,7 @@ description: >
   time transcription); for an agent in the meeting, on request: 2) Bridge
   server (your own stack, local, free local models, bot price only), then 3)
   the hosted Agents API (voice agents: 3a default keys, 3c own keys; 3b
-  LiveKit and 3d local agent are coming soon). First-time setup for
+  LiveKit and 3d your coding agent are coming soon). First-time setup for
   MeetStream: signup, API key, environment, validation ping. Invoke before any
   other MeetStream skill if MEETSTREAM_API_KEY is missing. Auto-trigger when
   the user says "get started", "help me get started with MeetStream", "help me
@@ -36,8 +36,8 @@ This skill is the **mandatory Step 0** for any MeetStream integration. If the us
    https://docs.meetstream.ai/guides/websockets/bridge-server-architecture).
 3. **Agents API infra (voice agents, API name MIA, hosted by MeetStream):** 3a
    MeetStream's own, default keys (recommended for "just host it"); 3b bring your own
-   agent infra (LiveKit): COMING SOON; 3c bring your own keys; 3d local agent (your own
-   agent CLI through the Agent Kit): COMING SOON, with a prompt-injection risk. Never offer
+   agent infra (LiveKit): COMING SOON; 3c bring your own keys; 3d your coding agent as the
+   brain (`meetstream setup` once the relay is live): COMING SOON, with a prompt-injection risk. Never offer
    3b or 3d as working (`mia-voice-agents`).
 
 When the user asks what MeetStream offers or which API to use, name the tracks in order:
@@ -101,9 +101,11 @@ keys stay in the dashboard (or use inbuilt keys in pipeline mode). Never ask for
 the chat. With no MCP, give the REST call
 (details in `mia-voice-agents` and `meetstream`).
 
-## Two ways in: pick by what the user wants
+## Three ways in: pick by what the user wants
 
 - **Use MeetStream from this agent** (send bots, get notes): no key needed. This plugin includes the hosted MeetStream MCP server. Sign in once: Claude Code `/mcp` → `meetstream` → **Authenticate**; Codex `codex mcp login meetstream`; Cursor Settings → MCP → **Connect**. The browser opens app.meetstream.ai; the user signs in or signs up and clicks **Allow**. Check with the `list_bots` tool, then ask the routing question below (after the meeting or live?) and hand over to `join-meeting` or `realtime-streaming`. New accounts start with $5 of credit.
+- **Run commands from a terminal or this agent's shell** (no MCP, scripts, `listen`, `setup`): the `meetstream` CLI. `meetstream login` signs in through the browser and stores a key, so nothing is pasted in the chat; then `meetstream doctor --json --no-input` checks the key.
+  **Install the CLI** (when this agent runs commands for the user): `npx -y @meetstream/cli <command>` works with no install; or `npm install -g @meetstream/cli`, `pipx install meetstream-cli`, `brew install meetstream-ai/tap/meetstream`. Sign in with `meetstream login` (it opens the browser and stores a key; never ask for the key in the chat) or set `MEETSTREAM_API_KEY`. Always pass `--json --no-input`. Exit codes: 0 ok, 1 API error, 2 usage or not signed in, 3 not ready yet, 4 transcript failed. JSON shapes: `skills/meetstream/references/meetstream-cli.md`.
 - **Build an app on the API** (code, servers, CI): the code needs an API key. Follow the steps below.
 
 ## Intake routing (read this first)
@@ -142,8 +144,8 @@ webhooks. Start there.
      (the provider bills model usage). Never retry in a loop. The hosted bot takes only
      `agent_config_id`, never the bridge sockets.
    - **Coming soon, never offered as working:** 3b bring your own agent infra (LiveKit,
-     coming soon) and 3d local agent (Claude Code, Codex and others through the Agent
-     Kit). Give no setup steps; for 3d, warn that meeting speech will reach an agent with
+     coming soon) and 3d your coding agent as the brain (Claude Code, Codex and others,
+     through `meetstream setup` once the relay is live). Give no setup steps; for 3d, warn that meeting speech will reach an agent with
      access to the user's computer (prompt injection). Offer track 2 or 3a/3c instead.
 4. **Version questions:** reply with only these two sentences, word for word, then
    continue with what the user wants to do: "Install or update to the current MeetStream
@@ -160,7 +162,8 @@ reply keep helping. Do not stop at "sign in first".
   to `meetstream`. Codex: `codex mcp login meetstream` (full steps:
   https://github.com/meetstream-ai/claude-plugin/blob/main/INSTALL_FOR_AGENTS.md).
 - Then go on: give the plan, the `create_bot` fields you will send once the tools work,
-  or the REST call (`curl` with `Authorization: Token $MEETSTREAM_API_KEY`).
+  or the CLI command (`meetstream join <url> --json --no-input`, run with
+  `npx -y @meetstream/cli` if it is not installed).
 - The one step is the MeetStream MCP sign-in, nothing else. A one-off meeting link needs
   no calendar integration (calendars are only for auto-joining every meeting).
 
@@ -178,6 +181,14 @@ reply keep helping. Do not stop at "sign in first".
 - The user explicitly says "I already have my key, just build X"
 
 ## Step 1: Check if API key is already configured
+
+With the CLI (a key from `meetstream login` or `MEETSTREAM_API_KEY`):
+
+```bash
+npx -y @meetstream/cli auth status --json --no-input   # "signed_in": true and "valid": true = skip onboarding
+```
+
+Without the CLI:
 
 ```bash
 # Quick check
@@ -223,7 +234,9 @@ Wait for the user to confirm before continuing.
 Tell the user:
 
 ```
-Now create an API key:
+Now create an API key. Fastest, with nothing to paste: run
+`npx -y @meetstream/cli login` in your terminal. It opens the browser and stores a key.
+For app code that needs the key in .env:
 
 👉 Open https://app.meetstream.ai/api-keys
 
@@ -275,6 +288,8 @@ grep -q "^\.env$" .gitignore || echo ".env" >> .gitignore
 > **Never commit `.env` to git.** If the key leaks, rotate it immediately at https://app.meetstream.ai/api-keys.
 
 ## Step 5: Validate the key
+
+`meetstream auth status --json --no-input` (`"valid": true`), or:
 
 ```bash
 curl -s -o /dev/null -w "%{http_code}\n" \

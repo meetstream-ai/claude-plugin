@@ -9,7 +9,7 @@
   "plugins": [
     {
       "name": "meetstream",
-      "description": "MeetStream build tracks: the Recording bot (meeting bots, recordings, post-call or real-time transcripts for Zoom, Google Meet and Teams), the Bridge server (agents on your own stack, free local models) and the hosted Agents API (voice agents). Fastest path first: minimal API, SDK and MCP calls, with links to the latest docs.",
+      "description": "MeetStream build tracks: the Recording bot (meeting bots, recordings, post-call or real-time transcripts for Zoom, Google Meet and Teams), the Bridge server (agents on your own stack, free local models) and the hosted Agents API (voice agents). Fastest path first: MCP tools or the meetstream CLI, minimal API and SDK calls for app code, with links to the latest docs.",
       "source": "./",
       "homepage": "https://meetstream.ai",
       "category": "developer-tools",

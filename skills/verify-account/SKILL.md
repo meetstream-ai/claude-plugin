@@ -18,11 +18,23 @@ allowed-tools: Bash, Read
 
 A quick, read-only health check before building. It creates no bots.
 
-If `MEETSTREAM_API_KEY` is unset, run `getting-started` first. Never print the key.
+If no key is set (`MEETSTREAM_API_KEY` or `meetstream login`), run `getting-started` first.
+Never print the key.
 
 ## Fastest path
 
-Run these and report each line as ok / not ok:
+With the `meetstream` CLI, run these and report each line as ok / not ok:
+
+```bash
+meetstream auth status --json --no-input   # "valid": true = key works; exit 2 = not signed in
+meetstream balance --json --no-input        # exit 3 "balance_unavailable" = use the billing page
+meetstream mia list --json --no-input       # voice agent configs (Agents API)
+meetstream calendar list --json --no-input  # connected calendars
+```
+
+**Install the CLI** (when this agent runs commands for the user): `npx -y @meetstream/cli <command>` works with no install; or `npm install -g @meetstream/cli`, `pipx install meetstream-cli`, `brew install meetstream-ai/tap/meetstream`. Sign in with `meetstream login` (it opens the browser and stores a key; never ask for the key in the chat) or set `MEETSTREAM_API_KEY`. Always pass `--json --no-input`. Exit codes: 0 ok, 1 API error, 2 usage or not signed in, 3 not ready yet, 4 transcript failed. JSON shapes: `skills/meetstream/references/meetstream-cli.md`.
+
+Without the CLI:
 
 ```bash
 H="Authorization: Token $MEETSTREAM_API_KEY"
