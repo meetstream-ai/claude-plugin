@@ -557,9 +557,9 @@ Q4A.2: Which streaming provider?
        │     }
        │     ⚠ English-only. Account needs AssemblyAI key.
        │
-       ├─ "I have a JigsawStack account"
+       ├─ "I have an Interfaze (formerly JigsawStack) account"
        │  → provider: { "jigsawstack_streaming": {} }
-       │     Account needs JigsawStack key.
+       │     Account needs Interfaze key.
        │
        ├─ "I have a Smallest AI account"
        │  → provider: {
@@ -670,7 +670,7 @@ Q4B.2: Which post-call provider?
                 "by_speaker": true
               }
             }
-            Account needs JigsawStack key.
+            Account needs Interfaze key.
 
 Q4B.3: How long should MeetStream keep the audio/transcript?
        ├─ 30 days / 720 hours (default if you omit retention)
@@ -1703,7 +1703,7 @@ Specified under `recording_config.transcript.provider`. Use **exactly one** prov
 | `deepgram` | Post-call | `nova-3` is the only model enum. Requires Deepgram key in account. `language` defaults to `"en"` (free string per spec). |
 | `assemblyai` | Post-call | Speaker diarization, redaction, chapters. Requires AssemblyAI key in account. 9 fields marked required per OpenAPI. |
 | `sarvam` | Post-call | Indic languages, e.g. `model: "saaras:v3"`, `language_code: "en-IN"`. Requires Sarvam key. |
-| `jigsawstack` | Post-call | Auto language detect, optional translation. Requires JigsawStack key. |
+| `jigsawstack` | Post-call | Auto language detect, optional translation. Requires Interfaze key. |
 | `meeting_captions` | Live, native | **Free** - uses Meet / Teams native captions. No external key needed. `transcript_id` is **null** - fetch captions via `bot_details.caption_file` on `/detail`. |
 | `meetstream_streaming` | Live | MeetStream in-house streaming - **works without external keys**. Live-verified. Use this for live transcription on stock accounts. Empty config `{}` accepted. No post-call transcript fetch (returns HTTP 202 forever). |
 | `deepgram_streaming` | Live | Real-time. All ~12 fields marked required per OpenAPI. Needs Deepgram key. |
