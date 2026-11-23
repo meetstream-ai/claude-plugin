@@ -2,6 +2,13 @@
 
 All notable changes to the MeetStream Claude Code plugin.
 
+## [2.11.1] - 2026-11-23
+
+JigsawStack has rebranded as Interfaze (MS-2382).
+
+### Changed
+- `skills/meetstream/SKILL.md` names the provider Interfaze (formerly JigsawStack) in the live-transcription decision tree, the post-call decision tree and the provider table. The provider keys `jigsawstack` and `jigsawstack_streaming` do not change.
+
 ## [2.11.0] - 2026-11-22
 
 Moves every skill and top-level doc from the three flows to the build tracks (MS-2305).
