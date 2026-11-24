@@ -397,6 +397,43 @@ def build_cursor(out: Path) -> None:
     copy_agents(d)
 
 
+# Agent Skills hosts (Copilot's awesome-copilot intake, vally lint) reject a SKILL.md over 500 lines.
+SKILL_MAX_LINES = 500
+
+
+def split_long_skill(name: str, text: str, budget: int = 440) -> tuple[str, str | None]:
+    """Keep SKILL.md under SKILL_MAX_LINES: whole '## ' sections stay in order until the budget is used,
+    the rest move to references/<name>-guide.md, and a 'More detail' section links to them.
+    The '## Latest docs' section always stays in SKILL.md."""
+    if text.count("\n") + 1 <= SKILL_MAX_LINES:
+        return text, None
+    lines = text.split("\n")
+    starts = [i for i, line in enumerate(lines) if line.startswith("## ")]
+    if not starts:
+        raise SystemExit(f"{name}: SKILL.md is over {SKILL_MAX_LINES} lines and has no '## ' sections to move")
+    head = lines[:starts[0]]
+    sections = [lines[a:b] for a, b in zip(starts, starts[1:] + [len(lines)])]
+    latest = [sec for sec in sections if sec[0].strip().lower() == "## latest docs"]
+    body = [sec for sec in sections if sec not in latest]
+    kept, moved, used = [], [], len(head) + sum(len(sec) for sec in latest) + 12
+    for sec in body:
+        if not moved and used + len(sec) <= budget:
+            kept.append(sec)
+            used += len(sec)
+        else:
+            moved.append(sec)
+    ref = f"references/{name}-guide.md"
+    pointer = ["## More detail", "",
+               f"The rest of this skill is in [`{ref}`]({ref}). Read the section you need:", ""]
+    pointer += [f"- {sec[0][3:].strip()}" for sec in moved] + [""]
+    main = "\n".join(head + [line for sec in kept for line in sec] + pointer +
+                     [line for sec in latest for line in sec])
+    if main.count("\n") + 1 > SKILL_MAX_LINES:
+        raise SystemExit(f"{name}: SKILL.md is still over {SKILL_MAX_LINES} lines after the split")
+    title = f"# {name}: detailed guide\n\nMoved from SKILL.md to keep it under {SKILL_MAX_LINES} lines.\n\n"
+    return main, title + "\n".join(line for sec in moved for line in sec) + "\n"
+
+
 def build_agent_plugin(out: Path) -> None:
     d = out / "plugins" / "agent-plugin"
     u = LISTING["urls"]
@@ -454,6 +491,12 @@ def build_agent_plugin(out: Path) -> None:
         "Custom Power > GitHub URL of this folder. Hermes: `hermes plugins install` with this folder. Goose: add "
         "this folder as a plugin. The subagent is not part of this build (Agent Plugins 1.0 has no agent slot)."))
     copy_skills(d)
+    for name in skill_names():
+        skill = d / "skills" / name / "SKILL.md"
+        main, extra = split_long_skill(name, skill.read_text(encoding="utf-8"))
+        if extra is not None:
+            write_text(skill, main)
+            write_text(d / "skills" / name / "references" / f"{name}-guide.md", extra)
 
 
 def build_antigravity(out: Path) -> None:
