@@ -2,6 +2,11 @@
 
 All notable changes to the MeetStream Claude Code plugin.
 
+## [3.2.1] - 2026-11-24
+
+### Fixed
+- Agent Plugins build (`plugins/agent-plugin`, used by Copilot, ChatGPT/Codex, Kiro, Hermes and Goose): a `SKILL.md` over 500 lines is split. Whole sections stay in order up to the limit, and the rest move to `references/<skill>-guide.md` with a "More detail" index. This affects `meetstream` and `mia-voice-agents`. Copilot's awesome-copilot intake and the Agent Skills lint reject longer files. Other builds and the root skills are unchanged.
+
 ## [3.2.0] - 2026-11-23
 
 One repository for every plugin store (MS-2371). The root Claude Code plugin, its marketplace and the canonical `skills/` and `agents/` do not change place, so existing Claude Code, Codex and Copilot installs keep working.
