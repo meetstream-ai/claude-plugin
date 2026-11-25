@@ -4,7 +4,7 @@
     [
       "meetstream",
       "none",
-      "MeetStream's own engine (adds a per-hour charge; see the pricing page)"
+      "MeetStream's own engine (adds a per-hour charge; see the pricing page). The only post-call provider that needs no key everywhere."
     ],
     [
       "deepgram",
@@ -32,9 +32,14 @@
       "Shown as Interfaze; the API key stays jigsawstack"
     ],
     [
+      "aws_transcribe",
+      "none",
+      "Not for bots in the US region (code)"
+    ],
+    [
       "meeting_captions",
       "none",
-      "The platform's own captions: Google Meet (English, live) and Teams (after the call); not Zoom"
+      "create_bot only (not POST /transcribe): the platform's own captions; Google Meet (English, live) and Teams (after the call); Zoom only on bots that join without the customer's app"
     ]
   ],
   "streaming": [
@@ -54,6 +59,11 @@
       ""
     ],
     [
+      "sarvam_streaming",
+      "dashboard",
+      "Accepted by the API (code)"
+    ],
+    [
       "smallest_streaming",
       "dashboard",
       ""
@@ -68,7 +78,9 @@
     "One streaming provider per bot.",
     "Streaming-only providers make no post-call transcript and send no transcription.processed (get_transcript returns 202 indefinitely: cap polling); bot.done still fires.",
     "A streaming provider needs live_transcription_required.webhook_url.",
-    "Re-run a post-call transcript with POST /api/v1/bots/{bot_id}/transcribe; each run gets a new transcript_id."
+    "Re-run a post-call transcript with POST /api/v1/bots/{bot_id}/transcribe; each run gets a new transcript_id.",
+    "POST /bots/{bot_id}/transcribe needs a provider: there is no server default (400 without one) (code).",
+    "No API lists providers; this list is kept from the docs and the code."
   ],
   "source": "https://docs.meetstream.ai/guides/transcription-recordings/providers/transcription-providers",
   "also": [

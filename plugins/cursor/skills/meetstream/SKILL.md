@@ -615,11 +615,10 @@ Q4A.3: Need to also stream raw audio bytes (for your own ML model)?
        │        LE @ 48kHz mono with embedded speaker metadata.
        └─ No  → omit live_audio_required
 
-Q4A.4: Need to also stream live video (fMP4)?
-       ├─ Yes → "live_video_required": { "websocket_url": "wss://you/video" }
-       │        ⚠ Google Meet + Teams only (NOT Zoom)
-       │        See Pattern 8 - fMP4 over WebSocket with ping/pong contract.
-       └─ No  → omit live_video_required
+Q4A.4: Need live video frames out of the meeting?
+       └─ Not available on meeting bots: omit live_video_required (bots ignore it
+          and it moves the bot to the larger video tier). Only Zoom Meeting Direct
+          Connect (RTMS) sessions stream video (see platform-setup).
 
 ⚠ KEY LIMITATION OF STREAMING: No automatic post-call transcript.
    transcript_id will be null in the create_bot response.
@@ -706,7 +705,7 @@ Q4B.2: Which post-call provider?
             Account needs Interfaze key.
 
 Q4B.3: How long should MeetStream keep the audio/transcript?
-       ├─ 30 days / 720 hours (default if you omit retention)
+       ├─ Kept permanently (default if you omit retention)
        ├─ Custom window → "retention": { "type": "timed", "hours": 168 }  (7 days)
        └─ Per compliance policy → set the smallest window that meets your needs.
                                   After that, data is auto-deleted and
@@ -1110,7 +1109,7 @@ Each POST to your `webhook_url`:
 }
 ```
 
-For raw live audio bytes (binary frames over WebSocket), see Pattern 7 below. For raw live video (fMP4 over WebSocket), see Pattern 8.
+For raw live audio bytes (binary frames over WebSocket), see Pattern 7 below. Live video out of a meeting bot is not available (Pattern 8).
 
 ### Pattern 3: Interactive Bot (chat, TTS audio, dynamic video frame)
 
@@ -1267,29 +1266,9 @@ mixed audio often is), so you cannot drop the bot's own voice by name.
 
 Decoders for Python, Node.js, Go and Java: https://docs.meetstream.ai/guides/websockets/real-time-audio-streaming
 
-### Pattern 8: Live Video Streaming (fMP4 over WebSocket)
+### Pattern 8: Live video (not available on meeting bots)
 
-Supported on **Google Meet and Microsoft Teams only - not Zoom**.
-
-```json
-{
-  "video_required": true,
-  "live_video_required": { "websocket_url": "wss://your-server.com/video" },
-  "recording_config": { "video_layout": "speaker_view" }
-}
-```
-
-Protocol (all messages from MeetStream to you, except where noted):
-
-| Message type | Direction | Description |
-|---|---|---|
-| `video_stream_start` (JSON text) | MS → you | Once on connect. Carries `codec`, `audio_codec`, `container: "fmp4"`, `width`, `height`, `framerate`, `audio_sample_rate`, `audio_bitrate`. |
-| binary frames | MS → you | Raw fMP4 (fragmented MP4) bytes. **Append in order** to build the stream/file. |
-| `video_latency_ping` (JSON text) | MS → you | Periodic. Carries `seq` and `sent_at_ms`. |
-| `video_latency_pong` (JSON text) | **you → MS** | Echo `seq`, `sent_at_ms`, `bot_id`. Add `server_received_at_ms` (your wall-clock ms when you handled the ping). |
-| `video_stream_end` (JSON text) | MS → you | Sent when stream stops. Carries `duration_seconds`. Connection closes after. |
-
-Production tips: terminate TLS in front of your app (expose `wss://`), allow large WS frames, process writes sequentially per stream so chunk order is preserved.
+Meeting bots on Google Meet, Zoom and Teams do not stream live video: `live_video_required` is accepted but ignored, and it still moves the bot to the larger video compute tier, so do not send it. For video, record it (`video_required: true`) and fetch it after the call, or use per-participant video streams. Live video frames exist only on Zoom Meeting Direct Connect (RTMS) sessions (`platform-setup`).
 
 ### Pattern 9: MIA - AI Agent in a Meeting
 
@@ -1589,7 +1568,7 @@ The OpenAPI schema allows `additionalProperties: { description: Any type }`. Arb
 | Recording + post-call transcript | ✓ | ✓ | ✓ |
 | Live transcription webhook | ✓ | ✓ | ✓ |
 | Live audio (`live_audio_required`) | ✓ | ✓ | ✓ |
-| **Live video (`live_video_required`)** | ✓ | **✗** | ✓ |
+| **Live video (`live_video_required`)** | ✗ (ignored) | ✗ (ignored; RTMS sessions only) | ✗ (ignored) |
 | **Per-participant audio streams** | ✓ | ✓ | **✗** |
 | Per-participant video streams | ✓ | ✓ | ✓ |
 | MIA agents | ✓ | ✓ | ✓ |
@@ -1898,7 +1877,7 @@ Bot management:
 
 ## Data Retention
 
-Default retention is **30 days (720 hours)**. Override on `create_bot`:
+If you omit `retention`, media is **kept permanently** until you delete it (`DELETE /api/v1/bots/{bot_id}/delete`). A timed window deletes it automatically; `hours` defaults to 720 when `type` is `timed`. Override on `create_bot`:
 
 ```json
 { "recording_config": { "retention": { "type": "timed", "hours": 168 } } }
@@ -1922,7 +1901,7 @@ Live test response confirms scope: `{"message": "Successfully deleted 7 objects 
 
 1. **Never call `/delete` automatically in webhook handlers, agents, or polling loops.** If you wire this into automated code, you will eventually wipe a session you needed.
 2. **Never call `/delete` to "clean up" a test bot until you've verified you don't need its outputs.** Use `/delete` only for explicit test bots the user asked to remove.
-3. **Prefer retention-based expiry.** Set `recording_config.retention` to the shortest acceptable window for your use case (default 30 days) and let MeetStream's scheduler clean up.
+3. **Prefer retention-based expiry.** Set `recording_config.retention` to the shortest acceptable window for your use case (omitted means kept permanently) and let MeetStream's scheduler clean up.
 4. **Confirm with the user before running `/delete` interactively.** Treat it like `rm -rf` - if the user didn't explicitly ask to delete, don't.
 5. **The `data_deletion` webhook fires after deletion** - receiving it means data is already gone, not "about to be deleted."
 

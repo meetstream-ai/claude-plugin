@@ -2,6 +2,18 @@
 
 All notable changes to the MeetStream Claude Code plugin.
 
+## [3.3.1] - 2026-11-25
+
+API facts settled from the core codebase where the docs contradict themselves (MS-2435 follow-up).
+
+### Changed
+- Zoom: skills recommend setting up and configuring your own Zoom app for reliable, fully supported Zoom bots (OBF or ZAK for meetings outside the app's account). The no-app join is described only as a limited fallback: US execution region only, no OBF or ZAK, no per-participant camera video.
+- Retention: omitted `retention` keeps media permanently (was "30 days" and "24 hours" in places).
+- Custom storage: dashboard only; the `/api/v1/admin/configs` routes are removed (customer keys cannot call admin routes).
+- Live video: `live_video_required` is not implemented on meeting bots (it is ignored and moves the bot to the larger video tier); only Zoom RTMS sessions stream video. The fMP4 pattern is removed.
+- Webhooks (generated `events.md`): `bot_event` is missing on participant events, `agent_error`, `usage.*` and resends; participant events carry the bot id at `data.bot.id`; `callback_url` and live-transcript posts are never signed; `realtime_endpoints` are signed only on Google Meet; delivery is one attempt, sequential per bot.
+- Providers: `aws_transcribe` and `sarvam_streaming` added; `meeting_captions` is a create_bot option only; `/transcribe` has no default provider.
+
 ## [3.3.0] - 2026-11-25
 
 Skills stay current with docs.meetstream.ai (MS-2435, Phase 1 of the agent-surfaces plan).

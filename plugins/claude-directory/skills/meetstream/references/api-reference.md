@@ -36,7 +36,7 @@ Creates a bot and sends it to a meeting.
 - `custom_attributes` (object) - `additionalProperties: { description: Any type }` in the schema. **Observed behavior:** server may reject non-string values; stringify defensively.
 - `socket_connection_url` (object) - `{ "websocket_url": "wss://..." }` for two-way bot control (Pattern 3).
 - `live_audio_required` (object) - `{ "websocket_url": "wss://..." }` for live raw audio frames (Pattern 7).
-- `live_video_required` (object) - `{ "websocket_url": "wss://..." }` for live fMP4 video (Pattern 8). Google Meet + Teams only.
+- `live_video_required` (object) - not implemented on meeting bots: accepted, ignored, and it moves the bot to the larger video tier. Do not send it. Only Zoom Meeting Direct Connect (RTMS) sessions stream video.
 - `live_transcription_required` (object) - `{ "webhook_url": "https://..." }` for live transcript chunks via HTTPS POST. **Not a WebSocket.**
 - `workflow_config_ids` (string[]) - post-meeting workflow IDs.
 - `recording_config` (object) - transcript provider, retention, realtime endpoints (see schema below).
@@ -1040,7 +1040,7 @@ Dedupe on `{bot_id, bot_event ?? event, timestamp}`. Every event carries a `time
 }
 ```
 
-Default retention: `{ "type": "timed", "hours": 24 }`.
+Default when `retention` is omitted: media is kept permanently until you delete it. `{ "type": "timed", "hours": N }` deletes it automatically (`hours` defaults to 720 with `type: timed`).
 
 `audio_separate_streams` and `video_separate_streams` can also be set at the top level of `create_bot`. `video_separate_streams` is opt-in only: never set it unless the user explicitly asked for per-participant video.
 
@@ -1308,47 +1308,6 @@ Decoder implementations in Python / Node.js / Go / Java: https://docs.meetstream
 
 ---
 
-## Live Video Streaming (fMP4 over WebSocket)
+## Live video (not available on meeting bots)
 
-Provided via `live_video_required: { "websocket_url": "wss://..." }`. Supported on **Google Meet and Microsoft Teams only - NOT Zoom**.
-
-### Protocol
-
-| Message | Direction | Format | Description |
-|---|---|---|---|
-| `video_stream_start` | MS → you | JSON text | Once on connect. Has `codec`, `audio_codec`, `container: "fmp4"`, `width`, `height`, `framerate`, `audio_sample_rate`, `audio_bitrate`. |
-| binary frames | MS → you | bytes | fMP4 chunks. **Append in order.** |
-| `video_latency_ping` | MS → you | JSON text | Periodic. Has `seq`, `sent_at_ms`. |
-| `video_latency_pong` | **you → MS** | JSON text | Echo `seq`, `sent_at_ms`, `bot_id`, plus `server_received_at_ms`. |
-| `video_stream_end` | MS → you | JSON text | Sent before close. Has `duration_seconds`. |
-
-### Example payloads
-
-```json
-// video_stream_start
-{
-  "type": "video_stream_start",
-  "bot_id": "bot-123",
-  "codec": "h264",
-  "audio_codec": "aac",
-  "container": "fmp4",
-  "width": 1920,
-  "height": 1080,
-  "framerate": 25,
-  "audio_sample_rate": 44100,
-  "audio_bitrate": "128k"
-}
-
-// video_latency_ping (incoming)
-{ "type": "video_latency_ping", "bot_id": "bot-123", "seq": 42, "sent_at_ms": 1743500000123 }
-
-// your reply
-{ "type": "video_latency_pong", "seq": 42, "sent_at_ms": 1743500000123, "server_received_at_ms": 1743500000189, "bot_id": "bot-123" }
-
-// video_stream_end
-{ "type": "video_stream_end", "bot_id": "bot-123", "duration_seconds": 152.7 }
-```
-
-Production tips: terminate TLS in front of your app (expose `wss://`), allow large WS frames, process writes sequentially per bot_id so chunk order is preserved.
-
-Docs: https://docs.meetstream.ai/guides/websockets/bridge-server-architecture
+`live_video_required` is accepted but ignored by Google Meet, Zoom and Teams bots, and it still moves the bot to the larger video compute tier, so do not send it. Record video (`video_required: true`) and fetch it after the call. Live video frames exist only on Zoom Meeting Direct Connect (RTMS) sessions.

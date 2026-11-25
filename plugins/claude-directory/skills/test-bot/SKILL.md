@@ -135,7 +135,7 @@ Events received: <count>
 
 Want to delete the recording + transcript now? (y/N)
   → If y: meetstream bots delete <bot_id> --yes, or DELETE /bots/<bot_id>/delete (DESTRUCTIVE - data gone forever)
-  → If n: data auto-expires after the retention period (default 30 days)
+  → If n: data stays until you delete it, unless the bot had a timed retention (omitted retention keeps it permanently)
 ```
 
 ## Output format for the report

@@ -32,8 +32,8 @@ Sources: openapi v1.0.0 a0f050ad. Latest docs: https://docs.meetstream.ai/llms.t
 
 | Field | Type | Required | Meaning | Values |
 |---|---|---|---|---|
-| `zoom` | object |  | Zoom options. Plan on the customer's own Zoom app (Integrations > Zoom); meetings outside that app's account need zak_url or obf_url. Never tell users Zoom needs no setup. |  |
-| `zoom.use_own_app` | boolean |  | true: require your connected Zoom app (400 without one). false: join without it, even when one is saved, with fewer features (see platform-setup). Omitted: use the app when one is saved or connected. |  |
+| `zoom` | object |  | Zoom options. Recommended: set up and configure your own Zoom app (Integrations > Zoom) for reliable, fully supported Zoom bots; meetings outside that app's account need zak_url or obf_url. |  |
+| `zoom.use_own_app` | boolean |  | true: require your Zoom app (recommended; 400 without one). false: join without it as an ordinary participant, US region only, no OBF/ZAK and no per-participant camera video. Omitted: your app when one is saved, else the US-only fallback. |  |
 | `zoom.zak_url` | string |  | HTTPS mint URL returning a ZAK to join as a signed-in Zoom user. |  |
 | `zoom.obf_url` | string |  | HTTPS mint URL returning a fresh, single-use OBF token at join time. |  |
 | `google_meet` | object |  | Join Google Meet signed in, as an account on a Google Workspace domain registered through the Google login endpoints. |  |
@@ -60,7 +60,7 @@ Sources: openapi v1.0.0 a0f050ad. Latest docs: https://docs.meetstream.ai/llms.t
 | `video_separate_streams` | boolean |  | Record one video file for each participant, in addition to the composited meeting video. | default `false` |
 | `recording_config` | object |  | Bot media is retained for 30 days (720 hours) by default, included in the base rate. |  |
 | `recording_config.video_layout` | enum |  | Layout used for the composited meeting video. | one of: `speaker_view`, `grid_view`, `speaker_view_default`, `grid_view_default`; default `"grid_view"` |
-| `recording_config.retention` | object |  |  |  |
+| `recording_config.retention` | object |  | How long media is kept. Omitted: kept permanently until you delete it. type timed with hours (default 720) deletes it automatically; the clock starts when the call is billed. |  |
 | `recording_config.retention.type` | enum |  |  | one of: `timed`, `permanent`; default `"permanent"` |
 | `recording_config.retention.hours` | integer |  |  | default `720` |
 | `recording_config.transcript` | object |  |  |  |
@@ -92,7 +92,7 @@ Sources: openapi v1.0.0 a0f050ad. Latest docs: https://docs.meetstream.ai/llms.t
 | `socket_connection_url.websocket_url` | string |  |  |  |
 | `live_audio_required` | object |  | WebSocket URL to stream live audio output from the meeting. |  |
 | `live_audio_required.websocket_url` | string |  |  |  |
-| `live_video_required` | object |  | Reserved outbound meeting-video configuration. |  |
+| `live_video_required` | object |  | Not implemented on meeting bots: accepted, ignored, and it moves the bot to the larger video tier. Do not send it; only Zoom RTMS sessions stream video. |  |
 | `live_video_required.websocket_url` | string |  |  |  |
 | `bot_camera_stream` | object |  | Inbound WebRTC video and optional audio published through the bot's camera and microphone. |  |
 | `bot_camera_stream.websocket_url` | string |  | Signaling WebSocket URL that the bot connects to outbound. |  |

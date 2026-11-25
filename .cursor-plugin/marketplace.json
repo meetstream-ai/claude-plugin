@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "MeetStream plugins for Cursor",
-    "version": "3.3.0"
+    "version": "3.3.1"
   },
   "plugins": [
     {
