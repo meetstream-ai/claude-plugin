@@ -3,7 +3,7 @@
 
 The CLI for agent users: workflows with the API calls under them, then every command and flag. Catalog from CLI 1.1.0-dev; released CLI is 1.0.1. Commands marked **pre-release** are not in 1.0.1 yet: do not tell users they can run them until a release has them.
 
-Sources: cli v1.1.0-dev df20d967; cli_released v1.0.1 2e108d8d. Latest docs: https://docs.meetstream.ai/llms.txt (append `.md` to any page).
+Sources: cli v1.1.0-dev 5b767060; cli_released v1.0.1 2e108d8d. Latest docs: https://docs.meetstream.ai/llms.txt (append `.md` to any page).
 
 ## Contents
 

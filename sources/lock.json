@@ -24,9 +24,9 @@
   },
   "sources": {
     "cli": {
-      "fetched": "2026-11-25T05:16:57+00:00",
+      "fetched": "2026-11-25T05:31:19+00:00",
       "from": "meetstream commands --json",
-      "sha256": "df20d967664bb331977060d7eb1114bc63cde3c7cae81fec0beb57f85c926a08",
+      "sha256": "5b76706056cdd30989a5bfb62bfe8c292edc3f675ef43cf432793b67f411e0d6",
       "version": "1.1.0-dev"
     },
     "cli_released": {

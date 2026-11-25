@@ -99,10 +99,26 @@ def sync_docs(lock: dict) -> None:
     lock["pages"] = {u: page_hash(u) for u in cited_pages()}
 
 
+def scrub_paths(value, home: str, cwd: str):
+    """Replace machine-specific paths (the current folder, the home folder) in flag defaults."""
+    if isinstance(value, dict):
+        return {k: scrub_paths(v, home, cwd) for k, v in value.items()}
+    if isinstance(value, list):
+        return [scrub_paths(v, home, cwd) for v in value]
+    if isinstance(value, str):
+        if cwd and value.startswith(cwd):
+            return "<current folder>" + value[len(cwd):]
+        if home and value.startswith(home):
+            return "~" + value[len(home):]
+    return value
+
+
 def sync_cli(lock: dict, binary: str) -> None:
+    import os
     out = subprocess.run([binary, "commands", "--json", "--no-input"], capture_output=True, text=True,
                          check=True, env={"MEETSTREAM_TELEMETRY": "0", "PATH": "/usr/bin:/bin"}).stdout
-    data = json.loads(out)
+    data = scrub_paths(json.loads(out), os.path.expanduser("~"), os.getcwd())
+    out = json.dumps(data, sort_keys=True)
     (SRC / "cli-commands.json").write_text(json.dumps(data, indent=1) + "\n", encoding="utf-8")
     lock["sources"]["cli"] = keep_time(lock, "cli", {"version": data.get("version", ""), "sha256": sha(out.encode()),
                                                  "fetched": now(), "from": "meetstream commands --json"})
