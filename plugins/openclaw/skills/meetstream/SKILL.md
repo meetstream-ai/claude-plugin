@@ -213,6 +213,20 @@ reply keep helping. Do not stop at "sign in first".
 
 **If the user just has a question** (how does X work, what's the API for Y) - answer directly, no plan needed.
 
+### Generated API references (current with docs.meetstream.ai)
+
+CI builds these from the public API spec and the docs, and fails when they fall behind. Read them for any endpoint, field, event, status, error or provider; they win over older text in this skill:
+
+- `references/generated/endpoints.md`: every API operation (69), the routes the docs describe only in guides, retired routes, dashboard-only settings
+- `references/generated/create-bot-fields.md`: every `create_bot` field, grouped by feature
+- `references/generated/events.md`: webhook envelope, lifecycle, the five endings, post-call events, delivery and signing, live transcript and audio
+- `references/generated/errors.md`: HTTP status meanings, retry rules, rate limits, idempotency
+- `references/generated/providers.md`: post-call and live transcription providers
+- `references/generated/cli-map.md`: each CLI workflow with its API calls and events, and every CLI command
+- `references/generated/mcp-tools.md`: the hosted MCP tools
+
+For anything not in them, fetch the docs page with `.md` appended, or use the `meetstream-docs` MCP server (https://docs.meetstream.ai/_mcp/server), which this plugin connects.
+
 ---
 
 ## Setup

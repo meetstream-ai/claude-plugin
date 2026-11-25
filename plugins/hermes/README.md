@@ -39,7 +39,7 @@ MeetStream has three build tracks. Use them in this order:
 ## Requirements
 
 - Hermes Agent 0.23.0 or a later version.
-- A MeetStream account. Get an API key at <https://app.meetstream.ai/api-key>.
+- A MeetStream account. Get an API key at <https://app.meetstream.ai/api-keys>.
 - Posting a message in the call requires the bot to be admitted. The saved chat is available after processing.
 
 ## Install the plugin
@@ -50,9 +50,9 @@ MeetStream has three build tracks. Use them in this order:
    hermes plugins install meetstream --enable
    ```
 
-2. When Hermes asks for `MEETSTREAM_API_KEY`, paste your MeetStream API key.
-   The key starts with `ms_`.
-   Hermes keeps the key in the `.env` file of your profile.
+2. Hermes asks for `MEETSTREAM_API_KEY` in its own install prompt on your computer (not in a chat).
+   Use a key from <https://app.meetstream.ai/api-keys>; it starts with `ms_`.
+   Hermes keeps the key in the `.env` file of your profile, so it never goes into a conversation.
 3. Start a new Hermes session.
 
 The Hermes plugin catalog can pin an earlier version of this plugin than the one on `main` (the catalog entry names the version). To install the latest `main`, use the repository address:

@@ -1,0 +1,128 @@
+{
+  "_about": "Public routes that the docs describe only in guide prose, not in openapi.yaml. Hand-kept: re-check against each source page when the nightly job reports it changed.",
+  "routes": [
+    {
+      "method": "POST",
+      "path": "/api/v1/zoom/oauth/apps",
+      "summary": "Register a Zoom OAuth app (client ID, client secret, webhook secret); returns a zoa_ id. Secrets are not returned later.",
+      "source": "https://docs.meetstream.ai/guides/app-integrations/zoom-oauth-meeting-bots"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/zoom/oauth/apps",
+      "summary": "List registered Zoom OAuth apps.",
+      "source": "https://docs.meetstream.ai/guides/app-integrations/zoom-oauth-meeting-bots"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/zoom/oauth/apps/{app_id}",
+      "summary": "Get one Zoom OAuth app.",
+      "source": "https://docs.meetstream.ai/guides/app-integrations/zoom-oauth-meeting-bots"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/zoom/oauth/apps/{app_id}",
+      "summary": "Delete a Zoom OAuth app (delete its credentials first).",
+      "source": "https://docs.meetstream.ai/guides/app-integrations/zoom-oauth-meeting-bots"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/zoom/oauth/apps/{app_id}",
+      "summary": "Update a Zoom OAuth app, for example its rtms block for Meeting Direct Connect.",
+      "source": "https://docs.meetstream.ai/guides/app-integrations/zoom-meeting-direct-connect"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/zoom/oauth/authorize-url",
+      "summary": "Build the Zoom authorization URL (zoom_oauth_app_id, redirect_uri).",
+      "source": "https://docs.meetstream.ai/guides/app-integrations/zoom-oauth-meeting-bots"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/zoom/oauth/credentials",
+      "summary": "Create a Zoom credential from an authorization_code (MeetStream-managed) or an access_token_callback_url (customer-managed); returns a zoc_ id. Also served as /zoom/oauth/connections.",
+      "source": "https://docs.meetstream.ai/guides/app-integrations/zoom-oauth-meeting-bots"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/zoom/oauth/credentials",
+      "summary": "List Zoom credentials for an app (zoom_oauth_app_id).",
+      "source": "https://docs.meetstream.ai/guides/app-integrations/zoom-oauth-meeting-bots"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/zoom/oauth/credentials/{credential_id}",
+      "summary": "Revoke a Zoom credential at Zoom and delete its meeting mappings.",
+      "source": "https://docs.meetstream.ai/guides/app-integrations/zoom-oauth-meeting-bots"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/zoom/oauth/credentials/{credential_id}/sync-meetings",
+      "summary": "Map the user's PMI and upcoming scheduled meetings to this credential.",
+      "source": "https://docs.meetstream.ai/guides/app-integrations/zoom-oauth-meeting-bots"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/zoom/meetings-to-credentials",
+      "summary": "List meeting-to-credential mappings (meeting_id, credential_id, oauth_app_id, is_pmi).",
+      "source": "https://docs.meetstream.ai/guides/app-integrations/zoom-oauth-meeting-bots"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/meeting_direct_connect",
+      "summary": "Start a Zoom Meeting Direct Connect (RTMS) session with no bot (zoom_rtms block). US region; enabled per account.",
+      "source": "https://docs.meetstream.ai/guides/app-integrations/zoom-meeting-direct-connect"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/meeting_direct_connect/{id}",
+      "summary": "Get a Direct Connect session: status, status_changes, recordings.",
+      "source": "https://docs.meetstream.ai/guides/app-integrations/zoom-meeting-direct-connect"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/meeting_direct_connect/{id}/leave",
+      "summary": "End a Direct Connect session (idempotent).",
+      "source": "https://docs.meetstream.ai/guides/app-integrations/zoom-meeting-direct-connect"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/calendar/get_events",
+      "summary": "Return calendar events already synced, without calling the calendar provider.",
+      "source": "https://docs.meetstream.ai/guides/calendar-integrations/google-calendar-oauth-setup"
+    }
+  ],
+  "retired": [
+    {
+      "method": "GET",
+      "path": "/api/v1/zoom/zak-token",
+      "status": 410,
+      "note": "Retired 15 Sep 2026; send zoom.zak_url (a token URL you host) on create_bot.",
+      "source": "https://docs.meetstream.ai/guides/app-integrations/zoom-authenticated-bots"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/zoom/obf-token",
+      "status": 410,
+      "note": "Retired 15 Sep 2026; send zoom.obf_url (a token URL you host) on create_bot.",
+      "source": "https://docs.meetstream.ai/guides/app-integrations/zoom-authenticated-bots"
+    }
+  ],
+  "dashboard_only": [
+    {
+      "what": "Custom storage destinations (S3, OSS, R2)",
+      "note": "Configure in the dashboard; pass storage_id on create_bot.",
+      "source": "https://docs.meetstream.ai/guides/features/custom-storage-configurations/overview"
+    },
+    {
+      "what": "Workspace webhook endpoints and their signing secrets",
+      "note": "Configure > Webhooks; the secret is shown once.",
+      "source": "https://docs.meetstream.ai/guides/webhooks/workspace-webhooks"
+    },
+    {
+      "what": "API keys",
+      "note": "Created by the dashboard, or by meetstream login / MCP sign-in.",
+      "source": "https://docs.meetstream.ai/guides/get-started/dashboard-setup"
+    }
+  ]
+}

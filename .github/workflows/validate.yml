@@ -27,6 +27,12 @@ jobs:
           for f in .claude-plugin/*.json .cursor-plugin/*.json .mcp.json mcp.json gemini-extension.json listing/listing.json $(find plugins -name '*.json' -not -path '*/node_modules/*'); do
             python3 -m json.tool "$f" > /dev/null || { echo "bad JSON: $f"; exit 1; }
           done
+      - name: Generated API references match sources/ and data/ (docs.meetstream.ai)
+        run: python3 scripts/gen_references.py --check
+      - name: Every API operation, guide-only route and docs page has an owning skill
+        run: python3 scripts/check_coverage.py --check
+      - name: No banned text (Zoom no-setup claim, pasted keys, Bearer in REST examples, unsourced prices)
+        run: python3 scripts/lint_text.py
       - name: Generated store folders match the generator
         run: python3 scripts/build_stores.py --check
       - name: Validate the Claude Directory build

@@ -1,0 +1,19 @@
+{
+  "_about": "Text that replaces the API spec's wording in the generated files. Use only when the spec conflicts with a settled rule or is docs-UI text; every entry says why. Remove an entry when the spec is fixed.",
+  "operations": {
+    "bots_createBot": {
+      "text": "Send a bot to a Zoom, Google Meet or Microsoft Teams meeting, now or at join_at.",
+      "why": "The spec text describes the docs page UI (a dropdown), not the endpoint."
+    }
+  },
+  "fields": {
+    "zoom": {
+      "text": "Zoom options. Plan on the customer's own Zoom app (Integrations > Zoom); meetings outside that app's account need zak_url or obf_url. Never tell users Zoom needs no setup.",
+      "why": "The spec says use_own_app false joins 'without your app or credentials', which reads as no setup. Text aligned with skills/platform-setup and the Zoom copy rule. Open question P0 #7 for engineering."
+    },
+    "zoom.use_own_app": {
+      "text": "true: require your connected Zoom app (400 without one). false: join without it, even when one is saved, with fewer features (see platform-setup). Omitted: use the app when one is saved or connected.",
+      "why": "Same as zoom: states the API behaviour from skills/platform-setup without the no-setup reading."
+    }
+  }
+}

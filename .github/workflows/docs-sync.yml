@@ -1,0 +1,62 @@
+name: docs-sync
+
+# Nightly: re-read the public docs (openapi.yaml, llms.txt and every page that data/*.json cites).
+# When anything changed, regenerate the references and store builds and open a pull request,
+# so the skills never fall behind docs.meetstream.ai (Sid's rule, 24 Nov 2026).
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write        # push the docs-sync/auto branch
+  pull-requests: write   # open or update its pull request
+
+concurrency:
+  group: docs-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+      - name: Cited docs pages that changed since the last sync
+        run: python3 scripts/sync_sources.py --check-pages | tee pages.txt || true
+      - name: Refresh sources and regenerate
+        run: |
+          python3 -m pip install --quiet "pyyaml==6.0.2"
+          python3 scripts/sync_sources.py
+          python3 scripts/gen_references.py
+          python3 scripts/check_coverage.py | tee coverage.txt || true
+          python3 scripts/build_stores.py
+      - name: Open or update the pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if git diff --quiet && ! grep -q "^changed:" pages.txt; then
+            echo "docs unchanged"; exit 0
+          fi
+          git config user.name "meetstream-docs-sync"
+          git config user.email "docs-sync@users.noreply.github.com"
+          git checkout -B docs-sync/auto
+          git add -A sources skills plugins docs gemini-extension.json .cursor-plugin
+          git commit -m "Docs sync: regenerate references from docs.meetstream.ai" || true
+          git push --force origin docs-sync/auto
+          {
+            echo "The nightly docs sync found changes on docs.meetstream.ai."
+            echo
+            echo "Changed docs pages that data/*.json cites (re-check those facts by hand):"
+            echo '```'
+            grep "^changed:" pages.txt || echo "none"
+            echo '```'
+            echo "Coverage check:"
+            echo '```'
+            tail -5 coverage.txt
+            echo '```'
+            echo "Review the regenerated references, update data/*.json where a cited page changed, then merge."
+          } > body.md
+          gh pr view docs-sync/auto --json number >/dev/null 2>&1 \
+            && gh pr edit docs-sync/auto --body-file body.md \
+            || gh pr create --head docs-sync/auto --base main --title "Docs sync: references from docs.meetstream.ai" --body-file body.md

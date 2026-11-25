@@ -1,0 +1,99 @@
+{
+  "_about": "Each CLI workflow with the API calls under it and the events that follow. Hand-kept; command names are checked against sources/cli-commands.json by the generator.",
+  "source": "https://docs.meetstream.ai/build-with-ai/meetstream-cli",
+  "rows": [
+    [
+      "Sign in and check",
+      "login · auth status · doctor · balance",
+      "OAuth sign-in; GET /api/v1/bots; GET /api/v1/billing/balance (404 until enabled)",
+      "none"
+    ],
+    [
+      "Send a bot",
+      "join <url> --transcription <provider> --follow",
+      "POST /api/v1/bots/create_bot (+ Idempotency-Key); GET /api/v1/bots/{bot_id}/status",
+      "bot.joining → bot.in_waiting_room → bot.inmeeting → bot.recording"
+    ],
+    [
+      "Live transcript",
+      "join --live-transcription <provider> · listen --tunnel",
+      "create_bot with live_transcription_required.webhook_url and one *_streaming provider",
+      "unsigned POSTs with no event key; no post-call transcript"
+    ],
+    [
+      "Act in the meeting",
+      "bots say · bots show-image · bots hand",
+      "POST send_message · send_image · send_command",
+      "409 before bot.inmeeting; 30 commands per minute per bot"
+    ],
+    [
+      "Remove the bot",
+      "bots remove",
+      "GET|POST /api/v1/bots/{bot_id}/remove_bot; GET stop_status",
+      "bot.leaving → event bot.stopped (cause in bot_event)"
+    ],
+    [
+      "After the call",
+      "transcript · recordings · bots timeline · bots get",
+      "get_transcript (202 pending, 422 final) · get_audio · get_video · get_audio_streams · get_speaker_timeline · /detail",
+      "audio.processed · transcription.processed · video.processed · bot.done"
+    ],
+    [
+      "Transcribe again",
+      "transcribe <bot-id> --transcription <provider>",
+      "POST /api/v1/bots/{bot_id}/transcribe",
+      "new transcript_id; transcription.processed or .failed"
+    ],
+    [
+      "Delete media",
+      "bots delete",
+      "DELETE /api/v1/bots/{bot_id}/delete",
+      "data_deletion; status MediaExpired"
+    ],
+    [
+      "Calendar",
+      "calendar connect --own-app · calendar events · calendar schedule · calendar unschedule · calendar auto-join · calendar reschedule · calendar cancel",
+      "create_calendar · GET /calendar/events · POST|DELETE /calendar/schedule/{event_id} · auto-schedule/enable · PATCH|DELETE /calendar/scheduled_bots/{bot_id}",
+      "bot.scheduled; bot.error when a scheduled bot is rejected"
+    ],
+    [
+      "Zoom",
+      "join --zoom-obf-url | --zoom-zak-url",
+      "create_bot with zoom.obf_url / zoom.zak_url (the customer's Zoom app is always required)",
+      "bot.recording_permission_allowed / _denied"
+    ],
+    [
+      "Signed-in bots",
+      "logins teams · logins google",
+      "teams-login-domains · teams-logins · google-login-domains · google-logins",
+      "429 when every login is busy; 409 for a busy pinned login"
+    ],
+    [
+      "MIA voice agent",
+      "mia apply · setup --mode hosted · setup --mode byok · join --agent-config",
+      "GET|POST|PUT|DELETE /api/v1/mia; create_bot with agent_config_id",
+      "agent_error"
+    ],
+    [
+      "Local webhooks",
+      "listen --forward-to · trigger · mock",
+      "none (loopback)",
+      "production envelopes, no charge"
+    ],
+    [
+      "Anything else",
+      "api <path> -X <method> -d <json>",
+      "any endpoint, with the CLI sign-in",
+      "as documented"
+    ],
+    [
+      "Agent setup",
+      "ai install · mcp add · commands --json",
+      "none",
+      "writes the skills and the MCP entry"
+    ]
+  ],
+  "not_in_skills": {
+    "auth set-key": "a fallback that takes a pasted key; skills never offer it (meetstream login signs in through the browser)"
+  }
+}

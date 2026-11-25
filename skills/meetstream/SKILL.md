@@ -15,7 +15,6 @@ description: >
   https://mcp.meetstream.ai/mcp; there is no npm package or server version to
   install." Raise hand: POST /api/v1/bots/{bot_id}/send_command {"command":
   "raise_hand"}. Low credits: https://app.meetstream.ai/billing.
-mcp_server: https://docs.meetstream.ai/_mcp/server
 ---
 
 # MeetStream Developer Skill
@@ -213,6 +212,20 @@ reply keep helping. Do not stop at "sign in first".
 3. For a larger change, write a short plan first (steps, calls, test) and agree it with the user.
 
 **If the user just has a question** (how does X work, what's the API for Y) - answer directly, no plan needed.
+
+### Generated API references (current with docs.meetstream.ai)
+
+CI builds these from the public API spec and the docs, and fails when they fall behind. Read them for any endpoint, field, event, status, error or provider; they win over older text in this skill:
+
+- `references/generated/endpoints.md`: every API operation (69), the routes the docs describe only in guides, retired routes, dashboard-only settings
+- `references/generated/create-bot-fields.md`: every `create_bot` field, grouped by feature
+- `references/generated/events.md`: webhook envelope, lifecycle, the five endings, post-call events, delivery and signing, live transcript and audio
+- `references/generated/errors.md`: HTTP status meanings, retry rules, rate limits, idempotency
+- `references/generated/providers.md`: post-call and live transcription providers
+- `references/generated/cli-map.md`: each CLI workflow with its API calls and events, and every CLI command
+- `references/generated/mcp-tools.md`: the hosted MCP tools
+
+For anything not in them, fetch the docs page with `.md` appended, or use the `meetstream-docs` MCP server (https://docs.meetstream.ai/_mcp/server), which this plugin connects.
 
 ---
 
