@@ -1,0 +1,1688 @@
+{
+ "commands": [
+  {
+   "path": "agent bench",
+   "use": "bench",
+   "short": "Measure your agent's models: tokens and cost per hour of meeting, one short real turn each",
+   "flags": [
+    {
+     "name": "agent",
+     "type": "string",
+     "usage": "agent CLI: claude, codex, hermes, agy (default: your setup, or the first installed)"
+    },
+    {
+     "name": "binary",
+     "type": "string",
+     "usage": "path to the agent CLI"
+    },
+    {
+     "name": "compare",
+     "type": "bool",
+     "usage": "measure the models the CLI offers (default: only the model your setup uses)"
+    },
+    {
+     "name": "effort",
+     "type": "string",
+     "usage": "reasoning effort for every run, where the CLI supports it"
+    },
+    {
+     "name": "export",
+     "type": "string",
+     "usage": "write or merge the measurements into a model-estimates.json file (nothing is uploaded)"
+    },
+    {
+     "name": "max-models",
+     "type": "int",
+     "default": "4",
+     "usage": "with --compare: at most this many models"
+    },
+    {
+     "name": "models",
+     "type": "string",
+     "usage": "comma-separated model ids to measure"
+    },
+    {
+     "name": "parallel",
+     "type": "int",
+     "default": "4",
+     "usage": "models measured at once"
+    }
+   ]
+  },
+  {
+   "path": "agent context",
+   "use": "context [show|edit]",
+   "short": "Show what the agent reads or edit MEETING.md",
+   "flags": [
+    {
+     "name": "agent",
+     "type": "string",
+     "usage": "agent (default: saved setup)"
+    },
+    {
+     "name": "ignore-rules",
+     "type": "bool",
+     "usage": "show project rules as ignored where supported"
+    },
+    {
+     "name": "workdir",
+     "type": "string",
+     "usage": "folder (default: saved setup)"
+    }
+   ]
+  },
+  {
+   "path": "agent login",
+   "use": "login",
+   "short": "Connect this computer to MeetStream so MIA can reach your agent (no tunnel)",
+   "flags": [
+    {
+     "name": "no-browser",
+     "type": "bool",
+     "usage": "print the sign-in link instead of opening a browser"
+    }
+   ]
+  },
+  {
+   "path": "agent logout",
+   "use": "logout",
+   "short": "Disconnect this computer from MeetStream"
+  },
+  {
+   "path": "agent serve",
+   "use": "serve",
+   "short": "Run the local bridge on 127.0.0.1",
+   "flags": [
+    {
+     "name": "agent",
+     "type": "string",
+     "default": "claude",
+     "usage": "agent CLI: claude, codex, hermes, copilot, muse, openclaw, agy"
+    },
+    {
+     "name": "binary",
+     "type": "string",
+     "usage": "path to the agent CLI"
+    },
+    {
+     "name": "command",
+     "type": "string",
+     "usage": "custom command; {prompt} is replaced, otherwise stdin"
+    },
+    {
+     "name": "debug",
+     "type": "bool",
+     "usage": "log protocol message types, never their text"
+    },
+    {
+     "name": "effort",
+     "type": "string",
+     "usage": "reasoning effort where supported"
+    },
+    {
+     "name": "ignore-rules",
+     "type": "bool",
+     "usage": "skip project rules where the agent supports it"
+    },
+    {
+     "name": "max-access",
+     "type": "string",
+     "default": "readonly",
+     "usage": "highest access: readonly, confirm, full"
+    },
+    {
+     "name": "model",
+     "type": "string",
+     "usage": "agent model (MIA can override)"
+    },
+    {
+     "name": "no-meeting-md",
+     "type": "bool",
+     "usage": "leave MEETING.md out of meetings"
+    },
+    {
+     "name": "no-prime",
+     "type": "bool",
+     "usage": "skip the warm-up turn"
+    },
+    {
+     "name": "no-relay",
+     "type": "bool",
+     "usage": "self-hosted: no relay; MIA reaches the bridge through your tunnel with a pairing token"
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "default": "the user",
+     "usage": "your name as MIA hears it"
+    },
+    {
+     "name": "port",
+     "type": "int",
+     "default": "8787",
+     "usage": "loopback port"
+    },
+    {
+     "name": "relay",
+     "type": "bool",
+     "usage": "require the MeetStream relay (default when this computer is connected)"
+    },
+    {
+     "name": "timeout",
+     "type": "float64",
+     "default": "60",
+     "usage": "stop a turn after this many seconds with no output"
+    },
+    {
+     "name": "tunnel",
+     "type": "string",
+     "default": "none",
+     "usage": "none, cloudflare, ngrok, or url"
+    },
+    {
+     "name": "tunnel-url",
+     "type": "string",
+     "usage": "existing https address or ngrok domain"
+    },
+    {
+     "name": "workdir",
+     "type": "string",
+     "default": "/Users/sidhdharth/Documents/projects.nosync/meetstream-plugin-phase1",
+     "usage": "folder the agent works in"
+    }
+   ]
+  },
+  {
+   "path": "agent setup",
+   "use": "setup",
+   "short": "Set up MIA for your meetings: MeetStream hosted, your own keys, or your agent CLI on this computer",
+   "flags": [
+    {
+     "name": "access",
+     "type": "string",
+     "default": "readonly",
+     "usage": "the most access this computer allows: readonly (meeting only), confirm (ask first), full"
+    },
+    {
+     "name": "agent",
+     "type": "string",
+     "usage": "agent CLI: claude, codex, hermes, copilot, muse, openclaw, agy (default: pick, or the first installed)"
+    },
+    {
+     "name": "agent-config",
+     "type": "string",
+     "usage": "update this MIA agent instead of creating one (keeps its voice and prompts)"
+    },
+    {
+     "name": "brain",
+     "type": "string",
+     "usage": "hosted/byok: the LLM as provider:model (default: the hosted catalog's default)"
+    },
+    {
+     "name": "dry-run",
+     "type": "bool",
+     "usage": "print the MIA agent request and its price without sending it"
+    },
+    {
+     "name": "ears",
+     "type": "string",
+     "usage": "speech to text as provider:model (default: the hosted catalog's default)"
+    },
+    {
+     "name": "effort",
+     "type": "string",
+     "usage": "reasoning effort where the CLI supports it, e.g. low, medium, high (default: the CLI's own)"
+    },
+    {
+     "name": "mode",
+     "type": "string",
+     "default": "local-agent",
+     "usage": "how MIA runs: hosted (MeetStream keys), byok (your provider keys), local-agent (your agent CLI on this computer)"
+    },
+    {
+     "name": "model",
+     "type": "string",
+     "usage": "model the agent CLI uses (default: pick, or the CLI's own default)"
+    },
+    {
+     "name": "name",
+     "type": "string",
+     "usage": "name of the new MIA agent"
+    },
+    {
+     "name": "new-agent",
+     "type": "bool",
+     "usage": "create a new MIA agent instead of updating the one the last setup made"
+    },
+    {
+     "name": "no-calendar",
+     "type": "bool",
+     "usage": "don't offer to connect a calendar"
+    },
+    {
+     "name": "no-start",
+     "type": "bool",
+     "usage": "don't offer to start serving"
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "usage": "your name as it shows in meetings (default: the last setup's, else $USER)"
+    },
+    {
+     "name": "test",
+     "type": "bool",
+     "usage": "run the test turn even without a terminal (--no-input, --json)"
+    },
+    {
+     "name": "voice",
+     "type": "string",
+     "usage": "text to speech as provider:model (default: the hosted catalog's default)"
+    },
+    {
+     "name": "voice-keys",
+     "type": "string",
+     "default": "meetstream",
+     "usage": "local-agent: ears and voice on MeetStream keys (meetstream) or your own provider keys (own)"
+    },
+    {
+     "name": "workdir",
+     "type": "string",
+     "usage": "folder the agent works in (default: the last setup's, else ~/MeetStream Agent)"
+    }
+   ]
+  },
+  {
+   "path": "agent status",
+   "use": "status",
+   "short": "Show whether this computer is connected to MeetStream"
+  },
+  {
+   "path": "ai install",
+   "use": "install [claude|codex|cursor ...]",
+   "short": "Install the MeetStream skill and the hosted MCP into your coding agents",
+   "flags": [
+    {
+     "name": "all",
+     "type": "bool",
+     "usage": "every supported agent, installed or not"
+    },
+    {
+     "name": "dry-run",
+     "type": "bool",
+     "usage": "show what would change; write nothing"
+    }
+   ]
+  },
+  {
+   "path": "api",
+   "use": "api <path>",
+   "short": "Call the MeetStream API with your sign-in (for apps and scripts; no key needed)",
+   "group": "tool",
+   "flags": [
+    {
+     "name": "data",
+     "shorthand": "d",
+     "type": "string",
+     "usage": "JSON body, or - to read it from stdin"
+    },
+    {
+     "name": "envelope",
+     "type": "bool",
+     "usage": "print {\"status\", \"body\"} and exit 0 for any HTTP answer"
+    },
+    {
+     "name": "method",
+     "shorthand": "X",
+     "type": "string",
+     "default": "GET",
+     "usage": "HTTP method"
+    }
+   ]
+  },
+  {
+   "path": "auth logout",
+   "use": "logout",
+   "short": "Remove the key from .meetstream/config.json"
+  },
+  {
+   "path": "auth set-key",
+   "use": "set-key [api-key]",
+   "short": "Store an API key (from stdin, a hidden prompt, or the argument)"
+  },
+  {
+   "path": "auth status",
+   "use": "status",
+   "short": "Show which API key is in use (masked) and check it with the API",
+   "flags": [
+    {
+     "name": "offline",
+     "type": "bool",
+     "usage": "don't call the API; only show the stored key"
+    }
+   ]
+  },
+  {
+   "path": "balance",
+   "use": "balance",
+   "short": "Show prepaid balance",
+   "group": "meet"
+  },
+  {
+   "path": "bots delete",
+   "use": "delete <id>",
+   "short": "Delete a bot's stored data (asks first; --yes to skip)",
+   "flags": [
+    {
+     "name": "yes",
+     "type": "bool",
+     "usage": "skip confirmation"
+    }
+   ]
+  },
+  {
+   "path": "bots get",
+   "use": "get <id>",
+   "short": "Show a bot's details or one part of its data",
+   "flags": [
+    {
+     "name": "part",
+     "type": "string",
+     "default": "detail",
+     "usage": "detail|audio|video|streams|audio-streams|chats|screenshots|participants"
+    }
+   ]
+  },
+  {
+   "path": "bots hand",
+   "use": "hand <id> <up|down>",
+   "short": "Raise or lower the bot's hand (up|down)"
+  },
+  {
+   "path": "bots list",
+   "use": "list",
+   "short": "List your bots",
+   "flags": [
+    {
+     "name": "all",
+     "type": "bool",
+     "usage": "every bot (one request per 50)"
+    },
+    {
+     "name": "limit",
+     "type": "int",
+     "default": "10",
+     "usage": "bots per page, 1-50"
+    },
+    {
+     "name": "page",
+     "type": "int",
+     "default": "1",
+     "usage": "page number, newest first"
+    }
+   ]
+  },
+  {
+   "path": "bots remove",
+   "use": "remove <id>",
+   "short": "Make the bot leave the meeting"
+  },
+  {
+   "path": "bots say",
+   "use": "say <id> <message...>",
+   "short": "Post a chat message from the bot"
+  },
+  {
+   "path": "bots show-image",
+   "use": "show-image <id> <img-url>",
+   "short": "Show an image or GIF as the bot's video",
+   "flags": [
+    {
+     "name": "duration",
+     "shorthand": "d",
+     "type": "float64",
+     "usage": "display duration in seconds"
+    }
+   ]
+  },
+  {
+   "path": "bots status",
+   "use": "status <id>",
+   "short": "Show bot status",
+   "flags": [
+    {
+     "name": "watch",
+     "shorthand": "w",
+     "type": "bool",
+     "usage": "poll every 5 seconds"
+    }
+   ]
+  },
+  {
+   "path": "bots summary",
+   "use": "summary <id>",
+   "short": "Fetch transcript to summarize"
+  },
+  {
+   "path": "bots tail",
+   "use": "tail [id]",
+   "short": "Planned: live bot events over the relay",
+   "planned": true
+  },
+  {
+   "path": "bots timeline",
+   "use": "timeline <id>",
+   "short": "Speaker timeline (--download fetches the JSON file)",
+   "flags": [
+    {
+     "name": "download",
+     "type": "bool",
+     "usage": "fetch timeline download"
+    }
+   ]
+  },
+  {
+   "path": "calendar auto-join",
+   "use": "auto-join <on|off|enable|disable>",
+   "short": "Enable or disable auto-join for every calendar meeting",
+   "flags": [
+    {
+     "name": "name",
+     "shorthand": "n",
+     "type": "string",
+     "default": "Notetaker",
+     "usage": "default bot name"
+    },
+    {
+     "name": "video",
+     "type": "bool",
+     "usage": "record video"
+    }
+   ]
+  },
+  {
+   "path": "calendar cancel",
+   "use": "cancel <bot-id>",
+   "short": "cancel calendar data"
+  },
+  {
+   "path": "calendar connect",
+   "use": "connect",
+   "short": "Connect your calendar (one-click sign-in, or --own-app)",
+   "flags": [
+    {
+     "name": "client-id",
+     "type": "string",
+     "usage": "client-id (with --own-app)"
+    },
+    {
+     "name": "client-secret",
+     "type": "string",
+     "usage": "client-secret (with --own-app)"
+    },
+    {
+     "name": "join-rule",
+     "type": "string",
+     "default": "accepted",
+     "usage": "accepted: meetings you host or accepted; all: every meeting with a link"
+    },
+    {
+     "name": "open",
+     "type": "bool",
+     "usage": "open the browser even with --no-input"
+    },
+    {
+     "name": "own-app",
+     "type": "bool",
+     "usage": "use your own Google OAuth app (refresh-token flow)"
+    },
+    {
+     "name": "provider",
+     "type": "string",
+     "usage": "google (asked when omitted; microsoft is in preview)"
+    },
+    {
+     "name": "refresh-token",
+     "type": "string",
+     "usage": "refresh-token (with --own-app)"
+    }
+   ]
+  },
+  {
+   "path": "calendar events",
+   "use": "events",
+   "short": "events calendar data"
+  },
+  {
+   "path": "calendar list",
+   "use": "list",
+   "short": "List your bots calendar data"
+  },
+  {
+   "path": "calendar reschedule",
+   "use": "reschedule <bot-id> <iso8601>",
+   "short": "reschedule calendar data"
+  },
+  {
+   "path": "calendar schedule",
+   "use": "schedule <event-id>",
+   "short": "schedule calendar data"
+  },
+  {
+   "path": "calendar unschedule",
+   "use": "unschedule <event-id>",
+   "short": "unschedule calendar data"
+  },
+  {
+   "path": "commands",
+   "use": "commands",
+   "short": "Every command, flag and choice (use --json; skills are built from it)",
+   "group": "tool",
+   "flags": [
+    {
+     "name": "help",
+     "shorthand": "h",
+     "type": "bool",
+     "usage": "help for commands"
+    }
+   ]
+  },
+  {
+   "path": "docs",
+   "use": "docs",
+   "short": "Read the README in your terminal",
+   "group": "tool"
+  },
+  {
+   "path": "doctor",
+   "use": "doctor",
+   "short": "Check your setup: API key, config file, your agent CLI",
+   "group": "start",
+   "flags": [
+    {
+     "name": "agent",
+     "type": "string",
+     "usage": "agent CLI to check (default: your setup, or the first installed)"
+    },
+    {
+     "name": "binary",
+     "type": "string",
+     "usage": "path to the agent CLI"
+    },
+    {
+     "name": "no-warm",
+     "type": "bool",
+     "usage": "skip starting the agent's warm (ACP) session"
+    }
+   ]
+  },
+  {
+   "path": "env",
+   "use": "env",
+   "short": "Fill .env from .env.example and list the keys still empty",
+   "group": "start",
+   "flags": [
+    {
+     "name": "check",
+     "type": "bool",
+     "usage": "only report; exit 3 if a key is empty"
+    },
+    {
+     "name": "dir",
+     "type": "string",
+     "default": ".",
+     "usage": "project folder"
+    },
+    {
+     "name": "overwrite",
+     "type": "bool",
+     "usage": "replace MeetStream values that are already set"
+    },
+    {
+     "name": "with-key",
+     "type": "bool",
+     "usage": "write your MeetStream key and API URL into .env (for servers; on a laptop the app uses your CLI sign-in)"
+    }
+   ]
+  },
+  {
+   "path": "init",
+   "use": "init [use-case]",
+   "short": "Start a project from a template: notetaker, send-a-bot, live captions, webhooks",
+   "group": "start",
+   "flags": [
+    {
+     "name": "dir",
+     "type": "string",
+     "usage": "folder (default ./<use-case>)"
+    },
+    {
+     "name": "email",
+     "type": "string",
+     "usage": "send notes by: resend, sendgrid, smtp, none",
+     "enum": [
+      "resend",
+      "sendgrid",
+      "smtp",
+      "none"
+     ]
+    },
+    {
+     "name": "force",
+     "type": "bool",
+     "usage": "write into a non-empty folder (overwrites only the template's files)"
+    },
+    {
+     "name": "lang",
+     "type": "string",
+     "usage": "python or node (per use case)",
+     "enum": [
+      "python",
+      "node"
+     ]
+    },
+    {
+     "name": "list",
+     "type": "bool",
+     "usage": "list the templates"
+    },
+    {
+     "name": "live-transcription",
+     "type": "string",
+     "usage": "live provider for live-captions (default meetstream)",
+     "enum": [
+      "meetstream",
+      "deepgram",
+      "assemblyai",
+      "smallest"
+     ]
+    },
+    {
+     "name": "llm",
+     "type": "string",
+     "usage": "notes model: anthropic, openai, none",
+     "enum": [
+      "anthropic",
+      "openai",
+      "none"
+     ]
+    },
+    {
+     "name": "no-env",
+     "type": "bool",
+     "usage": "do not write .env"
+    },
+    {
+     "name": "transcription",
+     "type": "string",
+     "usage": "post-call provider (default meetstream)",
+     "enum": [
+      "meetstream",
+      "deepgram",
+      "assemblyai",
+      "sarvam",
+      "smallest",
+      "jigsawstack",
+      "meeting_captions"
+     ]
+    },
+    {
+     "name": "use-case",
+     "type": "string",
+     "usage": "notetaker, send-a-bot, live-captions, webhook-receiver",
+     "enum": [
+      "notetaker",
+      "send-a-bot",
+      "live-captions",
+      "webhook-receiver"
+     ]
+    },
+    {
+     "name": "with-key",
+     "type": "bool",
+     "usage": "put your MeetStream key in .env (for servers; default: the app uses your CLI sign-in)"
+    },
+    {
+     "name": "yes",
+     "shorthand": "y",
+     "type": "bool",
+     "usage": "take the recommended defaults; ask nothing"
+    }
+   ]
+  },
+  {
+   "path": "join",
+   "use": "join <meeting-url>",
+   "short": "Send a bot to a meeting",
+   "group": "meet",
+   "flags": [
+    {
+     "name": "agent-config",
+     "type": "string",
+     "usage": "agent config"
+    },
+    {
+     "name": "agent-param",
+     "type": "stringArray",
+     "usage": "agent parameter key=value"
+    },
+    {
+     "name": "attr",
+     "type": "stringArray",
+     "usage": "custom attribute key=value"
+    },
+    {
+     "name": "bot-message",
+     "type": "string",
+     "usage": "bot message"
+    },
+    {
+     "name": "callback",
+     "shorthand": "c",
+     "type": "string",
+     "usage": "lifecycle webhook"
+    },
+    {
+     "name": "everyone-left-timeout",
+     "type": "float64",
+     "default": "60",
+     "usage": "empty meeting timeout"
+    },
+    {
+     "name": "follow",
+     "type": "bool",
+     "usage": "stay and print each status change, then wait for the transcript"
+    },
+    {
+     "name": "google-login-domain",
+     "type": "string",
+     "usage": "google login domain"
+    },
+    {
+     "name": "idempotency-key",
+     "type": "string",
+     "usage": "safe retry key"
+    },
+    {
+     "name": "image-url",
+     "type": "string",
+     "usage": "image url"
+    },
+    {
+     "name": "join-at",
+     "type": "string",
+     "usage": "join at"
+    },
+    {
+     "name": "language",
+     "shorthand": "l",
+     "type": "string",
+     "usage": "transcription language"
+    },
+    {
+     "name": "live-audio-ws",
+     "type": "string",
+     "usage": "live audio ws"
+    },
+    {
+     "name": "live-transcript-webhook",
+     "type": "string",
+     "usage": "live transcript webhook"
+    },
+    {
+     "name": "live-transcription",
+     "type": "string",
+     "usage": "live transcript while the meeting runs: meetstream, deepgram, assemblyai, smallest",
+     "enum": [
+      "meetstream",
+      "deepgram",
+      "assemblyai",
+      "smallest"
+     ]
+    },
+    {
+     "name": "live-video-ws",
+     "type": "string",
+     "usage": "live video ws"
+    },
+    {
+     "name": "max-recording-seconds",
+     "type": "float64",
+     "default": "14400",
+     "usage": "recording timeout"
+    },
+    {
+     "name": "name",
+     "shorthand": "n",
+     "type": "string",
+     "default": "MeetStream Bot",
+     "usage": "bot display name"
+    },
+    {
+     "name": "no-strict-email",
+     "type": "bool",
+     "usage": "allow another account"
+    },
+    {
+     "name": "no-zoom-use-own-app",
+     "type": "bool",
+     "usage": "disable your Zoom app"
+    },
+    {
+     "name": "retention-hours",
+     "type": "string",
+     "usage": "retention hours"
+    },
+    {
+     "name": "separate-audio",
+     "type": "bool",
+     "usage": "separate-audio"
+    },
+    {
+     "name": "separate-video",
+     "type": "bool",
+     "usage": "separate-video"
+    },
+    {
+     "name": "sign-in-email",
+     "type": "string",
+     "usage": "sign in email"
+    },
+    {
+     "name": "socket-ws",
+     "type": "string",
+     "usage": "socket ws"
+    },
+    {
+     "name": "storage-id",
+     "type": "string",
+     "usage": "storage destination"
+    },
+    {
+     "name": "teams-login-domain",
+     "type": "string",
+     "usage": "teams login domain"
+    },
+    {
+     "name": "transcript",
+     "shorthand": "t",
+     "type": "string",
+     "usage": "same as --transcription (raw API provider name)"
+    },
+    {
+     "name": "transcription",
+     "type": "string",
+     "usage": "transcript after the call: meetstream, deepgram, assemblyai, ... (meetstream transcription providers)",
+     "enum": [
+      "meetstream",
+      "deepgram",
+      "assemblyai",
+      "sarvam",
+      "smallest",
+      "jigsawstack",
+      "meeting_captions"
+     ]
+    },
+    {
+     "name": "video",
+     "type": "bool",
+     "usage": "record video"
+    },
+    {
+     "name": "video-layout",
+     "type": "string",
+     "usage": "mixed video layout",
+     "enum": [
+      "speaker_view",
+      "grid_view"
+     ]
+    },
+    {
+     "name": "waiting-room-timeout",
+     "type": "float64",
+     "default": "300",
+     "usage": "waiting room timeout"
+    },
+    {
+     "name": "zoom-obf",
+     "type": "bool",
+     "usage": "zoom-obf"
+    },
+    {
+     "name": "zoom-obf-url",
+     "type": "string",
+     "usage": "zoom obf url"
+    },
+    {
+     "name": "zoom-use-own-app",
+     "type": "bool",
+     "usage": "use your Zoom app"
+    },
+    {
+     "name": "zoom-zak-url",
+     "type": "string",
+     "usage": "zoom zak url"
+    }
+   ]
+  },
+  {
+   "path": "listen",
+   "use": "listen",
+   "short": "Receive bot events on this computer (--tunnel for a public URL)",
+   "group": "tool",
+   "flags": [
+    {
+     "name": "forward-to",
+     "type": "string",
+     "usage": "also forward each event to this URL (your app)"
+    },
+    {
+     "name": "host",
+     "type": "string",
+     "default": "127.0.0.1",
+     "usage": "bind address (0.0.0.0 must be explicit)"
+    },
+    {
+     "name": "path",
+     "type": "string",
+     "default": "/webhook",
+     "usage": "webhook path"
+    },
+    {
+     "name": "port",
+     "shorthand": "p",
+     "type": "int",
+     "default": "3333",
+     "usage": "local port"
+    },
+    {
+     "name": "tunnel",
+     "type": "string",
+     "usage": "public URL: cloudflared, ngrok, or an https:// URL you run",
+     "enum": [
+      "cloudflared",
+      "ngrok",
+      "https://<your-url>"
+     ]
+    }
+   ]
+  },
+  {
+   "path": "login",
+   "use": "login",
+   "short": "Sign in with your browser and store a named API key",
+   "group": "start",
+   "flags": [
+    {
+     "name": "no-browser",
+     "type": "bool",
+     "usage": "print the sign-in link instead of opening a browser"
+    },
+    {
+     "name": "no-calendar",
+     "type": "bool",
+     "usage": "don't offer to connect a calendar after signing in"
+    },
+    {
+     "name": "with-key",
+     "type": "bool",
+     "usage": "read an API key from stdin instead of the browser (for CI)"
+    }
+   ]
+  },
+  {
+   "path": "logins google add",
+   "use": "add",
+   "short": "add (google)",
+   "flags": [
+    {
+     "name": "cert",
+     "type": "string",
+     "usage": "cert"
+    },
+    {
+     "name": "domain",
+     "type": "string",
+     "usage": "domain"
+    },
+    {
+     "name": "email",
+     "type": "string",
+     "usage": "email"
+    },
+    {
+     "name": "inactive",
+     "type": "bool",
+     "usage": "register disabled"
+    },
+    {
+     "name": "key",
+     "type": "string",
+     "usage": "key"
+    }
+   ]
+  },
+  {
+   "path": "logins google add-domain",
+   "use": "add-domain <domain>",
+   "short": "add domain (google)",
+   "flags": [
+    {
+     "name": "login-mode",
+     "type": "string",
+     "default": "always",
+     "usage": "always | if_required"
+    },
+    {
+     "name": "name",
+     "type": "string",
+     "usage": "friendly name"
+    }
+   ]
+  },
+  {
+   "path": "logins google disable",
+   "use": "disable <login-id>",
+   "short": "disable (google)",
+   "flags": [
+    {
+     "name": "domain",
+     "type": "string",
+     "usage": "domain"
+    }
+   ]
+  },
+  {
+   "path": "logins google domain",
+   "use": "domain <domain>",
+   "short": "domain (google)"
+  },
+  {
+   "path": "logins google domains",
+   "use": "domains",
+   "short": "domains (google)"
+  },
+  {
+   "path": "logins google enable",
+   "use": "enable <login-id>",
+   "short": "enable (google)",
+   "flags": [
+    {
+     "name": "domain",
+     "type": "string",
+     "usage": "domain"
+    }
+   ]
+  },
+  {
+   "path": "logins google list",
+   "use": "list",
+   "short": "list (google)",
+   "flags": [
+    {
+     "name": "domain",
+     "type": "string",
+     "usage": "domain"
+    }
+   ]
+  },
+  {
+   "path": "logins google remove",
+   "use": "remove <login-id>",
+   "short": "remove (google)",
+   "flags": [
+    {
+     "name": "domain",
+     "type": "string",
+     "usage": "domain"
+    },
+    {
+     "name": "yes",
+     "type": "bool",
+     "usage": "skip confirmation"
+    }
+   ]
+  },
+  {
+   "path": "logins google remove-domain",
+   "use": "remove-domain <domain>",
+   "short": "remove domain (google)",
+   "flags": [
+    {
+     "name": "yes",
+     "type": "bool",
+     "usage": "skip confirmation"
+    }
+   ]
+  },
+  {
+   "path": "logins google set-cert",
+   "use": "set-cert <login-id>",
+   "short": "set cert (google)",
+   "flags": [
+    {
+     "name": "cert",
+     "type": "string",
+     "usage": "cert"
+    },
+    {
+     "name": "domain",
+     "type": "string",
+     "usage": "domain"
+    },
+    {
+     "name": "key",
+     "type": "string",
+     "usage": "key"
+    }
+   ]
+  },
+  {
+   "path": "logins google update-domain",
+   "use": "update-domain <domain>",
+   "short": "update domain (google)",
+   "flags": [
+    {
+     "name": "login-mode",
+     "type": "string",
+     "usage": "always | if_required"
+    },
+    {
+     "name": "name",
+     "type": "string",
+     "usage": "friendly name"
+    }
+   ]
+  },
+  {
+   "path": "logins teams add",
+   "use": "add",
+   "short": "add (teams)",
+   "flags": [
+    {
+     "name": "domain",
+     "type": "string",
+     "usage": "domain"
+    },
+    {
+     "name": "email",
+     "type": "string",
+     "usage": "email"
+    },
+    {
+     "name": "inactive",
+     "type": "bool",
+     "usage": "register disabled"
+    },
+    {
+     "name": "password-stdin",
+     "type": "bool",
+     "usage": "read password from stdin (never argv)"
+    }
+   ]
+  },
+  {
+   "path": "logins teams add-domain",
+   "use": "add-domain <domain>",
+   "short": "add domain (teams)",
+   "flags": [
+    {
+     "name": "name",
+     "type": "string",
+     "usage": "friendly name"
+    }
+   ]
+  },
+  {
+   "path": "logins teams disable",
+   "use": "disable <login-id>",
+   "short": "disable (teams)"
+  },
+  {
+   "path": "logins teams domain",
+   "use": "domain <domain>",
+   "short": "domain (teams)"
+  },
+  {
+   "path": "logins teams domains",
+   "use": "domains",
+   "short": "domains (teams)"
+  },
+  {
+   "path": "logins teams enable",
+   "use": "enable <login-id>",
+   "short": "enable (teams)"
+  },
+  {
+   "path": "logins teams get",
+   "use": "get <login-id>",
+   "short": "get (teams)"
+  },
+  {
+   "path": "logins teams list",
+   "use": "list",
+   "short": "list (teams)",
+   "flags": [
+    {
+     "name": "domain",
+     "type": "string",
+     "usage": "domain"
+    }
+   ]
+  },
+  {
+   "path": "logins teams remove",
+   "use": "remove <login-id>",
+   "short": "remove (teams)",
+   "flags": [
+    {
+     "name": "yes",
+     "type": "bool",
+     "usage": "skip confirmation"
+    }
+   ]
+  },
+  {
+   "path": "logins teams remove-domain",
+   "use": "remove-domain <domain>",
+   "short": "remove domain (teams)",
+   "flags": [
+    {
+     "name": "yes",
+     "type": "bool",
+     "usage": "skip confirmation"
+    }
+   ]
+  },
+  {
+   "path": "logins teams set-password",
+   "use": "set-password <login-id>",
+   "short": "set password (teams)",
+   "flags": [
+    {
+     "name": "password-stdin",
+     "type": "bool",
+     "usage": "read password from stdin (never argv)"
+    }
+   ]
+  },
+  {
+   "path": "logins teams update-domain",
+   "use": "update-domain <domain>",
+   "short": "update domain (teams)",
+   "flags": [
+    {
+     "name": "name",
+     "type": "string",
+     "usage": "friendly name"
+    }
+   ]
+  },
+  {
+   "path": "mcp add",
+   "use": "add <claude|codex|cursor|vscode>",
+   "short": "Print or install the hosted MCP entry",
+   "flags": [
+    {
+     "name": "write",
+     "type": "bool",
+     "usage": "merge into the agent config, backing up an existing file to .bak"
+    }
+   ]
+  },
+  {
+   "path": "mia apply",
+   "use": "apply",
+   "short": "Create or update an agent config from a file",
+   "flags": [
+    {
+     "name": "dry-run",
+     "type": "bool",
+     "usage": "print request body without sending"
+    },
+    {
+     "name": "file",
+     "shorthand": "f",
+     "type": "string",
+     "usage": "agent config file (mia.yaml or JSON)"
+    }
+   ]
+  },
+  {
+   "path": "mia check",
+   "use": "check <id>",
+   "short": "Check local agent connection"
+  },
+  {
+   "path": "mia create",
+   "use": "create",
+   "short": "create",
+   "flags": [
+    {
+     "name": "file",
+     "shorthand": "f",
+     "type": "string",
+     "usage": "JSON config file (send whole blocks)"
+    }
+   ]
+  },
+  {
+   "path": "mia delete",
+   "use": "delete <id>",
+   "short": "Delete a bot's stored data (asks first; --yes to skip)",
+   "flags": [
+    {
+     "name": "yes",
+     "type": "bool",
+     "usage": "skip confirmation"
+    }
+   ]
+  },
+  {
+   "path": "mia get",
+   "use": "get <id>",
+   "short": "Show a bot's details or one part of its data"
+  },
+  {
+   "path": "mia list",
+   "use": "list",
+   "short": "List your bots"
+  },
+  {
+   "path": "mia update",
+   "use": "update <id>",
+   "short": "update",
+   "flags": [
+    {
+     "name": "file",
+     "shorthand": "f",
+     "type": "string",
+     "usage": "JSON config file (send whole blocks)"
+    }
+   ]
+  },
+  {
+   "path": "mock",
+   "use": "mock",
+   "short": "Run a local fake MeetStream API: no bots join, nothing is charged",
+   "group": "tool",
+   "flags": [
+    {
+     "name": "host",
+     "type": "string",
+     "default": "127.0.0.1",
+     "usage": "bind address (loopback only)"
+    },
+    {
+     "name": "list",
+     "type": "bool",
+     "usage": "list the scenarios"
+    },
+    {
+     "name": "port",
+     "shorthand": "p",
+     "type": "int",
+     "default": "4010",
+     "usage": "local port"
+    },
+    {
+     "name": "scenario",
+     "type": "string",
+     "default": "notetaker-happy",
+     "usage": "scripted run for each new bot (see --list)"
+    },
+    {
+     "name": "step",
+     "type": "float64",
+     "default": "2",
+     "usage": "seconds between lifecycle events"
+    }
+   ]
+  },
+  {
+   "path": "recordings",
+   "use": "recordings <id>",
+   "short": "Audio and video recording links",
+   "group": "meet"
+  },
+  {
+   "path": "setup",
+   "use": "setup",
+   "short": "Set up MIA for your meetings: MeetStream hosted, your own keys, or your agent CLI on this computer",
+   "group": "agent",
+   "flags": [
+    {
+     "name": "access",
+     "type": "string",
+     "default": "readonly",
+     "usage": "the most access this computer allows: readonly (meeting only), confirm (ask first), full",
+     "enum": [
+      "readonly",
+      "confirm",
+      "full"
+     ]
+    },
+    {
+     "name": "agent",
+     "type": "string",
+     "usage": "agent CLI: claude, codex, hermes, copilot, muse, openclaw, agy (default: pick, or the first installed)"
+    },
+    {
+     "name": "agent-config",
+     "type": "string",
+     "usage": "update this MIA agent instead of creating one (keeps its voice and prompts)"
+    },
+    {
+     "name": "brain",
+     "type": "string",
+     "usage": "hosted/byok: the LLM as provider:model (default: the hosted catalog's default)"
+    },
+    {
+     "name": "dry-run",
+     "type": "bool",
+     "usage": "print the MIA agent request and its price without sending it"
+    },
+    {
+     "name": "ears",
+     "type": "string",
+     "usage": "speech to text as provider:model (default: the hosted catalog's default)"
+    },
+    {
+     "name": "effort",
+     "type": "string",
+     "usage": "reasoning effort where the CLI supports it, e.g. low, medium, high (default: the CLI's own)"
+    },
+    {
+     "name": "mode",
+     "type": "string",
+     "default": "local-agent",
+     "usage": "how MIA runs: hosted (MeetStream keys), byok (your provider keys), local-agent (your agent CLI on this computer)",
+     "enum": [
+      "hosted",
+      "byok",
+      "local-agent"
+     ]
+    },
+    {
+     "name": "model",
+     "type": "string",
+     "usage": "model the agent CLI uses (default: pick, or the CLI's own default)"
+    },
+    {
+     "name": "name",
+     "type": "string",
+     "usage": "name of the new MIA agent"
+    },
+    {
+     "name": "new-agent",
+     "type": "bool",
+     "usage": "create a new MIA agent instead of updating the one the last setup made"
+    },
+    {
+     "name": "no-calendar",
+     "type": "bool",
+     "usage": "don't offer to connect a calendar"
+    },
+    {
+     "name": "no-start",
+     "type": "bool",
+     "usage": "don't offer to start serving"
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "usage": "your name as it shows in meetings (default: the last setup's, else $USER)"
+    },
+    {
+     "name": "test",
+     "type": "bool",
+     "usage": "run the test turn even without a terminal (--no-input, --json)"
+    },
+    {
+     "name": "voice",
+     "type": "string",
+     "usage": "text to speech as provider:model (default: the hosted catalog's default)"
+    },
+    {
+     "name": "voice-keys",
+     "type": "string",
+     "default": "meetstream",
+     "usage": "local-agent: ears and voice on MeetStream keys (meetstream) or your own provider keys (own)"
+    },
+    {
+     "name": "workdir",
+     "type": "string",
+     "usage": "folder the agent works in (default: the last setup's, else ~/MeetStream Agent)"
+    }
+   ]
+  },
+  {
+   "path": "skill",
+   "use": "skill",
+   "short": "Print SKILL.md, the guide for coding agents",
+   "group": "tool"
+  },
+  {
+   "path": "transcribe",
+   "use": "transcribe <bot-id>",
+   "short": "Start a new transcription of a finished meeting",
+   "group": "meet",
+   "flags": [
+    {
+     "name": "callback",
+     "shorthand": "c",
+     "type": "string",
+     "usage": "callback URL"
+    },
+    {
+     "name": "language",
+     "shorthand": "l",
+     "type": "string",
+     "usage": "language"
+    },
+    {
+     "name": "provider",
+     "shorthand": "p",
+     "type": "string",
+     "default": "deepgram",
+     "usage": "same as --transcription"
+    },
+    {
+     "name": "transcription",
+     "type": "string",
+     "usage": "provider for this run (meetstream transcription providers); default: deepgram",
+     "enum": [
+      "meetstream",
+      "deepgram",
+      "assemblyai",
+      "sarvam",
+      "smallest",
+      "jigsawstack",
+      "meeting_captions"
+     ]
+    }
+   ]
+  },
+  {
+   "path": "transcript",
+   "use": "transcript <bot-id>",
+   "short": "Print a meeting transcript",
+   "group": "meet",
+   "flags": [
+    {
+     "name": "raw",
+     "type": "bool",
+     "usage": "raw provider output"
+    },
+    {
+     "name": "timeout",
+     "type": "float64",
+     "default": "600",
+     "usage": "maximum wait seconds"
+    },
+    {
+     "name": "wait",
+     "shorthand": "w",
+     "type": "bool",
+     "usage": "poll until ready"
+    }
+   ]
+  },
+  {
+   "path": "transcription providers",
+   "use": "providers",
+   "short": "List providers for --transcription (after the call) and --live-transcription"
+  },
+  {
+   "path": "transcriptions",
+   "use": "transcriptions <bot-id>",
+   "short": "List a bot's transcription runs",
+   "group": "meet"
+  },
+  {
+   "path": "trigger",
+   "use": "trigger <event>",
+   "short": "Send a sample webhook event to your app (no meeting, no charge)",
+   "group": "tool",
+   "flags": [
+    {
+     "name": "bot",
+     "type": "string",
+     "default": "test_bot_7f3c",
+     "usage": "bot_id to put in the sample"
+    },
+    {
+     "name": "forward-to",
+     "type": "string",
+     "usage": "URL of your webhook handler (default: the running listen session)"
+    },
+    {
+     "name": "list",
+     "type": "bool",
+     "usage": "list the sample events"
+    }
+   ]
+  },
+  {
+   "path": "version",
+   "use": "version",
+   "short": "Print the version",
+   "group": "tool"
+  }
+ ],
+ "error_shape": "{\"error\": {\"message\", \"hint\", \"exit_code\"}}",
+ "exit_codes": {
+  "0": "ok",
+  "1": "runtime or API error",
+  "130": "interrupted",
+  "2": "usage error or not signed in",
+  "3": "not ready or not available",
+  "4": "transcript failed"
+ },
+ "global_flags": [
+  "--json",
+  "--no-input",
+  "--no-color"
+ ],
+ "version": "1.1.0-dev"
+}

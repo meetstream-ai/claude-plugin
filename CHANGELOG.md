@@ -2,6 +2,21 @@
 
 All notable changes to the MeetStream Claude Code plugin.
 
+## [3.3.0] - 2026-11-25
+
+Skills stay current with docs.meetstream.ai (MS-2435, Phase 1 of the agent-surfaces plan).
+
+### Added
+- `skills/meetstream/references/generated/`: API references that CI builds from the public API spec and the docs: every API operation (69) plus the 15 routes the docs describe only in guides, every `create_bot` field, the webhook and real-time event model, HTTP errors and limits, transcription providers, a CLI map (each workflow with its API calls and events; pre-release commands marked) and the hosted MCP tools. Every store build carries them.
+- `sources/` (pinned public sources with a lock file), `data/` (hand-kept facts with a docs source for each), `coverage.json` and `docs/coverage.md` (the owning skill for every operation, route and docs page).
+- CI: the references must match their sources, every operation and docs page must have an owning skill, and a text lint blocks the Zoom no-setup claim, pasted keys, `Bearer` in REST examples and prices without a public source.
+- Nightly `docs-sync` workflow: re-reads docs.meetstream.ai and opens a pull request when anything changed.
+- The read-only docs MCP server (`meetstream-docs`, https://docs.meetstream.ai/_mcp/server) in `.mcp.json` and every store build, in place of the `mcp_server:` frontmatter key.
+
+### Changed
+- `getting-started`: sign-in is browser-only (MCP or `meetstream login`); no step asks the user to paste a key. App code on a laptop uses the CLI sign-in (CLI 1.1); servers keep the key in their secret store.
+- Hermes README: the key goes into Hermes's own install prompt, never a chat; API keys link fixed to `/api-keys`.
+
 ## [3.2.1] - 2026-11-24
 
 ### Fixed

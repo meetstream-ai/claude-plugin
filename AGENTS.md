@@ -132,6 +132,8 @@ OpenCode `opencode.json`:
 
 The plugin is declarative: JSON manifests plus Markdown skills. Edit `skills/`, `agents/`, `.claude-plugin/plugin.json` and `listing/` only. The store builds in `plugins/` (except `plugins/hermes`), `gemini-extension.json` and `.cursor-plugin/marketplace.json` are generated: run `python3 scripts/build_stores.py` after a change and commit the result. CI runs `python3 scripts/build_stores.py --check` and fails when they differ. `plugins/hermes` is the native Hermes Python plugin; run its tests as in `.github/workflows/validate.yml`.
 
+The API references in `skills/meetstream/references/generated/` are generated too. Never edit them. They come from `sources/` (the public API spec, `llms.txt`, the CLI command catalog and the MCP tool list, refreshed by `python3 scripts/sync_sources.py`) and from `data/*.json` (hand-kept facts, each with its docs source). After changing either, run `python3 scripts/gen_references.py`, `python3 scripts/check_coverage.py` and `python3 scripts/build_stores.py`. CI also runs `python3 scripts/lint_text.py`. It fails on text that says Zoom needs no setup, asks for a pasted key, uses `Bearer` in a REST example, or quotes a price that `data/prices.json` does not list. A nightly `docs-sync` workflow opens a pull request when docs.meetstream.ai changes. <!-- lint-allow: zoom-setup -->
+
 ```
 .claude-plugin/plugin.json       plugin manifest (name, version, metadata)
 .claude-plugin/marketplace.json  marketplace entry

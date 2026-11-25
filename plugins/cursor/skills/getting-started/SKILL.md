@@ -172,43 +172,26 @@ reply keep helping. Do not stop at "sign in first".
 **Always** invoke this skill first if any of these are true:
 
 1. The user explicitly says they're new to MeetStream / don't have an account
-2. `MEETSTREAM_API_KEY` environment variable is missing
+2. The MeetStream MCP tools are not connected and `meetstream auth status` is not signed in
 3. A different MeetStream skill (notetaker, sales-coach, calendar-automation, verify-account, test-bot) was invoked and the API key check failed
-4. The user pastes an obviously-wrong API key (e.g. `YOUR_API_KEY`, `ms_xxxxx`, empty string)
+4. A key check answers 401 or 403
 
 **Skip** if:
-- `MEETSTREAM_API_KEY` is set AND a quick ping to `GET /bots` returns 200
+- A MeetStream MCP tool (for example `list_bots`) already answers, or `meetstream auth status` shows a valid key
 - The user explicitly says "I already have my key, just build X"
 
-## Step 1: Check if API key is already configured
+## Step 1: Check the connection
 
-With the CLI (a key from `meetstream login` or `MEETSTREAM_API_KEY`):
+Nothing is pasted at any step. Check in this order:
 
-```bash
-npx -y @meetstream/cli auth status --json --no-input   # "signed_in": true and "valid": true = skip onboarding
-```
+1. **MeetStream MCP connected?** Call the `list_bots` tool. A list (even an empty one) means the user is signed in: go to Step 6.
+2. **CLI signed in?**
 
-Without the CLI:
+   ```bash
+   npx -y @meetstream/cli auth status --json --no-input   # "signed_in": true and "valid": true = skip onboarding
+   ```
 
-```bash
-# Quick check
-if [ -z "$MEETSTREAM_API_KEY" ]; then
-  echo "No API key set - starting onboarding"
-else
-  # Validate it
-  STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-    -H "Authorization: Token $MEETSTREAM_API_KEY" \
-    "https://api.meetstream.ai/api/v1/bots")
-  if [ "$STATUS" = "200" ]; then
-    echo "✅ API key already valid - skipping onboarding"
-    exit 0
-  else
-    echo "❌ API key set but invalid (HTTP $STATUS) - re-running onboarding"
-  fi
-fi
-```
-
-If invalid or missing, continue to Step 2.
+If neither works, continue to Step 2.
 
 ## Step 2: Sign up for a MeetStream account (if needed)
 
@@ -229,78 +212,32 @@ Reply "done" when you're signed in and I'll walk you through the API key.
 
 Wait for the user to confirm before continuing.
 
-## Step 3: Create an API key
+## Step 3: Sign in (the key is created for you)
 
-Tell the user:
+The user signs in once in the browser; MeetStream creates the key. Never ask for a key in the chat.
 
-```
-Now create an API key. Fastest, with nothing to paste: run
-`npx -y @meetstream/cli login` in your terminal. It opens the browser and stores a key.
-For app code that needs the key in .env:
+- **MCP (chat apps and this agent):** Claude Code `/mcp` → `meetstream` → **Authenticate**; Codex `codex mcp login meetstream`; Cursor Settings → MCP → **Connect**. The browser opens app.meetstream.ai; the user clicks **Allow**.
+- **CLI (terminal, scripts, local apps):** run
 
-👉 Open https://app.meetstream.ai/api-keys
+  ```bash
+  npx -y @meetstream/cli login --json   # opens the browser; the CLI stores a named key (mode 0600); --no-browser prints the link
+  ```
 
-  1. Click "Create API Key" (or similar - top right of the page)
-  2. Name it something memorable (e.g. "claude-code-dev")
-  3. Copy the key - it starts with "ms_..."
-  4. ⚠ Save it now - you usually can't view it again after closing the modal
+## Step 4: Keys for app code
 
-Paste the key here when ready (I'll redact it from logs).
-```
+The user's own app code is the only thing that needs the key, and the agent never reads, prints or writes it.
 
-When the user pastes the key, do NOT echo it back. Acknowledge with just `"Got it - key starts with ms_xxxx... (length: N chars)"`.
+- **On the user's laptop:** apps made with `meetstream init` call MeetStream through `meetstream api`, with the CLI sign-in, so no key goes into project files (CLI 1.1, coming with the next CLI release). Until then, or for other apps, the user creates a key at https://app.meetstream.ai/api-keys and adds it to the app's `.env` file (listed in `.gitignore`) themselves.
+- **On a server or in CI:** the key goes in the server's secret store (AWS Secrets Manager, Doppler, Vault, the CI secret settings). With CLI 1.1, `meetstream env --with-key` writes the key and its API URL into a server `.env`.
 
-## Step 4: Set the API key in their shell
+> **Never commit a key to git.** If a key leaks, rotate it at https://app.meetstream.ai/api-keys.
 
-Detect the user's shell + suggest the right persistence approach:
+## Step 5: Validate the sign-in
 
-```bash
-echo $SHELL  # /bin/zsh, /bin/bash, etc.
-```
+Call `list_bots` through the MeetStream MCP, or run `meetstream auth status --json --no-input` (`"valid": true`). For app code on a server, one request from the app checks its key: `GET https://api.meetstream.ai/api/v1/bots` with the header `Authorization: Token <key>`. Expected: `200`.
 
-### For zsh / bash users (most common)
-
-```bash
-# For this session only:
-export MEETSTREAM_API_KEY=ms_xxxxx
-
-# To persist across sessions (zsh):
-echo 'export MEETSTREAM_API_KEY=ms_xxxxx' >> ~/.zshrc
-source ~/.zshrc
-
-# Or bash:
-echo 'export MEETSTREAM_API_KEY=ms_xxxxx' >> ~/.bashrc
-source ~/.bashrc
-```
-
-### For project-scoped (.env) - recommended for application code
-
-If the user is building an app (notetaker / coach / etc.), they'll also want it in `.env`:
-
-```bash
-# In the project root
-echo "MEETSTREAM_API_KEY=ms_xxxxx" >> .env
-
-# Make sure .env is gitignored
-grep -q "^\.env$" .gitignore || echo ".env" >> .gitignore
-```
-
-> **Never commit `.env` to git.** If the key leaks, rotate it immediately at https://app.meetstream.ai/api-keys.
-
-## Step 5: Validate the key
-
-`meetstream auth status --json --no-input` (`"valid": true`), or:
-
-```bash
-curl -s -o /dev/null -w "%{http_code}\n" \
-  -H "Authorization: Token $MEETSTREAM_API_KEY" \
-  "https://api.meetstream.ai/api/v1/bots"
-```
-
-Expected: `200`.
-
-If `401` or `403`: key is wrong, re-do Step 3.
-If anything else: network issue, ask user to retry.
+If `401` or `403`: sign in again (Step 3) or create a new key for the server.
+If anything else: network issue, ask the user to retry.
 
 ## Step 6: Verify provider configuration (optional but recommended)
 
@@ -352,7 +289,7 @@ Direct them to https://app.meetstream.ai/api-keys (deep link). Account may need 
 ### "The key I created returns 401"
 - Make sure they copied the WHOLE key (it's long - usually starts with `ms_` then 30+ characters)
 - Make sure there are no leading/trailing whitespace characters
-- Make sure they exported it: `echo $MEETSTREAM_API_KEY` should print the key (not empty)
+- Make sure the app loads the key from its secret store or `.env` file
 
 ### "I have no credits / billing question"
 Direct to https://app.meetstream.ai/billing (balance and top-up). New accounts start with $5 of credit; prices at https://meetstream.ai/pricing. The billing page shows the balance (a read-only `GET /api/v1/billing/balance` may answer "not available" on some accounts; then use the billing page).
@@ -368,7 +305,7 @@ Direct to https://app.meetstream.ai/billing (balance and top-up). New accounts s
 
 ## Constraints
 
-- **Never log the API key value.** Show only the first 4 + length when acknowledging.
+- **Never ask for, log or print the API key.** Sign-in happens in the browser (MCP or `meetstream login`).
 - **Never commit the key to git.** Always insist on `.env` + `.gitignore`.
 - **Never POST the key anywhere except api.meetstream.ai.**
 - **Never proceed with any build skill until Step 5 succeeds.** Better to ask once more than to scaffold a broken app.

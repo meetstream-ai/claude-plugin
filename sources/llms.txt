@@ -1,0 +1,174 @@
+# MeetStream Docs
+
+> Meeting bot API documentation for Zoom, Google Meet and Microsoft Teams: create bots, stream real-time audio, transcribe, and run in-meeting voice agents.
+
+Instructions for AI Agents:
+
+- For clean Markdown of any page, append `.md` to the page URL
+- For section-specific indexes, append `/llms.txt` to any section URL
+- For AI client integration (Claude Code, Cursor, etc.), connect to the MCP server at https://docs.meetstream.ai/_mcp/server
+
+## Docs
+
+- [MeetStream](https://docs.meetstream.ai/welcome.md): MeetStream is a meeting bot API: send bots into Zoom, Google Meet, and Microsoft Teams to record, transcribe, and interact in real time through a single integration.
+- [How MeetStream Bots Work](https://docs.meetstream.ai/guides/introduction/how-bots-work.md): The mental model behind every MeetStream API call: how a bot joins a meeting, what it records, and where the audio, video and transcripts come from.
+- [Build tracks](https://docs.meetstream.ai/guides/introduction/integration-paths.md): Choose a MeetStream build track: a recording bot with post-call or real-time transcription, a bridge server that runs your own speech-to-text, LLM and voice (free local models included), or the Agents API (MIA) with MeetStream's default keys or your own keys.
+- [Meeting Platforms Supported](https://docs.meetstream.ai/navigation.md): Platform capability matrix for MeetStream meeting bots: join methods, link formats, waiting-room limits, per-participant audio and video, chat, captions, live transcription and auto-leave on Zoom, Google Meet, Microsoft Teams and WhatsApp calls (Beta).
+- [Dashboard Setup](https://docs.meetstream.ai/guides/get-started/dashboard-setup.md): Set up MeetStream: sign up, create an API key, and tour the dashboard's Bots, Configure and Billing & Usage sections, including per-platform setup for Zoom, Google Meet and Microsoft Teams.
+- [Create Your First Meeting Bot](https://docs.meetstream.ai/guides/get-started/create-your-first-bot.md): Send one API request to put a recording bot in a Zoom, Google Meet, or Microsoft Teams meeting, then check its status, download the recording, and remove it.
+- [API Playground](https://docs.meetstream.ai/guides/get-started/api-playground.md): Build and launch a real meeting bot from the dashboard with no code, step by step, then copy the exact API request it generates into your own integration.
+- [Workspaces](https://docs.meetstream.ai/guides/get-started/workspaces.md): Use workspaces as environments in MeetStream: workspace-scoped API keys, separate bots and usage per workspace, and team access from the dashboard.
+- [Zoom Meeting Bots](https://docs.meetstream.ai/guides/platforms/zoom.md): How MeetStream bots join Zoom: Marketplace app credentials, supported links, waiting room, host recording permission, every status and error message, auto-leave, media and transcription support.
+- [Google Meet Bots](https://docs.meetstream.ai/guides/platforms/google-meet.md): The complete guide to Google Meet bots: supported links, guest and signed-in join, lobby and admission rules, every join error and exit reason, auto-leave, media, captions and troubleshooting.
+- [Microsoft Teams Bots](https://docs.meetstream.ai/guides/platforms/microsoft-teams.md): The complete guide to Microsoft Teams meeting bots on MeetStream: accepted links, guest vs signed-in bots, the Teams lobby, statuses and error reasons, auto-leave, per-participant audio and video, chat, captions and live transcription.
+- [Deduplication & Idempotency Keys](https://docs.meetstream.ai/guides/features/deduplication-idempotency-keys.md): Prevent duplicate meeting bots with deduplication keys and safely retry create_bot calls with idempotency keys.
+- [MIA Screen Sharing and Custom Agents](https://docs.meetstream.ai/guides/features/mia-screen-sharing-and-custom-agents.md)
+- [Automatic Leave Configuration](https://docs.meetstream.ai/guides/features/automatic-leave-configuration.md): Configure when a MeetStream meeting bot leaves automatically: waiting room, no one joined, everyone left, voice inactivity, maximum length, recording permission and bot detection, with ranges, defaults and per-platform behavior.
+- [Mid Meeting Recording Controls](https://docs.meetstream.ai/guides/features/pause-resume-recording.md): Pause and resume a meeting bot's recording mid-call on Zoom, Google Meet and Microsoft Teams, and what happens to the recording, streams and transcripts.
+- [Custom Object Storage](https://docs.meetstream.ai/guides/features/custom-storage-configurations/overview.md): Configure and manage Amazon S3, Alibaba Cloud OSS, or Cloudflare R2 destinations in the MeetStream dashboard.
+- [Amazon S3 Custom Object Storage](https://docs.meetstream.ai/guides/features/custom-storage-configurations/amazon-s3.md): Send meeting bot recordings, transcripts and screenshots straight to your own Amazon S3 bucket, keeping the same MeetStream bot and fetch APIs.
+- [Alibaba Cloud OSS Custom Object Storage](https://docs.meetstream.ai/guides/features/custom-storage-configurations/alibaba-cloud-oss.md): Send meeting bot recordings, transcripts and screenshots straight to your own Alibaba Cloud OSS bucket, keeping the same MeetStream bot and fetch APIs.
+- [Cloudflare R2 Custom Object Storage](https://docs.meetstream.ai/guides/features/custom-storage-configurations/cloudflare-r2.md): Configure a Cloudflare R2 bucket in the MeetStream dashboard for meeting recordings, transcripts, and metadata.
+- [Scheduling Bots](https://docs.meetstream.ai/guides/features/scheduling-bots.md): Schedule meeting bots up to 90 days ahead on Zoom, Google Meet and Microsoft Teams: future joins with join_at, calendar-driven scheduling, and full auto-join for every meeting on a calendar.
+- [Raise and Lower a Bot’s Hand](https://docs.meetstream.ai/guides/features/raise-lower-hand.md)
+- [In-Meeting Chat & Visuals](https://docs.meetstream.ai/guides/features/chat-and-visuals.md): Read the in-meeting chat your bot captured, post messages back into the live call, and display an image as the bot's own video feed on Zoom, Google Meet and Microsoft Teams.
+- [Participants & Speaker Timeline](https://docs.meetstream.ai/guides/features/participants-and-speaker-timeline.md): Who was in the meeting and who spoke when on Zoom, Google Meet and Microsoft Teams: fetch the participant list and the speaker timeline for every turn in the call.
+- [Calendar Emails on Participants](https://docs.meetstream.ai/guides/features/calendar-emails-on-participants.md): How calendar_email is added to observed participants after a meeting, where to find it, and how invitee names are matched.
+- [Custom Attributes](https://docs.meetstream.ai/guides/features/custom-attributes.md): Tag meeting bots with your own key-value metadata, get it echoed back in every webhook, and filter the List Bots endpoint by it for usage attribution.
+- [Usage & Retention](https://docs.meetstream.ai/guides/features/usage-and-retention.md): How MeetStream usage accrues, where to watch it in the dashboard, and how long recordings and transcripts are kept before they are deleted.
+- [Zoom Marketplace App Setup](https://docs.meetstream.ai/guides/app-integrations/zoom-marketplace-app-setup.md): Create the Zoom General app with Meeting SDK that your MeetStream bots run as, choose the right scopes, and save the Client ID and Client Secret in the MeetStream dashboard.
+- [Zoom Meeting Direct Connect](https://docs.meetstream.ai/guides/app-integrations/zoom-meeting-direct-connect.md)
+- [Zoom OAuth Meeting Bots](https://docs.meetstream.ai/guides/app-integrations/zoom-oauth-meeting-bots.md): Connect Zoom apps and users, map meetings, and send bots to mapped PMI or scheduled meetings and unmapped Instant meetings.
+- [Zoom App Production Submission](https://docs.meetstream.ai/guides/app-integrations/zoom-app-production-submission.md): Prepare your Zoom Meeting SDK app and customer-hosted ZAK/OBF OAuth flow for production.
+- [Zoom Authenticated Bots (ZAK and OBF)](https://docs.meetstream.ai/guides/app-integrations/zoom-authenticated-bots.md): Send a Zoom meeting bot as a signed-in user with a ZAK token, or on behalf of a user already in the meeting with an OBF token, using a token URL you host. Exact request contract, examples and troubleshooting.
+- [Microsoft Teams Signed-In Bots](https://docs.meetstream.ai/guides/app-integrations/teams-signed-in-bots.md): Set up Microsoft Teams signed-in bots: prepare a Microsoft 365 bot tenant and accounts, register them in the MeetStream dashboard or API, create signed-in bots, and fix every sign-in error.
+- [Google Signed-In Bots](https://docs.meetstream.ai/guides/app-integrations/google-signed-in-bots.md): Set up Google signed-in bots for Google Meet: MeetStream as the SAML identity provider for a dedicated Google Workspace, Google Admin legacy SSO profile, dashboard setup, request fields, login selection, errors and troubleshooting.
+- [Google Meet Lobby & Admission Troubleshooting](https://docs.meetstream.ai/guides/app-integrations/gmeet-lobby-admission.md): Troubleshoot Google Meet lobby and admission: what each bot status means, why hosts don't see the request, meeting access types, Waiting room, timeouts and signed-in bots.
+- [Google Calendar Integration](https://docs.meetstream.ai/guides/calendar-integrations/google-calendar-oauth-setup.md): Create a Google OAuth app, connect Google Calendar in the MeetStream dashboard or API, and learn exactly how calendar auto-join schedules, dedupes, moves and cancels bots.
+- [Outlook Calendar Integration](https://docs.meetstream.ai/guides/calendar-integrations/outlook-calendar-setup.md): Register a Microsoft Entra app, connect Outlook Calendar in the MeetStream dashboard or API, manage several accounts, and learn exactly how calendar auto-join schedules, dedupes, moves and cancels bots.
+- [Retrieve Recordings](https://docs.meetstream.ai/guides/transcription-recordings/retrieve-recordings.md): Download meeting audio and video after the bot leaves: mixed recordings, per-participant tracks, and how long the presigned URLs stay valid.
+- [Unified Speaker Timeline](https://docs.meetstream.ai/guides/transcription-recordings/unified-speaker-timeline.md)
+- [Create Bot with Post Call Transcription](https://docs.meetstream.ai/guides/transcription-recordings/post-call-transcription.md): Get a speaker-labeled transcript after a meeting ends on Zoom, Google Meet or Microsoft Teams: provider options, create_bot config, and fetching results.
+- [Create Bot with Live Transcription](https://docs.meetstream.ai/guides/transcription-recordings/live-transcription.md): Stream live, speaker-attributed meeting transcripts to your webhook in real time on Zoom, Google Meet and Microsoft Teams using streaming transcription providers.
+- [Create Bot with Per Participant Video](https://docs.meetstream.ai/guides/transcription-recordings/per-participant-video.md): Capture a separate video file for each participant's webcam and screen share on Zoom, Google Meet and Microsoft Teams, with per-platform limits.
+- [Create Bot with Per Participant Audio](https://docs.meetstream.ai/guides/transcription-recordings/per-participant-audio.md): Capture a separate audio file per speaker on Zoom, Google Meet and Microsoft Teams, and how isolation differs by platform.
+- [Transcription Providers](https://docs.meetstream.ai/guides/transcription-recordings/providers/transcription-providers.md): Compare MeetStream transcription providers, including Deepgram, AssemblyAI, Sarvam, Interfaze (formerly JigsawStack), Smallest AI, native captions and the MeetStream engine.
+- [Deepgram](https://docs.meetstream.ai/guides/transcription-recordings/providers/deepgram.md): Post-call meeting transcription with Deepgram Nova-3: how to select it on a bot, its keyword and search options, and the transcript you get back.
+- [AssemblyAI](https://docs.meetstream.ai/guides/transcription-recordings/providers/assemblyai.md): Post-call meeting transcription with AssemblyAI Universal-2: how to select it on a bot, the options it accepts, and the transcript you get back.
+- [Sarvam](https://docs.meetstream.ai/guides/transcription-recordings/providers/sarvam.md): Use Sarvam saaras:v3 to transcribe or translate meeting bot recordings, with diarization and Indic-language strength, full config reference with defaults.
+- [MeetStream Engine](https://docs.meetstream.ai/guides/transcription-recordings/providers/meetstream.md): The in-house MeetStream transcription engine: automatic language detection, speaker labels, and how it compares with the third-party providers.
+- [Interfaze](https://docs.meetstream.ai/guides/transcription-recordings/providers/jigsawstack.md): Post-call meeting transcription with Interfaze (formerly JigsawStack): how to select it on a bot, the options it accepts, and the transcript you get back.
+- [Smallest AI](https://docs.meetstream.ai/guides/transcription-recordings/providers/smallest.md): Set up Smallest AI for meeting bots, configure Pulse or Pulse Pro for post-call transcripts, and stream live transcripts with Pulse or Pulse 2.0.
+- [Meeting Captions](https://docs.meetstream.ai/guides/transcription-recordings/providers/meeting-captions.md): Use Google Meet or Microsoft Teams native captions as the meeting transcript, with no transcription provider key.
+- [Deepgram Streaming](https://docs.meetstream.ai/guides/transcription-recordings/providers/deepgram-streaming.md): Live meeting transcripts over webhook with Deepgram: raw, word_level or sentence modes, and how partial results arrive while the call is running.
+- [AssemblyAI Streaming](https://docs.meetstream.ai/guides/transcription-recordings/providers/assemblyai-streaming.md): Stream live meeting transcripts with AssemblyAI universal-streaming-english: raw, word_level or sentence modes, end-of-turn tuning, and the full config reference.
+- [Diarization Explained](https://docs.meetstream.ai/guides/transcription-recordings/diarization.md): How speaker attribution works across Zoom, Google Meet and Microsoft Teams, what each platform can isolate, and how providers label each speaker.
+- [Languages & Translation](https://docs.meetstream.ai/guides/transcription-recordings/languages-and-translation.md): Transcribe multilingual meetings and translate them as you go: per-provider language settings, automatic detection and translation modes.
+- [Webhooks and Events](https://docs.meetstream.ai/guides/webhooks/webhooks-and-events.md): The complete MeetStream webhook event catalog: payload envelope (event and bot_event), lifecycle and post-call events, how bot endings are reported with bot.stopped, status codes, signing, and delivery rules.
+- [Set Up Local Server for Webhook](https://docs.meetstream.ai/guides/webhooks/local-webhook-server.md): Receive MeetStream webhooks on localhost during development using ngrok or Cloudflare tunnels.
+- [Workspace Webhook Endpoints](https://docs.meetstream.ai/guides/webhooks/workspace-webhooks.md): Create signed workspace webhook endpoints in the MeetStream dashboard, choose which events each endpoint receives, and resend any delivery from the Logs tab.
+- [Verifying Webhook Signatures](https://docs.meetstream.ai/guides/webhooks/webhook-signature-verification.md): Verify that webhook deliveries really came from MeetStream by checking the X-MeetStream-Signature header against your endpoint's signing secret.
+- [What is MIA?](https://docs.meetstream.ai/guides/mia/what-is-mia.md): MIA is the voice agent layer in MeetStream: agents that join Zoom, Google Meet and Microsoft Teams calls, hear the room, and reply by voice, chat or tool call.
+- [Create an Agent](https://docs.meetstream.ai/guides/mia/create-an-agent.md): Create a MIA voice agent in the dashboard and send it into a live meeting: choose the model, voice and transcriber, then set how it listens and replies.
+- [MIA API Guide](https://docs.meetstream.ai/guides/mia/mia-api-guide.md): Create, retrieve, update and delete MIA voice agent configurations over the API, with the full payload reference for models, voices and transcribers.
+- [Voice agent pricing and keys](https://docs.meetstream.ai/guides/mia/pricing-and-keys.md): MeetStream agent pricing: a bridge server on your own stack costs the bot price only. A hosted voice agent (Agents API, MIA) with MeetStream's default keys or your own keys adds $0.25 per hour for the agent infrastructure.
+- [MIA Custom Configurations](https://docs.meetstream.ai/guides/mia/mia-custom-configurations.md): Give a MIA voice agent tools that call any HTTPS endpoint you host, with no MCP server: register the function, receive the call, and use the response.
+- [Real-time Audio Streaming](https://docs.meetstream.ai/guides/websockets/real-time-audio-streaming.md): Receive real-time meeting audio over WebSocket: enable live_audio_required, decode the binary PCM frames for Google Meet, Zoom and Microsoft Teams, and handle reconnects.
+- [Bot Camera Streaming](https://docs.meetstream.ai/guides/websockets/bot-camera-streaming.md): Publish live WebRTC video and audio through a Google Meet, Microsoft Teams, or Zoom bot camera and microphone.
+- [Meeting Control and Command Patterns](https://docs.meetstream.ai/guides/websockets/meeting-control-patterns.md): Control a live meeting bot over WebSocket: speak into the call, post chat, show an image, and interrupt, using socket_connection_url commands.
+- [Bridge Server Architecture](https://docs.meetstream.ai/guides/websockets/bridge-server-architecture.md): Build a bridge server that connects MeetStream's live audio and control WebSockets to your voice AI pipeline for two-way meeting audio.
+- [Bot Status and Error Code Reference](https://docs.meetstream.ai/guides/reference/bot-status-and-error-codes.md): Reference for MeetStream bot statuses, webhook events, ErrorReason codes and exact messages on Zoom, Google Meet and Microsoft Teams, with causes, fixes and create_bot HTTP errors.
+- [Debugging Bots](https://docs.meetstream.ai/guides/help/debugging-bots.md): Debug MeetStream meeting bots: read the dashboard bot detail page, triage NotAllowed, Denied, Failed and Error outcomes, handle 202 still-processing responses, and watch webhooks live.
+- [FAQ](https://docs.meetstream.ai/guides/help/faq.md): Frequently asked questions about the MeetStream meeting bot API: supported meeting links, joining behaviour, recordings, transcripts and usage.
+- [Get Support](https://docs.meetstream.ai/guides/help/support.md): The fastest paths to an answer on MeetStream: the docs MCP server, the dashboard, and support@meetstream.ai for anything the docs do not cover.
+- [Changelog](https://docs.meetstream.ai/guides/help/changelog.md): Dated MeetStream release notes, newest first: API and webhook features, Zoom, Google Meet and Microsoft Teams updates, storage, calendar, transcription, dashboard, SDK, CLI and MCP releases, with upgrade notes where an integration needs a change.
+- [API Reference Introduction](https://docs.meetstream.ai/api-reference/introduction.md): Overview of the MeetStream API, base URL, authentication, and the full map of endpoint groups (bots, transcription, calendar, Google signed-in bots, MIA).
+- [Authentication](https://docs.meetstream.ai/api-reference/authentication.md): How to authenticate with the MeetStream API, the Authorization Token header, where to get your API key, and a ready-to-run example.
+- [Errors](https://docs.meetstream.ai/errors.md): Complete MeetStream API error reference: every HTTP status code from 400 to 507, what causes it, the real response body, and how to handle each one.
+- [Create Bot Payload Reference](https://docs.meetstream.ai/api-reference/create-bot-payload-reference.md): Request headers, rate limits, fields, nested configuration, and platform behavior for creating a MeetStream bot.
+- [Claude Integration](https://docs.meetstream.ai/build-with-ai/claude-integration.md): Connect Claude to the MeetStream docs and API: documentation-search MCP, Claude Code plugin, and agent setup.
+- [Agent Quickstarts](https://docs.meetstream.ai/build-with-ai/agent-quickstarts.md): Paste the MeetStream Agent Guide into your coding agent, then run a task prompt: post-call notetaker, real-time transcript dashboard, Google Calendar auto-join, MIA voice agent, migration from another meeting bot API, or MCP bot debugging. Each prompt ships with acceptance criteria.
+- [MeetStream MCP Server](https://docs.meetstream.ai/build-with-ai/meetstream-mcp-server.md): Connect Claude Code, Claude Desktop, Cursor, VS Code, Windsurf, Codex, Gemini CLI or any MCP client to the MeetStream meeting bot API. Setup for every client, authentication, what the agent can do, every tool with its parameters, example workflows and troubleshooting.
+- [Agent Skills](https://docs.meetstream.ai/build-with-ai/agent-skills.md): MeetStream agent skills for Claude Code and other agent clients. Install the plugin marketplace or fetch any SKILL.md directly.
+- [MeetStream CLI](https://docs.meetstream.ai/build-with-ai/meetstream-cli.md): Install the meetstream CLI with npm, pipx, uvx, Homebrew or a binary. Sign in with your browser, send bots to meetings, pull transcripts and recordings, set up MIA agents, and script it all with --json.
+- [Official SDKs](https://docs.meetstream.ai/build-with-ai/sdks.md): Install @meetstream/sdk or meetstream-sdk to create meeting bots, fetch transcripts, run MIA voice agents, and verify webhooks with a typed client that handles the API's polling and idempotency semantics for you.
+- [Docs for Agents & LLMs](https://docs.meetstream.ai/build-with-ai/docs-for-agents.md): Everything here is machine-readable: append .md to any page, use llms.txt for an index, or point your agent at the MeetStream docs MCP server.
+- [Tutorials and Sample Apps](https://docs.meetstream.ai/tutorials/sample-apps.md): Runnable MeetStream sample apps and starter templates: meeting bots, transcription, recordings, live streaming, MIA voice agents, calendar automation, webhooks, and CRM, Slack and Notion integrations.
+- [Migrate from Recall.ai](https://docs.meetstream.ai/migration/migrate-from-recall.md): Move an existing Recall.ai integration to MeetStream. The migration kit rewrites endpoints, fields and webhook handlers, flags what needs review, and a sourced capability comparison shows what changes.
+
+## API Docs
+
+- [Create Bot](https://docs.meetstream.ai/api-reference/api-endpoints/bot-endpoints/create-bot.md): API Endpoints > Bot Endpoints
+- [Reschedule Bot](https://docs.meetstream.ai/api-reference/api-endpoints/bot-endpoints/reschedule-bot.md): API Endpoints > Bot Endpoints
+- [Delete Scheduled Bot](https://docs.meetstream.ai/api-reference/api-endpoints/bot-endpoints/delete-scheduled-bot.md): API Endpoints > Bot Endpoints
+- [Get Bot Status](https://docs.meetstream.ai/api-reference/api-endpoints/bot-endpoints/get-bot-status.md): API Endpoints > Bot Endpoints
+- [Get Bot](https://docs.meetstream.ai/api-reference/api-endpoints/bot-endpoints/get-bot.md): API Endpoints > Bot Endpoints
+- [Get Bot Details](https://docs.meetstream.ai/api-reference/api-endpoints/bot-endpoints/get-bot-details.md): API Endpoints > Bot Endpoints
+- [Get Bot Audio](https://docs.meetstream.ai/api-reference/api-endpoints/bot-endpoints/get-bot-audio.md): API Endpoints > Bot Endpoints
+- [Get Bot Video](https://docs.meetstream.ai/api-reference/api-endpoints/bot-endpoints/get-bot-video.md): API Endpoints > Bot Endpoints
+- [Get Recording Streams](https://docs.meetstream.ai/api-reference/api-endpoints/bot-endpoints/get-recording-streams.md): API Endpoints > Bot Endpoints
+- [Get Audio Streams](https://docs.meetstream.ai/api-reference/api-endpoints/bot-endpoints/get-audio-streams.md): API Endpoints > Bot Endpoints
+- [Remove Bot](https://docs.meetstream.ai/api-reference/api-endpoints/bot-endpoints/remove-bot.md): API Endpoints > Bot Endpoints
+- [Remove Bot (POST)](https://docs.meetstream.ai/api-reference/api-endpoints/bot-endpoints/remove-bot-post.md): API Endpoints > Bot Endpoints
+- [Get Stop Status](https://docs.meetstream.ai/api-reference/api-endpoints/bot-endpoints/get-stop-status.md): API Endpoints > Bot Endpoints
+- [Pause Bot Recording](https://docs.meetstream.ai/api-reference/api-endpoints/bot-endpoints/pause-bot-recording.md): API Endpoints > Bot Endpoints
+- [Resume Bot Recording](https://docs.meetstream.ai/api-reference/api-endpoints/bot-endpoints/resume-bot-recording.md): API Endpoints > Bot Endpoints
+- [Get Speaker Timeline](https://docs.meetstream.ai/api-reference/api-endpoints/bot-endpoints/get-speaker-timeline.md): API Endpoints > Bot Endpoints
+- [Get Bot Chats](https://docs.meetstream.ai/api-reference/api-endpoints/bot-endpoints/get-bot-chats.md): API Endpoints > Bot Endpoints
+- [Get Bot Screenshots](https://docs.meetstream.ai/api-reference/api-endpoints/bot-endpoints/get-bot-screenshots.md): API Endpoints > Bot Endpoints
+- [Get Screenshot](https://docs.meetstream.ai/api-reference/api-endpoints/bot-endpoints/get-bot-screenshot.md): API Endpoints > Bot Endpoints
+- [Fetch Participants](https://docs.meetstream.ai/api-reference/api-endpoints/bot-endpoints/fetch-participants.md): API Endpoints > Bot Endpoints
+- [Delete Data](https://docs.meetstream.ai/api-reference/api-endpoints/bot-endpoints/delete-bot-data.md): API Endpoints > Bot Endpoints
+- [List Bots](https://docs.meetstream.ai/api-reference/api-endpoints/bot-endpoints/list-bots.md): API Endpoints > Bot Endpoints
+- [Send Message](https://docs.meetstream.ai/api-reference/api-endpoints/bot-endpoints/send-message.md): API Endpoints > Bot Endpoints
+- [Send Image](https://docs.meetstream.ai/api-reference/api-endpoints/bot-endpoints/send-image.md): API Endpoints > Bot Endpoints
+- [Send Command](https://docs.meetstream.ai/api-reference/api-endpoints/bot-endpoints/send-command.md): API Endpoints > Bot Endpoints
+- [Get Transcription](https://docs.meetstream.ai/api-reference/api-endpoints/transcription/get-transcription.md): API Endpoints > Transcription
+- [Transcribe](https://docs.meetstream.ai/api-reference/api-endpoints/transcription/transcribe-bot-audio.md): API Endpoints > Transcription
+- [Transcriptions](https://docs.meetstream.ai/api-reference/api-endpoints/transcription/get-bot-transcriptions.md): API Endpoints > Transcription
+- [Create Calendar](https://docs.meetstream.ai/api-reference/api-endpoints/calendar/create-calendar.md): API Endpoints > Calendar
+- [Disconnect Calendar](https://docs.meetstream.ai/api-reference/api-endpoints/calendar/disconnect-calendar.md): API Endpoints > Calendar
+- [Get Calendars](https://docs.meetstream.ai/api-reference/api-endpoints/calendar/get-calendars.md): API Endpoints > Calendar
+- [List Calendar Connections](https://docs.meetstream.ai/api-reference/api-endpoints/calendar/list-calendar-connections.md): API Endpoints > Calendar
+- [Get Calendar Connection](https://docs.meetstream.ai/api-reference/api-endpoints/calendar/get-calendar-connection.md): API Endpoints > Calendar
+- [Delete Calendar Connection](https://docs.meetstream.ai/api-reference/api-endpoints/calendar/delete-calendar-connection.md): API Endpoints > Calendar
+- [Schedule Event](https://docs.meetstream.ai/api-reference/api-endpoints/calendar/schedule-event.md): API Endpoints > Calendar
+- [Remove Schedule Event](https://docs.meetstream.ai/api-reference/api-endpoints/calendar/remove-schedule-event.md): API Endpoints > Calendar
+- [Fetch/Sync Events](https://docs.meetstream.ai/api-reference/api-endpoints/calendar/fetch-sync-events.md): API Endpoints > Calendar
+- [Setup Cron](https://docs.meetstream.ai/api-reference/api-endpoints/calendar/setup-cron.md): API Endpoints > Calendar
+- [Disable Cron](https://docs.meetstream.ai/api-reference/api-endpoints/calendar/disable-cron.md): API Endpoints > Calendar
+- [Get Auto-Schedule Settings](https://docs.meetstream.ai/api-reference/api-endpoints/calendar/get-auto-schedule-settings.md): API Endpoints > Calendar
+- [List Scheduled Bots](https://docs.meetstream.ai/api-reference/api-endpoints/calendar/list-scheduled-bots.md): API Endpoints > Calendar
+- [Create Outlook Calendar](https://docs.meetstream.ai/api-reference/api-endpoints/calendar/create-outlook-calendar.md): API Endpoints > Calendar
+- [Create Google Domain](https://docs.meetstream.ai/api-reference/api-endpoints/google-signed-in-bots/create-google-domain.md): API Endpoints > Google Signed in Bots
+- [List Google Domains](https://docs.meetstream.ai/api-reference/api-endpoints/google-signed-in-bots/list-google-domains.md): API Endpoints > Google Signed in Bots
+- [Get Google Domain](https://docs.meetstream.ai/api-reference/api-endpoints/google-signed-in-bots/get-google-domain.md): API Endpoints > Google Signed in Bots
+- [Update Google Domain](https://docs.meetstream.ai/api-reference/api-endpoints/google-signed-in-bots/update-google-domain.md): API Endpoints > Google Signed in Bots
+- [Delete Google Domain](https://docs.meetstream.ai/api-reference/api-endpoints/google-signed-in-bots/delete-google-domain.md): API Endpoints > Google Signed in Bots
+- [Create Google Login](https://docs.meetstream.ai/api-reference/api-endpoints/google-signed-in-bots/create-google-login.md): API Endpoints > Google Signed in Bots
+- [List Google Logins](https://docs.meetstream.ai/api-reference/api-endpoints/google-signed-in-bots/list-google-logins.md): API Endpoints > Google Signed in Bots
+- [Get Google Login](https://docs.meetstream.ai/api-reference/api-endpoints/google-signed-in-bots/get-google-login.md): API Endpoints > Google Signed in Bots
+- [Update Google Login](https://docs.meetstream.ai/api-reference/api-endpoints/google-signed-in-bots/update-google-login.md): API Endpoints > Google Signed in Bots
+- [Delete Google Login](https://docs.meetstream.ai/api-reference/api-endpoints/google-signed-in-bots/delete-google-login.md): API Endpoints > Google Signed in Bots
+- [Create Teams Domain](https://docs.meetstream.ai/api-reference/api-endpoints/teams-signed-in-bots/create-teams-domain.md): API Endpoints > Teams Signed in Bots
+- [List Teams Domains](https://docs.meetstream.ai/api-reference/api-endpoints/teams-signed-in-bots/list-teams-domains.md): API Endpoints > Teams Signed in Bots
+- [Get Teams Domain](https://docs.meetstream.ai/api-reference/api-endpoints/teams-signed-in-bots/get-teams-domain.md): API Endpoints > Teams Signed in Bots
+- [Update Teams Domain](https://docs.meetstream.ai/api-reference/api-endpoints/teams-signed-in-bots/update-teams-domain.md): API Endpoints > Teams Signed in Bots
+- [Delete Teams Domain](https://docs.meetstream.ai/api-reference/api-endpoints/teams-signed-in-bots/delete-teams-domain.md): API Endpoints > Teams Signed in Bots
+- [Create Teams Login](https://docs.meetstream.ai/api-reference/api-endpoints/teams-signed-in-bots/create-teams-login.md): API Endpoints > Teams Signed in Bots
+- [List Teams Logins](https://docs.meetstream.ai/api-reference/api-endpoints/teams-signed-in-bots/list-teams-logins.md): API Endpoints > Teams Signed in Bots
+- [Get Teams Login](https://docs.meetstream.ai/api-reference/api-endpoints/teams-signed-in-bots/get-teams-login.md): API Endpoints > Teams Signed in Bots
+- [Update Teams Login](https://docs.meetstream.ai/api-reference/api-endpoints/teams-signed-in-bots/update-teams-login.md): API Endpoints > Teams Signed in Bots
+- [Delete Teams Login](https://docs.meetstream.ai/api-reference/api-endpoints/teams-signed-in-bots/delete-teams-login.md): API Endpoints > Teams Signed in Bots
+- [Create Agent Config](https://docs.meetstream.ai/api-reference/api-endpoints/mia/create-agent-config.md): API Endpoints > MIA
+- [Update Agent Config](https://docs.meetstream.ai/api-reference/api-endpoints/mia/update-agent-config.md): API Endpoints > MIA
+- [Get Agent Configs](https://docs.meetstream.ai/api-reference/api-endpoints/mia/get-agent-configs.md): API Endpoints > MIA
+- [Delete Agent Config](https://docs.meetstream.ai/api-reference/api-endpoints/mia/delete-agent-config.md): API Endpoints > MIA
+- [Update Live Agent](https://docs.meetstream.ai/api-reference/api-endpoints/mia/update-live-agent.md): API Endpoints > MIA
+- [Get Balance](https://docs.meetstream.ai/api-reference/api-endpoints/billing/get-balance.md): API Endpoints > Billing
+- [Get Transcript by Bot ID](https://docs.meetstream.ai/api-reference/api-endpoints/transcription/get-transcript-by-bot-id.md): API Endpoints > Transcription
+
+## OpenAPI Specification
+
+- [OpenAPI JSON](https://docs.meetstream.ai/openapi.json): raw OpenAPI 3.1 specification for this API, JSON format
+- [OpenAPI YAML](https://docs.meetstream.ai/openapi.yaml): raw OpenAPI 3.1 specification for this API, YAML format

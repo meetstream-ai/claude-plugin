@@ -193,36 +193,26 @@ Reply "done" when you're signed in and I'll walk you through the API key.
 
 Wait for the user to confirm before continuing.
 
-## Step 3: Create an API key
+## Step 3: Sign in (the key is created for you)
 
-Tell the user:
+The user signs in once in the browser; MeetStream creates the key. Never ask for a key in the chat.
 
-```
-Now create an API key. Fastest, with nothing to paste: run
-`meetstream login` in your terminal. It opens the browser and stores a key.
-For app code that needs the key in .env:
+- **MCP (chat apps and this agent):** Claude Code `/mcp` → `meetstream` → **Authenticate**; Codex `codex mcp login meetstream`; Cursor Settings → MCP → **Connect**. The browser opens app.meetstream.ai; the user clicks **Allow**.
+- **CLI (terminal, scripts, local apps):** run
 
-👉 Open https://app.meetstream.ai/api-keys
+  ```bash
+  meetstream login --json   # opens the browser; the CLI stores a named key (mode 0600); --no-browser prints the link
+  ```
 
-  1. Click "Create API Key" (or similar - top right of the page)
-  2. Name it something memorable (e.g. "claude-code-dev")
-  3. Copy the key - it starts with "ms_..."
-  4. ⚠ Save it now - you usually can't view it again after closing the modal
+## Step 4: Keys for app code
 
-Paste the key here when ready (I'll redact it from logs).
-```
+Only the user's own app code needs a key, and you never read, print or write it. The user creates it at https://app.meetstream.ai/api-keys and keeps it in the app's secret store or in a `.env` file that is in `.gitignore`, never in the chat and never in git. The code examples in these skills show it as `YOUR_API_KEY`.
 
-When the user pastes the key, do NOT echo it back. Acknowledge with just `"Got it - key starts with ms_xxxx... (length: N chars)"`.
+## Step 5: Validate the sign-in
 
-## Step 4: Store the API key for app code
+Call `list_bots` through the MeetStream MCP. For app code, one request from the app checks its key: `GET https://api.meetstream.ai/api/v1/bots` with the header `Authorization: Token YOUR_API_KEY`. Expected: `200`.
 
-Only the user's own app code needs the key. The user keeps it in the app's secret store or in a `.env` file that is in `.gitignore`, never in the chat and never in git. The code examples in these skills show it as `YOUR_API_KEY`.
-
-## Step 5: Validate the key
-
-Call `list_bots` through the MeetStream MCP. For app code, one request from the app checks the key: `GET https://api.meetstream.ai/api/v1/bots` with the header `Authorization: Token YOUR_API_KEY`. Expected: `200`.
-
-If `401` or `403`: key is wrong, re-do Step 3.
+If `401` or `403`: sign in again (Step 3) or create a new key for the app.
 If anything else: network issue, ask user to retry.
 
 ## Step 6: Verify provider configuration (optional but recommended)
@@ -291,7 +281,7 @@ Direct to https://app.meetstream.ai/billing (balance and top-up). New accounts s
 
 ## Constraints
 
-- **Never log the API key value.** Show only the first 4 + length when acknowledging.
+- **Never ask for, log or print the API key.** Sign-in happens in the browser (MCP or `meetstream login`).
 - **Never commit the key to git.** Always insist on `.env` + `.gitignore`.
 - **Never POST the key anywhere except api.meetstream.ai.**
 - **Never proceed with any build skill until Step 5 succeeds.** Better to ask once more than to scaffold a broken app.

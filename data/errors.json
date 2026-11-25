@@ -1,0 +1,97 @@
+{
+  "_about": "HTTP status meanings, retry rules, limits and error shapes, hand-kept from the docs. Re-check when a source page changes.",
+  "http": [
+    [
+      "200 / 201",
+      "Success"
+    ],
+    [
+      "202",
+      "Accepted and still working (transcript pending; remove_bot in progress)"
+    ],
+    [
+      "400",
+      "Bad request: fix the input, never retry as is"
+    ],
+    [
+      "401",
+      "Missing or wrong key (REST header: Authorization: Token <key>)"
+    ],
+    [
+      "403",
+      "Not allowed for this key or account (for example low credits)"
+    ],
+    [
+      "404",
+      "Not found, or a feature not enabled for the account (for example billing balance)"
+    ],
+    [
+      "409",
+      "Conflict: deduplication_key used with a different meeting link, a command before bot.inmeeting, a busy pinned login"
+    ],
+    [
+      "410",
+      "Retired route (MeetStream-hosted Zoom ZAK/OBF token routes)"
+    ],
+    [
+      "422",
+      "Final failure: a failed transcript (do not poll), RTMS outside the US region"
+    ],
+    [
+      "429",
+      "Rate limited: wait for Retry-After"
+    ],
+    [
+      "500 / 503",
+      "Server side: retry with backoff"
+    ],
+    [
+      "507",
+      "create_bot idempotent replay with the same Idempotency-Key: success, no new bot"
+    ]
+  ],
+  "retry": [
+    "Retry only 429, 500 and 503, and obey Retry-After.",
+    "Never retry a 400.",
+    "A 422 transcript failure is final: re-run with POST /api/v1/bots/{bot_id}/transcribe and another provider."
+  ],
+  "limits": [
+    [
+      "create_bot (prepaid accounts)",
+      "5 per minute and 50 per hour; bots scheduled at least 10 minutes ahead and idempotent replays do not count"
+    ],
+    [
+      "In-meeting commands",
+      "30 per minute per bot; screenshots 5 per minute"
+    ],
+    [
+      "GET /bots",
+      "At most 50 per page; cursor nextCursor / hasNextPage"
+    ],
+    [
+      "Calendar events",
+      "1 to 100 per page; cursor next / has_more"
+    ],
+    [
+      "Presigned media links",
+      "Valid for 1 hour"
+    ],
+    [
+      "join_at",
+      "Up to 90 days ahead"
+    ]
+  ],
+  "idempotency": [
+    "Send Idempotency-Key on create_bot: a replay returns 507 (success, same bot).",
+    "deduplication_key in the body: a replay returns 200; the same key with a different meeting link returns 409."
+  ],
+  "error_bodies": [
+    "Most errors: {\"message\": ...}.",
+    "In-meeting commands, low credits, dedup conflicts and signed-in logins: {\"error\", \"code\", \"bot_status\", \"limit\", \"retry_after\"}. Read both message and error."
+  ],
+  "source": "https://docs.meetstream.ai/errors",
+  "also": [
+    "https://docs.meetstream.ai/guides/features/deduplication-idempotency-keys",
+    "https://docs.meetstream.ai/guides/reference/bot-status-and-error-codes"
+  ]
+}

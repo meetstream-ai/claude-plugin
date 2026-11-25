@@ -2,6 +2,9 @@
   "mcpServers": {
     "meetstream": {
       "url": "https://mcp.meetstream.ai/mcp"
+    },
+    "meetstream-docs": {
+      "url": "https://docs.meetstream.ai/_mcp/server"
     }
   }
 }

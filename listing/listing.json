@@ -57,6 +57,10 @@
     "name": "meetstream",
     "url": "https://mcp.meetstream.ai/mcp"
   },
+  "docs_mcp": {
+    "name": "meetstream-docs",
+    "url": "https://docs.meetstream.ai/_mcp/server"
+  },
   "cursor": {
     "author": {
       "name": "MeetStream.ai",

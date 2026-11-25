@@ -3,6 +3,10 @@
     "meetstream": {
       "type": "http",
       "url": "https://mcp.meetstream.ai/mcp"
+    },
+    "meetstream-docs": {
+      "type": "http",
+      "url": "https://docs.meetstream.ai/_mcp/server"
     }
   }
 }

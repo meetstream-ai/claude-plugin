@@ -44,6 +44,9 @@ VERSION = json.loads((ROOT / ".claude-plugin" / "plugin.json").read_text(encodin
 CLI_DOC = LISTING["urls"]["cli"]
 MCP_NAME = LISTING["mcp"]["name"]
 MCP_URL = LISTING["mcp"]["url"]
+# The read-only docs MCP (no sign-in): skills fetch current docs through it.
+DOCS_MCP_NAME = LISTING["docs_mcp"]["name"]
+DOCS_MCP_URL = LISTING["docs_mcp"]["url"]
 
 # Store folders that this script owns completely (deleted and rewritten on each build).
 GENERATED_DIRS = ["plugins/claude-directory", "plugins/cursor", "plugins/agent-plugin",
@@ -110,24 +113,24 @@ DIRECTORY_SECTION_RULES: dict[str, dict[str, str]] = {
             "tools are missing or answer 401 or \"not signed in\". Skip it when a MeetStream MCP tool (for "
             "example `list_bots`) already answers, or when the user says they already have a working key.\n\n"
         ),
-        "## Step 1: Check if API key is already configured": (
+        "## Step 1: Check the connection": (
             "## Step 1: Check the connection\n\n"
             "Call the MeetStream MCP tool `list_bots`. A list, or an empty list, means the user is signed in: "
             "go to Step 6. A 401 or \"not signed in\" means: sign in through the MeetStream MCP (the client opens "
             "app.meetstream.ai; the user signs in and clicks **Allow**; no key is copied).\n\n"
         ),
-        "## Step 4: Set the API key in their shell": (
-            "## Step 4: Store the API key for app code\n\n"
-            "Only the user's own app code needs the key. The user keeps it in the app's secret store or in a "
-            "`.env` file that is in `.gitignore`, never in the chat and never in git. The code examples in these "
-            "skills show it as `YOUR_API_KEY`.\n\n"
+        "## Step 4: Keys for app code": (
+            "## Step 4: Keys for app code\n\n"
+            "Only the user's own app code needs a key, and you never read, print or write it. The user creates it at "
+            "https://app.meetstream.ai/api-keys and keeps it in the app's secret store or in a `.env` file that is in "
+            "`.gitignore`, never in the chat and never in git. The code examples in these skills show it as `YOUR_API_KEY`.\n\n"
         ),
-        "## Step 5: Validate the key": (
-            "## Step 5: Validate the key\n\n"
-            "Call `list_bots` through the MeetStream MCP. For app code, one request from the app checks the key: "
+        "## Step 5: Validate the sign-in": (
+            "## Step 5: Validate the sign-in\n\n"
+            "Call `list_bots` through the MeetStream MCP. For app code, one request from the app checks its key: "
             "`GET https://api.meetstream.ai/api/v1/bots` with the header `Authorization: Token YOUR_API_KEY`. "
             "Expected: `200`.\n\n"
-            "If `401` or `403`: key is wrong, re-do Step 3.\n"
+            "If `401` or `403`: sign in again (Step 3) or create a new key for the app.\n"
             "If anything else: network issue, ask user to retry.\n\n"
         ),
     },
@@ -135,10 +138,6 @@ DIRECTORY_SECTION_RULES: dict[str, dict[str, str]] = {
 
 # Required single-string replacements per skill (also fail the build when the text is gone).
 DIRECTORY_EXACT_RULES: dict[str, list[tuple[str, str]]] = {
-    "getting-started": [
-        ("- Make sure they exported it: `echo $MEETSTREAM_API_KEY` should print the key (not empty)",
-         "- Make sure the app loads the key from its secret store or `.env` file"),
-    ],
     "migrate-from-recall": [
         ("# Scan only (no changes)", "# Install the migration kit once\nnpm install -g @meetstream/migrate\n\n# Scan only (no changes)"),
     ],
@@ -327,7 +326,8 @@ def build_claude_directory(out: Path) -> None:
         "mcpServers": "./.mcp.json",
     })
     dump_json(d / ".claude-plugin" / "plugin.json", manifest)
-    dump_json(d / ".mcp.json", {"mcpServers": {MCP_NAME: {"type": "http", "url": MCP_URL}}})
+    dump_json(d / ".mcp.json", {"mcpServers": {MCP_NAME: {"type": "http", "url": MCP_URL},
+                                               DOCS_MCP_NAME: {"type": "http", "url": DOCS_MCP_URL}}})
     copy_file(ROOT / "listing" / "brand" / "icon-512.png", d / "icon.png")
     copy_file(ROOT / "LICENSE", d / "LICENSE")
     write_text(d / "README.md", readme(
@@ -387,7 +387,7 @@ def build_cursor(out: Path) -> None:
         "mcpServers": "./mcp.json",
     }
     dump_json(d / ".cursor-plugin" / "plugin.json", manifest)
-    dump_json(d / "mcp.json", {"mcpServers": {MCP_NAME: {"url": MCP_URL}}})
+    dump_json(d / "mcp.json", {"mcpServers": {MCP_NAME: {"url": MCP_URL}, DOCS_MCP_NAME: {"url": DOCS_MCP_URL}}})
     copy_file(ROOT / "listing" / "brand" / "icon-512.png", d / "assets" / "logo.png")
     copy_file(ROOT / "LICENSE", d / "LICENSE")
     write_text(d / "README.md", readme(
@@ -481,7 +481,7 @@ def build_agent_plugin(out: Path) -> None:
             "type": "streamable-http",
             "url": MCP_URL,
             "extensions": {"com.openai": {"auth": {"type": "oauth", "client": {"mode": "dcr"}}}},
-        }},
+        }, DOCS_MCP_NAME: {"type": "streamable-http", "url": DOCS_MCP_URL}},
     })
     copy_file(ROOT / "listing" / "brand" / "icon-512.png", d / "assets" / "icon.png")
     copy_file(ROOT / "LICENSE", d / "LICENSE")
@@ -514,7 +514,7 @@ def build_antigravity(out: Path) -> None:
         "suggestedPrompts": list(LISTING["antigravity"]["suggestedPrompts"]),
     }
     dump_json(d / ".antigravity-plugin" / "plugin.json", manifest)
-    dump_json(d / "mcp_config.json", {"mcpServers": {MCP_NAME: {"serverUrl": MCP_URL}}})
+    dump_json(d / "mcp_config.json", {"mcpServers": {MCP_NAME: {"serverUrl": MCP_URL}, DOCS_MCP_NAME: {"serverUrl": DOCS_MCP_URL}}})
     copy_file(ROOT / "listing" / "brand" / "icon-512.png", d / "assets" / "icon.png")
     copy_file(ROOT / "LICENSE", d / "LICENSE")
     write_text(d / "README.md", readme(

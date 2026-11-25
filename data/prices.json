@@ -1,0 +1,30 @@
+{
+  "_about": "Prices the skills may quote. The lint fails on any other dollar amount. Add an amount only with a public source.",
+  "allowed": [
+    {
+      "amount": "$0.35",
+      "meaning": "bot price per hour",
+      "source": "https://docs.meetstream.ai/guides/features/usage-and-retention"
+    },
+    {
+      "amount": "$0.25",
+      "meaning": "bot price per hour at volume; agent infrastructure per hour",
+      "source": "https://docs.meetstream.ai/guides/mia/pricing-and-keys"
+    },
+    {
+      "amount": "$0.10",
+      "meaning": "MeetStream transcription per hour",
+      "source": "https://docs.meetstream.ai/guides/transcription-recordings/providers/transcription-providers"
+    },
+    {
+      "amount": "$5",
+      "meaning": "free starting credit",
+      "source": "https://meetstream.ai/pricing"
+    },
+    {
+      "amount": "$0.05",
+      "meaning": "retention beyond 30 days, per GB per month",
+      "source": "https://docs.meetstream.ai/guides/features/usage-and-retention"
+    }
+  ]
+}

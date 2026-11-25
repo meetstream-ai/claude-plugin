@@ -1,0 +1,78 @@
+{
+  "_about": "Transcription providers, hand-kept from the docs. Keys: none = MeetStream supplies it; dashboard = the user's own key under Integrations > Transcription.",
+  "post_call": [
+    [
+      "meetstream",
+      "none",
+      "MeetStream's own engine (adds a per-hour charge; see the pricing page)"
+    ],
+    [
+      "deepgram",
+      "dashboard",
+      ""
+    ],
+    [
+      "assemblyai",
+      "dashboard",
+      ""
+    ],
+    [
+      "sarvam",
+      "dashboard",
+      "Indian languages"
+    ],
+    [
+      "smallest",
+      "dashboard",
+      ""
+    ],
+    [
+      "jigsawstack",
+      "dashboard",
+      "Shown as Interfaze; the API key stays jigsawstack"
+    ],
+    [
+      "meeting_captions",
+      "none",
+      "The platform's own captions: Google Meet (English, live) and Teams (after the call); not Zoom"
+    ]
+  ],
+  "streaming": [
+    [
+      "meetstream_streaming",
+      "none",
+      ""
+    ],
+    [
+      "deepgram_streaming",
+      "dashboard",
+      ""
+    ],
+    [
+      "assemblyai_streaming",
+      "dashboard",
+      ""
+    ],
+    [
+      "smallest_streaming",
+      "dashboard",
+      ""
+    ],
+    [
+      "jigsawstack_streaming",
+      "dashboard",
+      "Google Meet only"
+    ]
+  ],
+  "rules": [
+    "One streaming provider per bot.",
+    "Streaming-only providers make no post-call transcript and send no transcription.processed (get_transcript returns 202 indefinitely: cap polling); bot.done still fires.",
+    "A streaming provider needs live_transcription_required.webhook_url.",
+    "Re-run a post-call transcript with POST /api/v1/bots/{bot_id}/transcribe; each run gets a new transcript_id."
+  ],
+  "source": "https://docs.meetstream.ai/guides/transcription-recordings/providers/transcription-providers",
+  "also": [
+    "https://docs.meetstream.ai/guides/transcription-recordings/post-call-transcription",
+    "https://docs.meetstream.ai/guides/transcription-recordings/live-transcription"
+  ]
+}
