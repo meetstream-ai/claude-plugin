@@ -62,8 +62,9 @@ Say these in the first-bot steps, before the user sends a bot:
 - **Supported platforms:** Zoom, Google Meet and Microsoft Teams, plus WhatsApp calls in
   Beta (enabled per workspace; `platform-setup`). Links from other services, such as Webex
   or Slack huddles, are rejected with a 400.
-- **Zoom needs your Zoom app.** Zoom bots join through the customer's own Zoom app with an
-  OBF token (on behalf of a user who is in the meeting) or a ZAK token (a signed-in bot),
+- **Set up your Zoom app (recommended for reliable, fully supported Zoom).** Zoom bots join
+  through the customer's own Zoom app with an OBF token (on behalf of a user who is in the
+  meeting) or a ZAK token (a signed-in bot),
   the way Zoom asks Meeting SDK apps to join since 2 March 2026. Before the first Zoom bot,
   create a Zoom Meeting SDK app, save its Client ID and Secret under Integrations > Zoom
   in the dashboard, and host the `zoom.obf_url` or `zoom.zak_url` token URL.

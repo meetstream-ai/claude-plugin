@@ -8,7 +8,7 @@
       ],
       [
         "bot_event",
-        "The specific event. Branch on this; fall back to event when it is missing (resends, older payloads)."
+        "The specific event. Branch on this; fall back to event. Missing (code) on participant_events.*, agent_error, usage.*, bot.uploading, dashboard resends and live transcript posts."
       ],
       [
         "bot_id",
@@ -183,27 +183,27 @@
       ],
       [
         "agent_error",
-        "MIA voice agent problem. Workspace endpoints only."
+        "MIA voice agent problem: error_type, recoverable, relative_timestamp, platform; status_code 200; no bot_event (code). Workspace endpoints only."
       ],
       [
         "participant_events.join / .leave / .chat_message",
-        "Real-time participant events. Subscribe with recording_config.realtime_endpoints."
+        "Real-time participant events via recording_config.realtime_endpoints. No bot_event and no top-level bot_id: the bot id is at data.bot.id (code). Google Meet participants carry full_name; Zoom and Teams carry is_host and extra_data."
       ],
       [
         "participant_events.raise_hand / .lower_hand",
-        "Google Meet and Zoom; only to realtime_endpoints that list them, never to workspace webhooks."
+        "Only to realtime_endpoints that list them, never to workspace webhooks."
       ],
       [
         "manifest.completed / .skipped / .failed",
-        "Audio manifest processing."
+        "Audio manifest processing (skipped carries a skip_reason)."
       ],
       [
         "usage.milestone_* / usage.inactive_* / usage.weekly_summary",
-        "Account usage notices. Workspace endpoints only."
+        "Account usage notices with a user block and a data block; no bot_event (code). Workspace endpoints only."
       ],
       [
         "bot.uploading / bot.transcriptionready",
-        "Informational post-call events."
+        "Informational post-call events, not in the dashboard event list."
       ],
       [
         "data_deletion",
@@ -219,10 +219,12 @@
   },
   "delivery": {
     "rules": [
-      "Workspace endpoints (dashboard, up to 10, event filter) are signed: X-MeetStream-Signature: sha256=<hex HMAC-SHA256 of the raw body, keyed with the endpoint secret>. X-MeetStream-Timestamp is not part of the signed content.",
-      "Per-bot callback_url deliveries are not signed. Live-transcript POSTs are not signed: put a secret token in the URL and check that bot_id is yours.",
-      "Each event is delivered once, with no automatic retry. Resend by hand from the endpoint's Logs tab (up to 10 times).",
-      "Reply 2xx within 5 seconds, then process. Poll GET /bots/{bot_id}/status as a fallback for bots in Joining or Scheduled.",
+      "Workspace endpoints (dashboard, up to 10, event filter) are always signed: X-MeetStream-Signature: sha256=<hex HMAC-SHA256 of the raw body>, with each endpoint's own secret. X-MeetStream-Timestamp is a copy of the body's timestamp and is not separately signed.",
+      "Per-bot callback_url deliveries are never signed (code), on every platform, Zoom RTMS sessions included. Live-transcript POSTs are never signed: put a secret token in the URL and check that bot_id is yours.",
+      "realtime_endpoints (participant events) are signed only on Google Meet, with the secret of the account's first enabled workspace endpoint (code); Zoom and Teams send them unsigned. Do not rely on that signature.",
+      "Each event is sent once, with no automatic retry (code); bots in a regional cell outside us-east-1 retry up to 6 times, so the same event can arrive twice. Resend by hand from the endpoint's Logs tab (up to 10 times).",
+      "A resend rebuilds the payload with event, bot_id, status, message, a new timestamp and custom_attributes only: no bot_event, bot_status or status_code, and a resent ending carries its cause in event (for example event bot.kicked) (code).",
+      "Senders wait between 5 and 30 seconds depending on the event (code), and delivery is sequential per bot, so a slow receiver delays that bot's next events. Reply 2xx within 5 seconds, then process. Poll GET /bots/{bot_id}/status as a fallback for bots in Joining or Scheduled.",
       "De-duplicate on (bot_id, bot_event or event). Do not de-duplicate bot.joining or participant_events.* on that key (repeats are normal).",
       "Post-call events arrive in any order; bot.done is last.",
       "transcript_id is in no webhook: read it from the create_bot response or GET /bots/{bot_id}/detail.",
@@ -292,12 +294,13 @@
       "On Zoom and Teams, interrupt blocks later audio until resume_audio."
     ],
     "not_live": [
-      "live_video_required is not implemented.",
+      "live_video_required is accepted but ignored by every meeting bot, and it moves the bot to the larger video tier (code): do not send it. Only Zoom Meeting Direct Connect (RTMS) sessions stream video.",
       "Per-participant audio and video are files after the call."
     ],
     "source": "https://docs.meetstream.ai/guides/websockets/real-time-audio-streaming",
     "also": [
       "https://docs.meetstream.ai/guides/websockets/meeting-control-patterns"
     ]
-  }
+  },
+  "_settled": "Facts marked (code) were settled from meetstream-codebase origin/main dc873422a on 25 Nov 2026 where the docs contradict themselves."
 }

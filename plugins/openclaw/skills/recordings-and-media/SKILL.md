@@ -130,8 +130,8 @@ Set on `create_bot`: `retention_hours` on the MCP tool, or on the REST body:
 "recording_config": { "retention": { "type": "timed", "hours": 72 } }
 ```
 
-Omit it and media is kept for the default 30 days (720 hours). For anything containing
-customer conversations, set an explicit, shorter window.
+Omit it and media is kept permanently, until you delete it. For anything containing
+customer conversations, set an explicit timed window.
 
 ## Deleting
 
@@ -143,24 +143,23 @@ with the user first, and never call it to "clean up" without being asked.
 
 ## Bring your own bucket
 
-MeetStream can write media straight into your own S3 (or S3-compatible) bucket instead
-of its storage:
+MeetStream can write media straight into your own bucket (Amazon S3, Alibaba Cloud OSS or
+Cloudflare R2) instead of its storage. Storage destinations are set up **in the dashboard
+only** (Configure > Storage); there is no public API for them, and customer API keys cannot
+call the admin routes. Each destination gets an ID; pass it as `storage_id` on `create_bot`.
 
-```
-PUT    /api/v1/admin/configs?config_type=storage
-GET    /api/v1/admin/configs
-DELETE /api/v1/admin/configs?key_name=aws
-```
+`create_bot` checks `storage_id`: 1-80 letters, numbers, `_` or `-`; an active destination
+in your own account; and a live test write with the saved credentials (bad credentials:
+400; the storage service down: 503).
 
-The body needs `provider`, `bucket_name`, `region`, `access_key_id`, `secret_key`, plus
-optional `access_mode`, `prefix`/`prefixes` and `endpoint_url` (for R2/MinIO).
-
-Two things to tell the user before they run it:
+Two things to tell the user before they set it up:
 
 - This **stores cloud credentials on your MeetStream account**. Use a dedicated IAM user
   scoped to that one bucket, never a root or broad-permission key.
-- With `access_mode: write_only`, MeetStream writes to your bucket but its own fetch
-  endpoints return 403 for that media - you read it from your bucket, not from the API.
+- With write-only access, MeetStream writes to your bucket but its own fetch endpoints
+  return 403 for that media - you read it from your bucket, not from the API.
+
+Docs: https://docs.meetstream.ai/guides/features/custom-storage-configurations/overview
 
 Objects land under `{prefix}/{bot_id}_<file>`.
 

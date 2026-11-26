@@ -9,13 +9,14 @@ Sources: llms b5a4ab82. Latest docs: https://docs.meetstream.ai/llms.txt (append
 
 | Provider | Key | Note |
 |---|---|---|
-| `meetstream` | no key needed | MeetStream's own engine (adds a per-hour charge; see the pricing page) |
+| `meetstream` | no key needed | MeetStream's own engine (adds a per-hour charge; see the pricing page). The only post-call provider that needs no key everywhere. |
 | `deepgram` | your key (dashboard: Integrations > Transcription) |  |
 | `assemblyai` | your key (dashboard: Integrations > Transcription) |  |
 | `sarvam` | your key (dashboard: Integrations > Transcription) | Indian languages |
 | `smallest` | your key (dashboard: Integrations > Transcription) |  |
 | `jigsawstack` | your key (dashboard: Integrations > Transcription) | Shown as Interfaze; the API key stays jigsawstack |
-| `meeting_captions` | no key needed | The platform's own captions: Google Meet (English, live) and Teams (after the call); not Zoom |
+| `aws_transcribe` | no key needed | Not for bots in the US region (code) |
+| `meeting_captions` | no key needed | create_bot only (not POST /transcribe): the platform's own captions; Google Meet (English, live) and Teams (after the call); Zoom only on bots that join without the customer's app |
 
 ## Live (streaming)
 
@@ -26,6 +27,7 @@ Needs `live_transcription_required.webhook_url`.
 | `meetstream_streaming` | no key needed |  |
 | `deepgram_streaming` | your key (dashboard: Integrations > Transcription) |  |
 | `assemblyai_streaming` | your key (dashboard: Integrations > Transcription) |  |
+| `sarvam_streaming` | your key (dashboard: Integrations > Transcription) | Accepted by the API (code) |
 | `smallest_streaming` | your key (dashboard: Integrations > Transcription) |  |
 | `jigsawstack_streaming` | your key (dashboard: Integrations > Transcription) | Google Meet only |
 
@@ -35,5 +37,7 @@ Needs `live_transcription_required.webhook_url`.
 - Streaming-only providers make no post-call transcript and send no transcription.processed (get_transcript returns 202 indefinitely: cap polling); bot.done still fires.
 - A streaming provider needs live_transcription_required.webhook_url.
 - Re-run a post-call transcript with POST /api/v1/bots/{bot_id}/transcribe; each run gets a new transcript_id.
+- POST /bots/{bot_id}/transcribe needs a provider: there is no server default (400 without one) (code).
+- No API lists providers; this list is kept from the docs and the code.
 
 Sources: https://docs.meetstream.ai/guides/transcription-recordings/providers/transcription-providers, https://docs.meetstream.ai/guides/transcription-recordings/post-call-transcription, https://docs.meetstream.ai/guides/transcription-recordings/live-transcription

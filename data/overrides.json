@@ -8,12 +8,20 @@
   },
   "fields": {
     "zoom": {
-      "text": "Zoom options. Plan on the customer's own Zoom app (Integrations > Zoom); meetings outside that app's account need zak_url or obf_url. Never tell users Zoom needs no setup.",
-      "why": "The spec says use_own_app false joins 'without your app or credentials', which reads as no setup. Text aligned with skills/platform-setup and the Zoom copy rule. Open question P0 #7 for engineering."
+      "text": "Zoom options. Recommended: set up and configure your own Zoom app (Integrations > Zoom) for reliable, fully supported Zoom bots; meetings outside that app's account need zak_url or obf_url.",
+      "why": "Sid, 25 Nov 2026: recommend the Zoom app for reliable, full official support. The spec's 'join without your app or credentials' wording is replaced; the no-app join is a limited US-only fallback (see use_own_app)."
     },
     "zoom.use_own_app": {
-      "text": "true: require your connected Zoom app (400 without one). false: join without it, even when one is saved, with fewer features (see platform-setup). Omitted: use the app when one is saved or connected.",
-      "why": "Same as zoom: states the API behaviour from skills/platform-setup without the no-setup reading."
+      "text": "true: require your Zoom app (recommended; 400 without one). false: join without it as an ordinary participant, US region only, no OBF/ZAK and no per-participant camera video. Omitted: your app when one is saved, else the US-only fallback.",
+      "why": "States the code's behaviour (settled 25 Nov 2026) with the Zoom app as the recommended path."
+    },
+    "live_video_required": {
+      "text": "Not implemented on meeting bots: accepted, ignored, and it moves the bot to the larger video tier. Do not send it; only Zoom RTMS sessions stream video.",
+      "why": "Code (25 Nov 2026): every meeting bot ignores it; the spec says not implemented without the cost side effect."
+    },
+    "recording_config.retention": {
+      "text": "How long media is kept. Omitted: kept permanently until you delete it. type timed with hours (default 720) deletes it automatically; the clock starts when the call is billed.",
+      "why": "Code (25 Nov 2026): permanent default; the usage page's 30 days is wrong."
     }
   }
 }

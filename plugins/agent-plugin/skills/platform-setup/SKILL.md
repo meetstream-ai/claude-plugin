@@ -57,10 +57,11 @@ permission** from the host. If nobody grants it,
 (60-600 seconds, default 600). A Zoom bot that joins without your own Zoom app records
 from admission whatever the host answers, so the timeout does not apply to it.
 
-**How a Zoom bot joins.** Zoom bots join through your Zoom app with an OBF token (on
-behalf of a user who is in the meeting) or a ZAK token (a signed-in bot), the way Zoom asks
-Meeting SDK apps to join since 2 March 2026. Do not tell the user that Zoom needs no setup
-or that a Zoom app is not needed.
+**Set up your Zoom app (recommended).** For reliable Zoom bots with full, officially
+supported features, set up and configure your own Zoom app. Bots then join through your Zoom
+app with an OBF token (on behalf of a user who is in the meeting) or a ZAK token (a signed-in
+bot), the way Zoom asks Meeting SDK apps to join since 2 March 2026. Never tell the user
+that setting up a Zoom app is unnecessary.
 
 1. Create a Zoom Meeting SDK app (General app, Meeting SDK on) and save its Client ID and
    Client Secret in the MeetStream dashboard under Integrations > Zoom, or connect your
@@ -91,6 +92,11 @@ PATCH):
   send `zoom.use_own_app: true`.
 - `meeting_captions` and `initial_audio` work only on bots that join without your app
   (`meeting_captions` with your app: 400 `meeting_captions is not supported on Zoom. ...`).
+- **Without your app (limited fallback):** for workspaces in the US execution region only, a
+  bot can join as an ordinary named participant. It cannot use OBF or ZAK, so it cannot join
+  meetings that admit only signed-in Zoom users; the meeting passcode and waiting room still
+  apply; it gives no per-participant camera video and ignores `bot_camera_stream`. Outside the
+  US region every Zoom bot needs your Zoom app (400 otherwise). Recommend your Zoom app.
 - A Zoom link with no meeting number (for example a `/my/` personal link) returns 400
   `invalid_meeting_link: ...`. Use the `zoom.us/j/<number>` link.
 

@@ -47,7 +47,7 @@ actually needs.
 |---|---|---|
 | Transcript text as it is spoken | `live_transcription_required.webhook_url` | HTTPS POST to you |
 | Raw audio bytes | `live_audio_required.websocket_url` | WebSocket, binary PCM |
-| Live video frames | `live_video_required.websocket_url` | WebSocket, fMP4 |
+| Live video frames | not available on meeting bots (`live_video_required` is ignored) | Zoom RTMS sessions only |
 | Send things into the meeting | `socket_connection_url.websocket_url` | WebSocket, JSON commands |
 | Live video/audio INTO the bot camera and mic | `bot_camera_stream.websocket_url` | WebSocket signaling + WebRTC |
 | Participant join/leave and raise/lower hand | `recording_config.realtime_endpoints` | HTTPS POST, per event |
@@ -87,10 +87,7 @@ reachable.
 
 ## Live video
 
-`live_video_required` streams fMP4 over a WebSocket. Implement the keepalive contract:
-answer every ping message immediately with the matching pong, echoing the sequence
-number, **before** doing any other work on that message. Slow pong handling drops the
-stream. Raise your WebSocket max payload - keyframes are large.
+Not available on meeting bots: live video out of a meeting bot (`live_video_required`) is not implemented: meeting bots ignore it, and it still moves the bot to the larger video compute tier, so do not send it. Live video works only on Zoom Meeting Direct Connect (RTMS) sessions (`platform-setup`).
 
 ## Bot camera stream (WebRTC into the meeting)
 
