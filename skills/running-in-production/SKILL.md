@@ -123,8 +123,7 @@ were written.
   are not charged. The Usage dashboard (https://app.meetstream.ai/usage) breaks usage down per bot
   with the API key label and `custom_attributes`. Storage of permanent media and every price:
   https://meetstream.ai/pricing (never quote prices from memory).
-- Guide: https://docs.meetstream.ai/guides/features/usage-and-retention (its "30 days" default
-  is out of date: omitted retention is permanent).
+- Guide: https://docs.meetstream.ai/guides/features/usage-and-retention (omitted retention is permanent).
 
 ## Idempotency in one place
 
