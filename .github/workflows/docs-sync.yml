@@ -10,8 +10,8 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write        # push the docs-sync/auto branch
-  pull-requests: write   # open or update its pull request
+  contents: write   # push the docs-sync/auto branch
+  issues: write     # open or update the review issue (the org does not let Actions open pull requests)
 
 concurrency:
   group: docs-sync
@@ -31,7 +31,7 @@ jobs:
           python3 scripts/gen_references.py
           python3 scripts/check_coverage.py | tee coverage.txt || true
           python3 scripts/build_stores.py
-      - name: Open or update the pull request
+      - name: Open or update the review issue
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -55,8 +55,13 @@ jobs:
             echo '```'
             tail -5 coverage.txt
             echo '```'
-            echo "Review the regenerated references, update data/*.json where a cited page changed, then merge."
+            echo "Review the changes: https://github.com/${GITHUB_REPOSITORY}/compare/main...docs-sync/auto"
+            echo "Open a pull request from docs-sync/auto, update data/*.json where a cited page changed, then merge."
           } > body.md
-          gh pr view docs-sync/auto --json number >/dev/null 2>&1 \
-            && gh pr edit docs-sync/auto --body-file body.md \
-            || gh pr create --head docs-sync/auto --base main --title "Docs sync: references from docs.meetstream.ai" --body-file body.md
+          num=$(gh issue list --state open --label docs-sync --json number -q '.[0].number')
+          if [ -n "$num" ]; then
+            gh issue edit "$num" --body-file body.md
+          else
+            gh label create docs-sync --color E8620C --description "Nightly docs.meetstream.ai sync" 2>/dev/null || true
+            gh issue create --title "Docs sync: docs.meetstream.ai changed" --label docs-sync --body-file body.md
+          fi
