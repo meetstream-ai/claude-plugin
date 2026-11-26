@@ -91,25 +91,13 @@ DIRECTORY_TEXT_RULES: list[tuple[str, str]] = [
 
 # Required replacements of whole Markdown sections (heading up to the next heading of the same
 # or a higher level). A missing heading fails the build, so source edits cannot slip through.
+# MS-2476: the router (`meetstream`) no longer reads the key from the environment, so it needs no
+# section rule; getting-started moved into the router as references/getting-started.md.
 DIRECTORY_SECTION_RULES: dict[str, dict[str, str]] = {
-    "meetstream": {
-        "### First-time users - invoke `getting-started` skill BEFORE anything else": (
-            "### First-time users - invoke `getting-started` skill BEFORE anything else\n\n"
-            "If the MeetStream MCP tools are not connected, or a tool answers 401 or \"not signed in\", "
-            "sign in through the MeetStream MCP: the client opens app.meetstream.ai in the browser, the user "
-            "signs in and clicks **Allow**. No key is copied. For the user's own app code, the user creates an "
-            "API key at https://app.meetstream.ai/api-keys and keeps it in the app's own secret store; the "
-            "examples in this skill show it as `YOUR_API_KEY`. The `getting-started` skill walks a new user "
-            "through signup, sign-in and the first bot.\n\n"
-            "Base URL: `https://api.meetstream.ai/api/v1` (no trailing slash in canonical examples).\n\n"
-            "Default language: **Python** unless the user specifies otherwise.\n\n"
-            "---\n\n"
-        ),
-    },
-    "getting-started": {
+    "meetstream/references/getting-started.md": {
         "## When to invoke this skill": (
             "## When to invoke this skill\n\n"
-            "Invoke this skill first when the user is new to MeetStream, has no account, or the MeetStream MCP "
+            "Use this guide first when the user is new to MeetStream, has no account, or the MeetStream MCP "
             "tools are missing or answer 401 or \"not signed in\". Skip it when a MeetStream MCP tool (for "
             "example `list_bots`) already answers, or when the user says they already have a working key.\n\n"
         ),
@@ -138,7 +126,7 @@ DIRECTORY_SECTION_RULES: dict[str, dict[str, str]] = {
 
 # Required single-string replacements per skill (also fail the build when the text is gone).
 DIRECTORY_EXACT_RULES: dict[str, list[tuple[str, str]]] = {
-    "migrate-from-recall": [
+    "migrating-from-recall": [
         ("# Scan only (no changes)", "# Install the migration kit once\nnpm install -g @meetstream/migrate\n\n# Scan only (no changes)"),
     ],
 }

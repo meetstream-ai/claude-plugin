@@ -1,55 +1,59 @@
 {
-  "_about": "Which skill teaches each API operation, guide-only route and docs page. scripts/check_coverage.py fails when anything has no owner. Rules are regexes, tried in order; the first match owns the item. Phase 2 moves owners to the need-based skills.",
+  "_about": "Which skill teaches each API operation, guide-only route and docs page. scripts/check_coverage.py fails when anything has no owner. Rules are regexes, tried in order; the first match owns the item. Owners are the need-based skills (MS-2476).",
   "operations": [
     [
       "^(POST|GET|PUT|DELETE) /api/v1/mia$",
-      "mia-voice-agents"
+      "building-voice-agents"
     ],
     [
       "/update_mia$",
-      "mia-voice-agents"
+      "building-voice-agents"
     ],
     [
-      "/(send_message|send_image|send_command|pause_recording|resume_recording|screenshots?)(/|$)",
-      "join-meeting"
+      "/screenshots?(/|$)",
+      "getting-transcripts-and-media"
+    ],
+    [
+      "/(send_message|send_image|send_command|pause_recording|resume_recording)(/|$)",
+      "sending-bots"
     ],
     [
       "/(get_audio|get_video|get_audio_streams|get_recording_streams|get_speaker_timeline|get_participants|get_chats|delete)$",
-      "recordings-and-media"
+      "getting-transcripts-and-media"
     ],
     [
       "/(transcribe|transcriptions|get_transcript)$",
-      "recordings-and-media"
+      "getting-transcripts-and-media"
     ],
     [
       "/api/v1/transcript/",
-      "recordings-and-media"
+      "getting-transcripts-and-media"
     ],
     [
       " /api/v1/calendar",
-      "calendar-automation"
+      "scheduling-and-calendars"
     ],
     [
       "login",
-      "platform-setup"
+      "setting-up-platforms"
     ],
     [
       "/billing/",
-      "verify-account"
+      "meetstream-cli"
     ],
     [
       "^(POST|GET) /api/v1/bots(/create_bot|/\\{bot_id\\}(/status|/detail|/remove_bot|/stop_status)?)?$",
-      "join-meeting"
+      "sending-bots"
     ]
   ],
   "guide_routes": [
     [
       "/zoom/|meeting_direct_connect",
-      "platform-setup"
+      "setting-up-platforms"
     ],
     [
       "/calendar/",
-      "calendar-automation"
+      "scheduling-and-calendars"
     ]
   ],
   "pages": [
@@ -67,7 +71,7 @@
     ],
     [
       "/build-with-ai/meetstream-cli",
-      "cli-workflows"
+      "meetstream-cli"
     ],
     [
       "/build-with-ai/",
@@ -75,59 +79,59 @@
     ],
     [
       "/guides/introduction/|/guides/get-started/|/welcome",
-      "getting-started"
-    ],
-    [
-      "/navigation|/guides/platforms/|/guides/app-integrations/",
-      "platform-setup"
-    ],
-    [
-      "/guides/features/deduplication",
       "meetstream"
     ],
     [
+      "/navigation|/guides/platforms/|/guides/app-integrations/",
+      "setting-up-platforms"
+    ],
+    [
+      "/guides/features/deduplication",
+      "running-in-production"
+    ],
+    [
       "/guides/features/mia-|/guides/mia/",
-      "mia-voice-agents"
+      "building-voice-agents"
     ],
     [
       "/guides/features/(automatic-leave|pause-resume|raise-lower-hand|chat-and-visuals)",
-      "join-meeting"
+      "sending-bots"
     ],
     [
       "/guides/features/(custom-storage|custom-attributes|usage-and-retention)",
-      "for-your-customers"
+      "running-in-production"
     ],
     [
       "/guides/features/(scheduling-bots|calendar-emails)|/guides/calendar-integrations/",
-      "calendar-automation"
+      "scheduling-and-calendars"
     ],
     [
       "/guides/features/participants",
-      "recordings-and-media"
+      "getting-transcripts-and-media"
     ],
     [
       "/guides/transcription-recordings/live-|/guides/websockets/",
-      "realtime-streaming"
+      "streaming-live-data"
     ],
     [
       "/guides/transcription-recordings/",
-      "recordings-and-media"
+      "getting-transcripts-and-media"
     ],
     [
       "/guides/webhooks/",
-      "webhooks"
+      "handling-webhooks"
     ],
     [
       "/guides/reference/|/guides/help/|/errors",
-      "troubleshooting"
+      "debugging-bots"
     ],
     [
       "/tutorials/",
-      "notetaker"
+      "building-a-notetaker"
     ],
     [
       "/migration/",
-      "migrate-from-recall"
+      "migrating-from-recall"
     ]
   ]
 }

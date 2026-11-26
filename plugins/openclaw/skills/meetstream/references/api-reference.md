@@ -3,6 +3,23 @@
 Base URL: `https://api.meetstream.ai/api/v1`
 Auth: `Authorization: Token YOUR_API_KEY`
 
+## Contents
+
+- [Bot Endpoints](#bot-endpoints)
+- [Transcription Endpoints](#transcription-endpoints)
+- [Calendar Endpoints](#calendar-endpoints)
+- [Google Signed-In Bot Endpoints](#google-signed-in-bot-endpoints)
+- [Microsoft Teams Signed-In Bot Endpoints](#microsoft-teams-signed-in-bot-endpoints)
+- [MIA (MeetStream Infrastructure Agents) Endpoints](#mia-meetstream-infrastructure-agents-endpoints)
+- [Webhook Events (sent to `callback_url`)](#webhook-events-sent-to-callback_url)
+- [`recording_config` Schema](#recording_config-schema)
+- [`automatic_leave` Schema - Recommended Defaults](#automatic_leave-schema---recommended-defaults)
+- [Errors and Rate Limits](#errors-and-rate-limits)
+- [Live Transcription Webhook Payload](#live-transcription-webhook-payload)
+- [WebSocket Control Commands](#websocket-control-commands)
+- [Live Audio Binary Frame Format](#live-audio-binary-frame-format)
+- [Live video (not available on meeting bots)](#live-video-not-available-on-meeting-bots)
+
 OpenAPI spec: https://docs.meetstream.ai/openapi.json
 Any docs page is available as clean markdown by appending `.md` to its URL.
 Full docs dump: https://docs.meetstream.ai/llms-full.txt

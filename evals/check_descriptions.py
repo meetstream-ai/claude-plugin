@@ -26,6 +26,10 @@ pipeline wake word on by default; commands need InMeeting; remove the bot on exi
 Kit pairing token is dashboard-only; Cursor and OpenCode through serve --command; inbuilt keys
 pipeline-only with own OpenAI key for realtime (Sid, 22 Nov) and mia_managed; no tunnels
 or long-running processes unless asked; OpenCode and Cursor CLI setup.
+Need-based skills (MS-2476, 26 Nov 2026): the checks follow the content to its new skill
+(join-meeting, meeting-brief, verify-account, test-bot, cli-workflows -> meetstream-cli;
+getting-started -> the meetstream router; notetaker, sales-coach -> building-a-notetaker; the rest
+renamed one to one). Each check keeps its intent.
 Usage: python3 evals/check_descriptions.py [repo_root]   (exit 1 on any miss)
 """
 import os
@@ -52,9 +56,9 @@ MUST = {
                    ("3d local agent coming soon", r"3d.{0,160}(COMING SOON|coming soon)"),
                    ("unspecified agent: ask own stack or hosted", r"own stack.{0,120}host"),
                    ("post-call or live question", r"after the (call|meeting).{0,80}live|post-call.{0,40}live")],
-    "troubleshooting": [("billing URL", r"https://app\.meetstream\.ai/billing"), ("no retry loop", r"never retry"),
+    "debugging-bots": [("billing URL", r"https://app\.meetstream\.ai/billing"), ("no retry loop", r"never retry"),
                         ("422 transcript is final", r"422.{0,120}(final|do not retry|don.t retry)")],
-    "join-meeting": [("billing URL", r"https://app\.meetstream\.ai/billing"), ("no retry loop", r"never retry"),
+    "meetstream-cli": [("billing URL", r"https://app\.meetstream\.ai/billing"), ("no retry loop", r"never retry"),
                      ("raise-hand REST", r"POST /api/v1/bots/\{bot_id\}/send_command.*raise_hand"),
                      ("connect step: Codex", r"codex mcp login meetstream"),
                      ("connect step: Claude Code", r"/mcp"),
@@ -62,7 +66,7 @@ MUST = {
                      ("REST create_bot fallback", r"POST /api/v1/bots/create_bot.*meeting_link"),
                      ("never say it cannot record", r"[Nn]ever say MeetStream can.?t record"),
                      ("one-off link needs no calendar integration (round 6)", r"(no|never|not).{0,40}calendar integration")],
-    "realtime-streaming": [("raise-hand REST", r"POST /api/v1/bots/\{bot_id\}/send_command.*raise_hand"),
+    "streaming-live-data": [("raise-hand REST", r"POST /api/v1/bots/\{bot_id\}/send_command.*raise_hand"),
                            ("live transcripts by HTTPS POST (round 6)", r"HTTPS POST.{0,60}live_transcription_required\.webhook_url"),
                            ("server forwards to the browser (round 6)", r"forward.{0,80}browser"),
                            ("track 2 bridge: both sockets", r"live_audio_required\.websocket_url.{0,160}socket_connection_url\.websocket_url"),
@@ -70,7 +74,7 @@ MUST = {
                            ("track 2 bridge: local tunnel", r"tunnel"),
                            ("track 2 bridge: free local models", r"[Ww]hisper.{0,200}Ollama.{0,200}Piper"),
                            ("track 2 bridge: bot price only", r"bot price only")],
-    "mia-voice-agents": [("track 2 bridge: both sockets", r"live_audio_required.{0,80}socket_connection_url"),
+    "building-voice-agents": [("track 2 bridge: both sockets", r"live_audio_required.{0,80}socket_connection_url"),
                          ("track 2 bridge: tunnel and free local models", r"tunnel.{0,200}([Ww]hisper|Parakeet).{0,200}(Ollama|LM Studio).{0,200}(Piper|Kokoro)|([Ww]hisper|Parakeet).{0,200}(Ollama|LM Studio).{0,200}(Piper|Kokoro).{0,200}tunnel"),
                          ("track 2 bridge: harness model as the LLM", r"harness"),
                          ("track 2 bridge: bot price only", r"bot price only"),
@@ -83,9 +87,9 @@ MUST = {
                          ("3d local agent coming soon", r"3d.{0,200}(COMING SOON|coming soon)"),
                          ("3d warning: prompt injection", r"prompt injection"),
                          ("hosted bot: only agent_config_id, no bridge sockets", r"only agent_config_id")],
-    "getting-started": [("post-call or live first", r"[Ff]irst ask.*after the call.*live"),
-                        ("tracks in order: Recording bot, Bridge server, Agents API", r"Recording bot.{0,300}Bridge server.{0,300}Agents API")],
 }
+# getting-started merged into the meetstream router (MS-2476): its first-ask rule now applies to the router.
+MUST["meetstream"].append(("post-call or live first (was getting-started)", r"[Ff]irst ask.*after the call.*live"))
 
 LATEST_DOCS_LINE = re.compile(r"llms\.txt.*_mcp/server|_mcp/server.*llms\.txt")
 SCAFFOLD = re.compile(r"FastAPI\(|Flask\(|express\(\)|app\.listen\(|uvicorn\.run|requirements\.txt|package\.json|Dockerfile|[├└]── [\\w.-]+(/|\\.\\w+)")
@@ -105,7 +109,8 @@ OLD_KIT = re.compile(r"meetstream-agent-kit|Agent Kit|[Pp]airing token|Bridge UR
                      r"|pipx install meetstream(?![-\w])|uvx meetstream(?![-\w])|auth set-key|meetstream bot create")
 CLI_REF = os.path.join("skills", "meetstream", "references", "meetstream-cli.md")
 # Skills that run commands for the user give the CLI install step and the agent flags.
-CLI_SKILLS = ("meetstream", "cli-workflows", "getting-started", "join-meeting", "verify-account", "test-bot", "calendar-automation", "mia-voice-agents")
+# MS-2476: cli-workflows, join-meeting, verify-account and test-bot merged into meetstream-cli; getting-started into the router.
+CLI_SKILLS = ("meetstream", "meetstream-cli", "scheduling-and-calendars", "building-voice-agents")
 
 
 def cli_misses():
@@ -194,8 +199,7 @@ def body_misses():
         print("MISS meetstream: does not say the docs are the source of truth when they differ")
     # The build tracks open the core skill, getting-started and the top-level docs, in order:
     # Recording bot, then the Bridge server, then the hosted Agents API.
-    tops = [os.path.join("skills", "meetstream", "SKILL.md"), os.path.join("skills", "getting-started", "SKILL.md"),
-            "README.md", "AGENTS.md", "INSTALL_FOR_AGENTS.md"]
+    tops = [os.path.join("skills", "meetstream", "SKILL.md"), "README.md", "AGENTS.md", "INSTALL_FOR_AGENTS.md"]
     for rel in tops:
         fp = os.path.join(ROOT, rel)
         if not os.path.exists(fp):
@@ -212,21 +216,21 @@ def body_misses():
                 misses += 1
                 print(f"MISS {rel}: the first 60 lines do not name {k}")
     # Every file that routes agents links the bridge docs; the bridge recipe owners also link the starter.
-    for rel in tops + [os.path.join("skills", s, "SKILL.md") for s in ("mia-voice-agents", "realtime-streaming", "troubleshooting")]:
+    for rel in tops + [os.path.join("skills", s, "SKILL.md") for s in ("building-voice-agents", "streaming-live-data", "debugging-bots")]:
         fp = os.path.join(ROOT, rel)
         if os.path.exists(fp) and BRIDGE_DOCS not in open(fp, encoding="utf-8").read():
             misses += 1
             print(f"MISS {rel}: no link to the bridge server docs ({BRIDGE_DOCS})")
-    for rel in [os.path.join("skills", s, "SKILL.md") for s in ("meetstream", "mia-voice-agents", "realtime-streaming")]:
+    for rel in [os.path.join("skills", s, "SKILL.md") for s in ("meetstream", "building-voice-agents", "streaming-live-data")]:
         if STARTER not in open(os.path.join(ROOT, rel), encoding="utf-8").read():
             misses += 1
             print(f"MISS {rel}: no link to the bridge starter repo ({STARTER})")
-    # realtime-streaming owns the bridge recipe: both sockets and the control commands from the public docs.
-    rt = open(os.path.join(skills_dir, "realtime-streaming", "SKILL.md"), encoding="utf-8").read()
+    # streaming-live-data owns the bridge recipe: both sockets and the control commands from the public docs.
+    rt = open(os.path.join(skills_dir, "streaming-live-data", "SKILL.md"), encoding="utf-8").read()
     for cmd in ("sendaudio", "sendmsg", "interrupt", "resume_audio", "sendimg"):
         if f'"command": "{cmd}"' not in rt and f"`{cmd}`" not in rt:
             misses += 1
-            print(f"MISS realtime-streaming: bridge recipe does not give the control command {cmd}")
+            print(f"MISS streaming-live-data: bridge recipe does not give the control command {cmd}")
     # The old voice-agent order (a/b/c with inbuilt keys as the default, own agent only on request) is gone.
     for base, _, files in os.walk(ROOT):
         if "/.git" in base or "/evals" in base or _generated(base):
@@ -287,8 +291,8 @@ def version_wording_misses():
     return misses
 
 
-EARLY = {"join-meeting": r"POST /api/v1/bots/\{bot_id\}/send_command.{0,40}raise_hand",
-         "realtime-streaming": r"POST /api/v1/bots/\{bot_id\}/send_command.{0,40}raise_hand"}
+EARLY = {"meetstream-cli": r"POST /api/v1/bots/\{bot_id\}/send_command.{0,40}raise_hand",
+         "streaming-live-data": r"POST /api/v1/bots/\{bot_id\}/send_command.{0,40}raise_hand"}
 OLD_PACKAGE = "@meetstream/" + "mcp"  # the old npm server; agents cite it as current if any file names it
 
 
@@ -300,15 +304,15 @@ def round6_misses():
         misses += not ok
         print(f"{'ok  ' if ok else 'MISS'} {skill}: raise-hand REST call in the first 300 characters")
     ver = MUST["meetstream"][0][1]
-    for rel in ("skills/meetstream/SKILL.md", "skills/getting-started/SKILL.md"):
+    for rel in ("skills/meetstream/SKILL.md", "skills/meetstream/references/getting-started.md"):
         body = " ".join(open(os.path.join(ROOT, rel), encoding="utf-8").read().split())
         ok = re.search(ver, body) is not None
         misses += not ok
         print(f"{'ok  ' if ok else 'MISS'} {rel}: body gives the exact two version sentences")
-    own = description(os.path.join(ROOT, "skills", "mia-voice-agents", "SKILL.md"))
+    own = description(os.path.join(ROOT, "skills", "building-voice-agents", "SKILL.md"))
     if re.search(r"[Nn]ot directly|needs? an API integration", own):
         misses += 1
-        print("MISS mia-voice-agents: description hedges on the own agent")
+        print("MISS building-voice-agents: description hedges on the own agent")
     for base, _, files in os.walk(ROOT):
         if "/.git" in base or "/evals" in base or _generated(base):
             continue
@@ -328,43 +332,43 @@ def read_skill(name):
 
 # skill -> list of (label, regex that must match the SKILL.md body)
 SIGNUP_BODY = {
-    "notetaker": [("Zoom app step: OBF or ZAK", r"\bOBF\b.{0,200}\bZAK\b|\bZAK\b.{0,200}\bOBF\b"),
+    "building-a-notetaker": [("Zoom app step: OBF or ZAK", r"\bOBF\b.{0,200}\bZAK\b|\bZAK\b.{0,200}\bOBF\b"),
                   ("Zoom setup link", r"zoom-marketplace-app-setup|zoom-authenticated-bots"),
                   ("admission: waiting_room_timeout", r"waiting_room_timeout"),
                   ("admission: NotAllowed and Denied", r"NotAllowed.{0,600}Denied|Denied.{0,600}NotAllowed"),
                   ("transcript language is set, not fixed to en", r"languages-and-translation"),
                   ("invitee emails: calendar_email", r"calendar_email"),
-                  ("calendar auto-join next step", r"calendar-automation")],
-    "getting-started": [("Zoom app step: OBF or ZAK", r"\bOBF\b.{0,200}\bZAK\b|\bZAK\b.{0,200}\bOBF\b"),
+                  ("calendar auto-join next step", r"scheduling-and-calendars")],
+    "meetstream": [("Zoom app step: OBF or ZAK", r"\bOBF\b.{0,200}\bZAK\b|\bZAK\b.{0,200}\bOBF\b"),
                         ("Zoom setup link", r"zoom-marketplace-app-setup|zoom-authenticated-bots"),
                         ("admission: waiting_room_timeout", r"waiting_room_timeout"),
                         ("admission: NotAllowed and Denied", r"NotAllowed.{0,600}Denied|Denied.{0,600}NotAllowed"),
                         ("supported platforms, others rejected", r"Webex"),
                         ("other bot APIs: migration note", r"MeetingBaaS|Attendee")],
-    "join-meeting": [("Zoom app step: OBF or ZAK", r"\bOBF\b.{0,200}\bZAK\b|\bZAK\b.{0,200}\bOBF\b"),
+    "meetstream-cli": [("Zoom app step: OBF or ZAK", r"\bOBF\b.{0,200}\bZAK\b|\bZAK\b.{0,200}\bOBF\b"),
                      ("Zoom setup link", r"zoom-marketplace-app-setup|zoom-authenticated-bots"),
                      ("admission: waiting_room_timeout", r"waiting_room_timeout"),
                      ("supported platforms, others rejected", r"Webex"),
                      ("WhatsApp (Beta)", r"WhatsApp.{0,40}Beta")],
-    "troubleshooting": [("admission: waiting_room_timeout", r"waiting_room_timeout"),
+    "debugging-bots": [("admission: waiting_room_timeout", r"waiting_room_timeout"),
                         ("admission: NotAllowed and Denied", r"NotAllowed.{0,600}Denied|Denied.{0,600}NotAllowed"),
                         ("admission fix: signed-in bot", r"signed-in")],
-    "mia-voice-agents": [("recipes by job", r"## Recipes"),
+    "building-voice-agents": [("recipes by job", r"## Recipes"),
                          ("recipe: wake word or name", r"speak_only_when_asked"),
                          ("recipe: interviewer, wake word off", r"\"enabled\": false"),
                          ("realtime xAI (Grok) config", r"\"provider\": \"xai\""),
                          ("realtime Google (Gemini) config", r"\"provider\": \"google\""),
                          ("other languages", r"\"language\": \"(ru|es|de|pt|multi)\"")],
-    "platform-setup": [("WhatsApp pairing step", r"Integrations > WhatsApp"),
+    "setting-up-platforms": [("WhatsApp pairing step", r"Integrations > WhatsApp"),
                        ("WhatsApp limits: deepgram only", r"WhatsApp.{0,800}deepgram")],
-    "for-your-customers": [("tenant tag", r"custom_attributes"), ("storage per customer", r"storage_id"),
+    "running-in-production": [("tenant tag", r"custom_attributes"), ("storage per customer", r"storage_id"),
                            ("calendar per end user", r"create_calendar"), ("rate limit", r"429.{0,200}Retry-After"),
                            ("per-speaker audio", r"audio_separate_streams")],
-    "migrate-from-recall": [("other bot APIs", r"MeetingBaaS.{0,80}Attendee|Attendee.{0,80}MeetingBaaS")],
+    "migrating-from-recall": [("other bot APIs", r"MeetingBaaS.{0,80}Attendee|Attendee.{0,80}MeetingBaaS")],
 }
 SIGNUP_DESC = {
-    "for-your-customers": [("multi-tenant trigger", r"customers"), ("tenant tag", r"custom_attributes")],
-    "mia-voice-agents": [("Grok routes to xAI", r"Grok.{0,60}xai|xAI")],
+    "running-in-production": [("multi-tenant trigger", r"customers"), ("tenant tag", r"custom_attributes")],
+    "building-voice-agents": [("Grok routes to xAI", r"Grok.{0,60}xai|xAI")],
 }
 
 
@@ -396,16 +400,19 @@ def signup_misses():
 PER_MODE = r"Inbuilt keys work in pipeline mode only: Deepgram \(speech-to-text\) and OpenAI \(LLM and voice\)\. Realtime\s+mode runs on OpenAI and needs your own OpenAI key\. Any other provider: bring your own key\."
 OLD_PER_MODE = re.compile(r"Realtime: OpenAI only")
 BUILD_BODY = {
-    "notetaker": [("transcript: participant.name", r"participant\.name"), ("transcript: words[].text", r"words\[\]\.text"),
+    "building-a-notetaker": [("transcript: participant.name", r"participant\.name"), ("transcript: words[].text", r"words\[\]\.text"),
                   ("poll until Done", r"MediaProcessing.{0,200}Done"), ("remove the bot on exit", r"remove_bot")],
-    "meeting-brief": [("transcript: participant.name", r"participant\.name"), ("transcript: words[].text", r"words\[\]\.text")],
+    "meetstream-cli": [("transcript: participant.name", r"participant\.name"), ("transcript: words[].text", r"words\[\]\.text")],
     "meetstream": [("transcript: participant-keyed default", r"participant\.name.{0,200}words\[\]\.text"),
                    ("list bots: limit 50", r"limit.{0,40}50"), ("inbuilt keys per mode", PER_MODE),
                    ("no tunnels unless asked", r"[Tt]unnel.{0,200}(unless|only when) the user"),
                    ("MCP tools for real bot data", r"get_bot_detail")],
-    "join-meeting": [("full status flow", r"MediaProcessing.{0,300}Done"), ("commands need InMeeting (503)", r"503"),
-                     ("list bots filters", r"status=|custom_attr")],
-    "realtime-streaming": [("0x04 on Google Meet", r"Google Meet.{0,200}0x04|0x04.{0,200}Google Meet"),
+}
+# join-meeting merged into meetstream-cli (MS-2476): same checks, same intent.
+BUILD_BODY["meetstream-cli"] += [("full status flow", r"MediaProcessing.{0,300}Done"), ("commands need InMeeting (503)", r"503"),
+                                 ("list bots filters", r"status=|custom_attr")]
+BUILD_BODY.update({
+    "streaming-live-data": [("0x04 on Google Meet", r"Google Meet.{0,200}0x04|0x04.{0,200}Google Meet"),
                            ("0x04 header offset 6", r"offset 6|\[1:5\]"), ("NoSpeaker echo", r"NoSpeaker"),
                            ("secret path token", r"(secret|random).{0,40}token"), ("remove the bot on exit", r"remove_bot"),
                            ("no tunnels unless asked", r"[Tt]unnel.{0,200}(unless|only when) the user"),
@@ -414,14 +421,15 @@ BUILD_BODY = {
                            ("track 2 LLM options", r"Ollama.{0,100}LM Studio.{0,100}llama\.cpp.{0,300}harness"),
                            ("track 2 TTS options", r"Piper.{0,100}Kokoro.{0,100}Chatterbox.{0,100}`say`"),
                            ("track 2 license line", r"[Ff]ree to run locally; check each model's license before commercial use")],
-    "mia-voice-agents": [("inbuilt keys per mode", PER_MODE), ("read mia_managed", r"mia_managed"),
+    "building-voice-agents": [("inbuilt keys per mode", PER_MODE), ("read mia_managed", r"mia_managed"),
                          ("wake word on by default in fastest path", r"\"wake_word\": \{\"enabled\": false\}"),
                          ("never probe endpoints", r"[Nn]ever (probe|call) undocumented"),
                          ("3d: no do-this-now steps", r"(no|never give).{0,40}(setup|do-this-now|\"do this now\") steps"),
                          ("commands need InMeeting", r"InMeeting")],
-    "getting-started": [("inbuilt keys per mode", PER_MODE), ("when MCP tools help", r"get_transcript.{0,200}(real|actual)")],
-    "troubleshooting": [("silent agent: default wake word", r"wake word.{0,80}(on by default|default)")],
-}
+    "debugging-bots": [("silent agent: default wake word", r"wake word.{0,80}(on by default|default)")],
+})
+# getting-started merged into the router (MS-2476).
+BUILD_BODY["meetstream"].append(("when MCP tools help (was getting-started)", r"get_transcript.{0,200}(real|actual)"))
 STALE_SHAPE = re.compile(r"text field is `transcript`|text is (in )?`transcript`, not `text`|always `0x01`|\(Google Meet, Teams\) is 48 kHz")
 
 
@@ -463,15 +471,14 @@ def build_misses():
 
 # MCP 0.6.0 (MS-2305): with the MCP connected, skills create and check agents with the MCP tools.
 MCP_BODY = {
-    "mia-voice-agents": [("list_agents first", r"list_agents"), ("create_agent", r"create_agent"),
+    "building-voice-agents": [("list_agents first", r"list_agents"), ("create_agent", r"create_agent"),
                          ("check_local_agent", r"check_local_agent"), ("take_screenshot", r"take_screenshot"),
                          ("system_prompt required", r"system_prompt.{0,40}required"),
                          ("REST fallback with no MCP", r"no MCP.{0,200}POST /api/v1/mia|POST /api/v1/mia.{0,200}no MCP")],
     "meetstream": [("list_agents", r"list_agents"), ("create_agent", r"create_agent"), ("take_screenshot", r"take_screenshot")],
-    "getting-started": [("list_agents", r"list_agents"), ("create_agent", r"create_agent")],
-    "troubleshooting": [("check_local_agent", r"check_local_agent"), ("missing system_prompt 400", r"Missing model\.system_prompt")],
+    "debugging-bots": [("check_local_agent", r"check_local_agent"), ("missing system_prompt 400", r"Missing model\.system_prompt")],
 }
-MCP_DESC = {"mia-voice-agents": [("MCP: list_agents then create_agent", r"list_agents.{0,80}create_agent")]}
+MCP_DESC = {"building-voice-agents": [("MCP: list_agents then create_agent", r"list_agents.{0,80}create_agent")]}
 STALE_MCP = re.compile(r"[Aa]gent configs are REST-only|[Tt]here is no MCP tool|REST only, not MCP tools|MIA agent configs, calendar connection")
 
 
