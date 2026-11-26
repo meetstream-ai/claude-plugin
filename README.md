@@ -6,7 +6,7 @@
 
 **Meeting bots for Zoom, Google Meet and Microsoft Teams: recordings, transcripts and live data from your agent or your app, plus agents that talk in the meeting, on your own stack or hosted.**
 
-[![Plugin Version](https://img.shields.io/badge/plugin-v3.4.1-5C4EFF?style=for-the-badge)](https://github.com/meetstream-ai/meetstream-plugin)
+[![Plugin Version](https://img.shields.io/badge/plugin-v3.4.2-5C4EFF?style=for-the-badge)](https://github.com/meetstream-ai/meetstream-plugin)
 [![Live-Tested](https://img.shields.io/badge/endpoints-live--tested-10B981?style=for-the-badge)](https://github.com/meetstream-ai/meetstream-plugin/commits/main)
 [![MIT License](https://img.shields.io/badge/license-MIT-yellow?style=for-the-badge)](LICENSE)
 [![Get API Key](https://img.shields.io/badge/get%20api%20key-app.meetstream.ai-0EA5E9?style=for-the-badge)](https://app.meetstream.ai/api-keys)

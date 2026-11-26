@@ -3652,7 +3652,7 @@
    "get": {
     "operationId": "billing_getBalance",
     "summary": "Get Balance",
-    "description": "Rolling out: available when it is enabled for your account. Until then the call returns `404`, and your balance is on the dashboard Billing page (https://app.meetstream.ai/billing). Read the prepaid balance of the account that owns the API key. Read only: it does not change the balance. Prepaid (pay-as-you-go) accounts get the balance in US dollars as a string with two decimals. Invoice accounts have no prepaid balance, so `balance_usd` is `null`. To add credit, go to https://app.meetstream.ai/billing.",
+    "description": "Available for all accounts. Your balance is also on the dashboard Billing page (https://app.meetstream.ai/billing). Read the prepaid balance of the account that owns the API key. Read only: it does not change the balance. Prepaid (pay-as-you-go) accounts get the balance in US dollars as a string with two decimals. Invoice accounts have no prepaid balance, so `balance_usd` is `null`. To add credit, go to https://app.meetstream.ai/billing.",
     "tags": [
      "billing"
     ],
@@ -3678,7 +3678,7 @@
       }
      },
      "404": {
-      "description": "The endpoint is not enabled for your account yet (rolling out), or the account was not found. Read the balance on the dashboard Billing page.",
+      "description": "The account was not found. Read the balance on the dashboard Billing page.",
       "content": {
        "application/json": {
         "schema": {
@@ -3959,7 +3959,7 @@
       "type": "string"
      }
     },
-    "description": "Reserved outbound meeting-video configuration. Accepted, but live video delivery is not implemented.",
+    "description": "Reserved outbound meeting-video configuration. Google Meet, Zoom and Teams meeting bots accept it but ignore it (no live video is sent, and the bot runs on the larger video tier). Only Zoom Meeting Direct Connect (RTMS) sessions stream live video.",
     "title": "CreateBotRequestLiveVideoRequired"
    },
    "CreateBotRequestBotCameraStream": {
@@ -4794,7 +4794,7 @@
      },
      "live_video_required": {
       "$ref": "#/components/schemas/CreateBotRequestLiveVideoRequired",
-      "description": "Reserved outbound meeting-video configuration. Accepted, but live video delivery is not implemented."
+      "description": "Reserved outbound meeting-video configuration. Google Meet, Zoom and Teams meeting bots accept it but ignore it (no live video is sent, and the bot runs on the larger video tier). Only Zoom Meeting Direct Connect (RTMS) sessions stream live video."
      },
      "bot_camera_stream": {
       "$ref": "#/components/schemas/CreateBotRequestBotCameraStream",

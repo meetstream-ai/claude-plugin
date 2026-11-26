@@ -2,6 +2,11 @@
 
 All notable changes to the MeetStream Claude Code plugin.
 
+## [3.4.2] - 2026-11-26
+
+### Changed
+- Generated references re-synced from docs.meetstream.ai after the docs fixes (docs#70): the API spec now says meeting bots ignore `live_video_required`, and the balance endpoint is on for every account.
+
 ## [3.4.1] - 2026-11-26
 
 ### Fixed
