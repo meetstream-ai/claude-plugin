@@ -3,7 +3,7 @@
 
 Every public operation: 69 in the API spec, plus 15 routes that the docs describe only in guides. REST base URL `https://api.meetstream.ai`, header `Authorization: Token <key>` (MCP uses OAuth, not this header). Request fields in **bold** are required.
 
-Sources: openapi v1.0.0 a0f050ad; llms b5a4ab82. Latest docs: https://docs.meetstream.ai/llms.txt (append `.md` to any page).
+Sources: openapi v1.0.0 63c037d5; llms b5a4ab82. Latest docs: https://docs.meetstream.ai/llms.txt (append `.md` to any page).
 
 ## Contents
 
@@ -120,7 +120,7 @@ Sources: openapi v1.0.0 a0f050ad; llms b5a4ab82. Latest docs: https://docs.meets
 
 | Method and path | What it does | Request | Docs |
 |---|---|---|---|
-| `GET /api/v1/billing/balance` | Rolling out: available when it is enabled for your account. | responses: 200, 403, 404, 500 | [Get Balance](https://docs.meetstream.ai/api-reference/api-endpoints/billing/get-balance) |
+| `GET /api/v1/billing/balance` | Available for all accounts. | responses: 200, 403, 404, 500 | [Get Balance](https://docs.meetstream.ai/api-reference/api-endpoints/billing/get-balance) |
 
 ## Guide-only routes
 
