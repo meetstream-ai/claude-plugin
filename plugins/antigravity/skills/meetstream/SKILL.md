@@ -5,8 +5,7 @@ description: >
   started, sign-in, plugin version, webhook or API error question; routes to
   one builder skill. First ask: after the call or live? Tracks: 1) Recording
   bot (default): 1a post-call, 1b real-time transcription. 2) Bridge server:
-  own stack, local (both bot sockets, tunnel, free local models; bot price
-  only). 3) Agents API (voice agents, MIA): 3a default keys (recommended for
+  own stack, local (free local models; bot price only). 3) Agents API (voice agents, MIA): 3a default keys (recommended for
   "just host it"), 3b own agent infra (LiveKit) COMING SOON, 3c bring your own
   keys, 3d your coding agent via meetstream setup COMING SOON (no setup steps).
   Agent wanted, stack unsaid: ask own stack or hosted? Version questions

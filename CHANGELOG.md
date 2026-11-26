@@ -2,6 +2,12 @@
 
 All notable changes to the MeetStream Claude Code plugin.
 
+## [3.4.1] - 2026-11-26
+
+### Fixed
+- The `meetstream` router description was 1,025 characters, one over the Agent Skills limit of 1,024 that Copilot's intake lint enforces. It is shorter now.
+- `scripts/build_stores.py` fails the build when any skill description, in the source or in a store build, is over 1,024 characters (counted the way YAML reads a folded `>` value).
+
 ## [3.4.0] - 2026-11-26
 
 Skills restructured into a short router plus need-based builder skills (MS-2476, Phase 2 of the agent-surfaces plan). No content is dropped: long text moved into `references/` inside the skill that owns it.
