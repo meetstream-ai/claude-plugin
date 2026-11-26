@@ -6,7 +6,7 @@
 
 **Meeting bots for Zoom, Google Meet and Microsoft Teams: recordings, transcripts and live data from your agent or your app, plus agents that talk in the meeting, on your own stack or hosted.**
 
-[![Plugin Version](https://img.shields.io/badge/plugin-v3.3.1-5C4EFF?style=for-the-badge)](https://github.com/meetstream-ai/meetstream-plugin)
+[![Plugin Version](https://img.shields.io/badge/plugin-v3.4.0-5C4EFF?style=for-the-badge)](https://github.com/meetstream-ai/meetstream-plugin)
 [![Live-Tested](https://img.shields.io/badge/endpoints-live--tested-10B981?style=for-the-badge)](https://github.com/meetstream-ai/meetstream-plugin/commits/main)
 [![MIT License](https://img.shields.io/badge/license-MIT-yellow?style=for-the-badge)](LICENSE)
 [![Get API Key](https://img.shields.io/badge/get%20api%20key-app.meetstream.ai-0EA5E9?style=for-the-badge)](https://app.meetstream.ai/api-keys)
@@ -57,6 +57,20 @@ The skills give the fastest path first: the shortest working request (curl, Node
 
 | Goal | Try in Claude | Skill |
 |---|---|---|
+| Notes after a call | *"record my 3pm call and send me notes"* | `meetstream-cli` (join a meeting, brief it) |
+| Notetaker in your app | *"build a notetaker that puts summaries in my app"* | `building-a-notetaker` |
+| Live captions or coaching | *"stream live captions from my Google Meet into my web app"* | `streaming-live-data`, `building-a-notetaker` (sales coach) |
+| Calendar auto-join | *"auto-record every meeting on my Google Calendar"* | `scheduling-and-calendars` |
+| Transcripts, recordings and per-speaker audio | *"download the recording and each speaker's audio"* | `getting-transcripts-and-media` |
+| Webhook handler | *"handle bot events in my app and verify the signature"* | `handling-webhooks` |
+| Agent on your own stack (on request) | *"build a voice agent on free local models on my laptop"* | `streaming-live-data` (track 2, bridge server) |
+| Hosted voice agent (on request) | *"host a voice agent that answers questions in my Zoom calls"* | `building-voice-agents` |
+| Recording for your customers (SaaS) | *"bots join our customers' calls, recordings per customer in our app"* | `running-in-production` |
+| Agent recipes by job (on request) | *"an agent in our standup that only talks when someone says its name"* | `building-voice-agents` |
+| A bot that did not join | *"my bot ended NotAllowed, why?"* | `debugging-bots` |
+| Move off Recall.ai | *"migrate this repo from Recall to MeetStream"* | `migrating-from-recall` |
+
+---|---|---|
 | Notes after a call | *"record my 3pm call and send me notes"* | `join-meeting`, `meeting-brief` |
 | Notetaker in your app | *"build a notetaker that puts summaries in my app"* | `notetaker` |
 | Live captions or coaching | *"stream live captions from my Google Meet into my web app"* | `realtime-streaming`, `sales-coach` |
@@ -74,23 +88,22 @@ The skills give the fastest path first: the shortest working request (curl, Node
 
 ```
 skills/
-├── meetstream/             <- Core skill: build tracks, routing, API reference, lifecycle, decision tree
-├── getting-started/        <- First-time setup: sign in or API key, then post-call or live
-├── join-meeting/           <- Send a bot to a meeting (now or later), chat, raise hand
-├── meeting-brief/          <- After the call: notes, decisions, action items
-├── notetaker/              <- Fastest path to a post-call notetaker in your app (API guide)
-├── for-your-customers/     <- Multi-tenant: bots in your customers' meetings, per-customer routing, storage, scale
-├── sales-coach/            <- Fastest path to live coaching from the live transcript (API guide)
-├── calendar-automation/    <- Auto-join from Google or Outlook calendars
-├── realtime-streaming/     <- Live captions, audio, video, control socket, bridge server for your own agent stack
-├── recordings-and-media/   <- Recordings, per-participant audio/video, retention
-├── webhooks/               <- Webhook events, signatures, local development
-├── platform-setup/         <- Zoom (your Zoom app, OBF or ZAK), Google Meet, Teams, WhatsApp (Beta), signed-in bots
-├── mia-voice-agents/       <- Agents in meetings: track picker, bridge (track 2), hosted Agents API (3a/3c; 3b, 3d coming soon), Grok and Gemini, recipes
-├── migrate-from-recall/    <- Recall.ai to MeetStream
-├── verify-account/         <- Read-only account check: key, balance, providers
-├── test-bot/               <- Send a test bot + watch webhooks live
-└── troubleshooting/        <- 401/403/422/202, missing transcripts, bots that never join
+├── meetstream/                     <- Router (under 200 lines): intake questions, build tracks, route table, hard rules,
+│                                      first-time setup and the generated API references (references/generated/)
+├── setting-up-platforms/           <- Zoom (your Zoom app, OBF or ZAK, review, OAuth bots, Direct Connect), Google Meet lobby,
+│                                      Teams, signed-in bots, WhatsApp (Beta)
+├── sending-bots/                   <- The create_bot config, automatic_leave, identity, in-meeting REST actions, remove
+├── handling-webhooks/              <- Workspace endpoints vs callback_url, signatures, endings, dedupe, poll fallback, local dev
+├── getting-transcripts-and-media/  <- Post-call transcripts and re-runs, recordings, per-participant media, timeline, chat
+├── streaming-live-data/            <- Live captions, live audio, control socket, bridge server for your own agent stack
+├── scheduling-and-calendars/       <- join_at, Google and Outlook calendars, auto-join, recurring, calendar_email
+├── building-voice-agents/          <- Agents in meetings: track picker, hosted Agents API (3a/3c; 3b, 3d coming soon), recipes
+├── running-in-production/          <- Multi-tenant, storage, retention, rate limits, idempotency, workspaces and keys
+├── debugging-bots/                 <- Status and ErrorReason, 401/403/422/202, missing transcripts, bots that never join
+├── building-a-notetaker/           <- Fastest path to a post-call notetaker or a live sales coach, use-case patterns
+├── migrating-from-recall/          <- Recall.ai (and MeetingBaaS, Attendee) to MeetStream
+└── meetstream-cli/                 <- Run it now from this agent: join a meeting, brief it, verify the account, test bot,
+                                       every CLI workflow
 
 .mcp.json, mcp.json         <- Hosted MeetStream MCP server (browser sign-in, no key to copy): bots, transcripts,
                                voice agents (list_agents, create_agent), take_screenshot, calendars

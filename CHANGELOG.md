@@ -2,6 +2,38 @@
 
 All notable changes to the MeetStream Claude Code plugin.
 
+## [3.4.0] - 2026-11-26
+
+Skills restructured into a short router plus need-based builder skills (MS-2476, Phase 2 of the agent-surfaces plan). No content is dropped: long text moved into `references/` inside the skill that owns it.
+
+### Changed
+- `meetstream` is now the router (121 lines, was 2,035): the intake questions in order (build track, platforms, transcript timing and provider, event delivery), a route table to one need skill, and the hard rules every skill shares (REST `Authorization: Token`; recommend the customer's Zoom app; route on `bot_event`, fall back to `event`; one delivery, no retry, reply 2xx fast, poll fallback; only workspace endpoints signed; `Idempotency-Key` and 507; retry only 429, 500 and 503; presigned links 1 hour; no summary endpoint; no prices from memory; never ask for a key in chat). The old core text moved to `sending-bots`, `getting-transcripts-and-media`, `handling-webhooks`, `setting-up-platforms`, `running-in-production`, `debugging-bots`, `building-a-notetaker` and `meetstream/references/intake-details.md`.
+- Skills renamed or merged (old names stay as trigger words in the descriptions):
+
+  | Old skill | New skill |
+  |---|---|
+  | `getting-started` | `meetstream` router (`references/getting-started.md`) |
+  | `cli-workflows`, `join-meeting`, `meeting-brief`, `verify-account`, `test-bot` | `meetstream-cli` (sections; brief, verify and test detail in `references/`) |
+  | `notetaker`, `sales-coach` | `building-a-notetaker` (sales coach section; use-case patterns in `references/`) |
+  | `for-your-customers` | `running-in-production` |
+  | `platform-setup` | `setting-up-platforms` |
+  | `webhooks` | `handling-webhooks` |
+  | `recordings-and-media` | `getting-transcripts-and-media` |
+  | `realtime-streaming` | `streaming-live-data` |
+  | `calendar-automation` | `scheduling-and-calendars` |
+  | `mia-voice-agents` | `building-voice-agents` |
+  | `troubleshooting` | `debugging-bots` |
+  | `migrate-from-recall` | `migrating-from-recall` |
+  | (new) | `sending-bots`: the `create_bot` config, `automatic_leave`, identity, in-meeting REST actions, `remove_bot`, `stop_status` |
+- `coverage.json` owners moved to the new skills. Coverage of the owners' own text: 64 items not mentioned before, 0 now (69 of 69 operations, 15 of 15 guide-only routes, 87 of 87 docs pages).
+- Webhooks: route on `bot_event` with `event` as the fallback (resends and participant events have no `bot_event`); workspace endpoints are described next to `callback_url`; delivery is one attempt, sequential per bot, with regional-cell retries.
+- `meetstream-cli` follows the released CLI 1.0.1: `meetstream transcriptions`, `init`, `api`, `mock`, `trigger` and `env` are named only as coming in the next CLI release.
+- `evals/check_descriptions.py` and the Claude Directory rules in `scripts/build_stores.py` follow the content to the new skill names, with the same intent.
+
+### Added
+- Content for the docs that the owning skills did not mention: Zoom OAuth meeting bots (app registry, credentials, meeting mapping), Zoom Meeting Direct Connect (RTMS), Zoom app review, Google Meet lobby admission, transcript fetch and re-run, provider and language pages, participants and the unified speaker timeline, chat and visuals, pause and resume, `join_at` and `calendar/get_events`, `calendar_email`, custom storage per provider, retention and usage, deduplication and idempotency, workspaces and the API Playground, and the docs-for-agents pages.
+- Reference files over 100 lines start with a Contents list. Every `SKILL.md` is under 500 lines, so the Agent Plugins build no longer splits any skill.
+
 ## [3.3.1] - 2026-11-25
 
 API facts settled from the core codebase where the docs contradict themselves (MS-2435 follow-up).
