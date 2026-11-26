@@ -563,10 +563,43 @@ BUILDERS = [build_claude_directory, build_cursor, build_agent_plugin, build_anti
 
 
 # ---------------------------------------------------------------------------------------------
+DESCRIPTION_MAX = 1024  # Agent Skills spec; Copilot intake (vally) counts the folded YAML value with its final newline
+
+
+def description_length(text: str) -> int:
+    """Length of a SKILL.md description the way YAML reads it (folded `>` keeps one final newline)."""
+    m = re.match(r"---\n(.*?)\n---", text, re.S)
+    if not m:
+        return 0
+    lines = m.group(1).split("\n")
+    for i, line in enumerate(lines):
+        if line.startswith("description:"):
+            rest = line[len("description:"):].strip()
+            if rest.startswith(">") or rest.startswith("|"):
+                body = []
+                for nxt in lines[i + 1:]:
+                    if nxt.startswith("  ") or not nxt.strip():
+                        body.append(nxt.strip())
+                    else:
+                        break
+                joined = " ".join(b for b in body if b) if rest.startswith(">") else "\n".join(body)
+                return len(joined) + (0 if rest.endswith("-") else 1)
+            return len(rest.strip("\"'"))
+    return 0
+
+
+def check_descriptions(base: Path) -> None:
+    for f in sorted(base.rglob("SKILL.md")):
+        n = description_length(f.read_text(encoding="utf-8"))
+        if n > DESCRIPTION_MAX:
+            raise SystemExit(f"{f.relative_to(base)}: description is {n} characters; the limit is {DESCRIPTION_MAX}")
+
+
 def build(out: Path) -> None:
     for builder in BUILDERS:
         builder(out)
-
+    check_descriptions(ROOT / "skills")
+    check_descriptions(out / "plugins")
 
 def tree(base: Path) -> set[str]:
     return {p.relative_to(base).as_posix() for p in iter_files(base)} if base.exists() else set()
