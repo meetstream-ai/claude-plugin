@@ -32,6 +32,7 @@ getting-started -> the meetstream router; notetaker, sales-coach -> building-a-n
 renamed one to one). Each check keeps its intent.
 Usage: python3 evals/check_descriptions.py [repo_root]   (exit 1 on any miss)
 """
+import glob
 import os
 import re
 import sys
@@ -305,7 +306,10 @@ def round6_misses():
         print(f"{'ok  ' if ok else 'MISS'} {skill}: raise-hand REST call in the first 300 characters")
     ver = MUST["meetstream"][0][1]
     for rel in ("skills/meetstream/SKILL.md", "skills/meetstream/references/getting-started.md"):
-        body = " ".join(open(os.path.join(ROOT, rel), encoding="utf-8").read().split())
+        # getting-started is split into parts (MS-2485): read the index with its parts.
+        stem = os.path.join(ROOT, rel)[:-3]
+        files = [os.path.join(ROOT, rel)] + (sorted(glob.glob(stem + "-*.md")) if rel.endswith("getting-started.md") else [])
+        body = " ".join(" ".join(open(f, encoding="utf-8").read().split()) for f in files)
         ok = re.search(ver, body) is not None
         misses += not ok
         print(f"{'ok  ' if ok else 'MISS'} {rel}: body gives the exact two version sentences")
@@ -326,8 +330,19 @@ def round6_misses():
 
 
 def read_skill(name):
-    fp = os.path.join(ROOT, "skills", name, "SKILL.md")
-    return open(fp, encoding="utf-8").read() if os.path.exists(fp) else ""
+    # SKILL.md plus the skill's own references/ (MS-2485: files stay under 20 KB, so long
+    # recipes live in references/ inside the skill that owns them).
+    d = os.path.join(ROOT, "skills", name)
+    fp = os.path.join(d, "SKILL.md")
+    if not os.path.exists(fp):
+        return ""
+    parts = [open(fp, encoding="utf-8").read()]
+    ref = os.path.join(d, "references")
+    if os.path.isdir(ref):
+        for n in sorted(os.listdir(ref)):
+            if n.endswith(".md"):
+                parts.append(open(os.path.join(ref, n), encoding="utf-8").read())
+    return "\n\n".join(parts)
 
 
 # skill -> list of (label, regex that must match the SKILL.md body)

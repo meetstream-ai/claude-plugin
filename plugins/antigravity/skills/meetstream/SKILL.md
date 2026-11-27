@@ -76,7 +76,7 @@ Old skill names route here too: getting-started (this router), join-meeting, mee
 - **Retries:** retry only 429, 500 and 503, and obey `Retry-After`. Never retry a 400. A 422 transcript is final: fix the cause, re-run with `POST /api/v1/bots/{bot_id}/transcribe`.
 - **Media links:** presigned links last 1 hour. Fetch fresh ones; do not store them.
 - **Summaries:** there is no summary endpoint. Summarize the transcript with your own model.
-- **Prices:** never quote prices from memory. Link https://meetstream.ai/pricing; the dashboard shows the agent model price before a bot runs.
+- **Prices:** never quote prices from memory, and never state storage or retention prices (there is no price list for them in the docs). Link https://meetstream.ai/pricing; agent model prices come from `GET /api/v1/mia` (`mia_managed`) or the dashboard.
 
 ## Sign in and run it from here
 
@@ -98,7 +98,7 @@ Old skill names route here too: getting-started (this router), join-meeting, mee
 - `POST /bots/create_bot` returns 201 with `bot_id` and `transcript_id`. The field is `meeting_link`, not `meeting_url`. Send `"video_required": false` unless the user asks for video.
 - Transcript segments are participant-keyed by default: speaker `participant.name`, text `words[].text` joined with spaces. Some providers return `speaker` / `transcript`; read both.
 - `GET /bots?status=&platform=&from=&limit=50`: `limit` is at most 50; follow `nextCursor`. Never page the whole history.
-- Low credits (403 `Low credits please recharge`): https://app.meetstream.ai/billing (`top_up_link` when connected); never retry in a loop.
+- Low credits (403 `Low credits please recharge`): send the user to https://app.meetstream.ai/billing. `top_up_link` is an MCP tool (when connected), not a field in any API response. Never retry in a loop.
 
 **Version questions:** reply with only these two sentences, word for word, then continue: "Install or update to the current MeetStream plugin. The MCP server is hosted at https://mcp.meetstream.ai/mcp; there is no npm package or server version to install."
 

@@ -93,8 +93,9 @@ DIRECTORY_TEXT_RULES: list[tuple[str, str]] = [
 # or a higher level). A missing heading fails the build, so source edits cannot slip through.
 # MS-2476: the router (`meetstream`) no longer reads the key from the environment, so it needs no
 # section rule; getting-started moved into the router as references/getting-started.md.
+# MS-2485: getting-started is split into parts under 20 KB; these sections are in the build-tracks part.
 DIRECTORY_SECTION_RULES: dict[str, dict[str, str]] = {
-    "meetstream/references/getting-started.md": {
+    "meetstream/references/getting-started-build-tracks.md": {
         "## When to invoke this skill": (
             "## When to invoke this skill\n\n"
             "Use this guide first when the user is new to MeetStream, has no account, or the MeetStream MCP "
@@ -595,10 +596,23 @@ def check_descriptions(base: Path) -> None:
             raise SystemExit(f"{f.relative_to(base)}: description is {n} characters; the limit is {DESCRIPTION_MAX}")
 
 
+# MS-2485: GitHub Copilot CLI does not read a file larger than about 20 KB in one go, so it
+# skipped whole skills in the cross-harness build tests. Split big files with scripts/split_md.py.
+FILE_MAX = 20000
+
+
+def check_file_sizes(base: Path) -> None:
+    big = [(f, f.stat().st_size) for f in sorted(base.rglob("*.md")) if f.stat().st_size > FILE_MAX]
+    if big:
+        raise SystemExit("files over 20 KB (split them with scripts/split_md.py):\n" +
+                         "\n".join(f"  {f.relative_to(base)}: {n} bytes" for f, n in big))
+
+
 def build(out: Path) -> None:
     for builder in BUILDERS:
         builder(out)
     check_descriptions(ROOT / "skills")
+    check_file_sizes(ROOT / "skills")
     check_descriptions(out / "plugins")
 
 def tree(base: Path) -> set[str]:

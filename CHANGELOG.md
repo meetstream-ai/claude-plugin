@@ -2,6 +2,22 @@
 
 All notable changes to the MeetStream Claude Code plugin.
 
+## [3.5.0] - 2026-11-27
+
+Fixes from the cross-harness build tests (MS-2485): Codex, Copilot and OpenCode each built 9 sample apps from these skills, and hidden tests ran them against a production-accurate `meetstream mock`. Every failure traced to a gap below.
+
+### Added
+- `streaming-live-data`: live transcription delivery modes (`transcription_mode`). The default `raw` sends interim and final segments, so caption apps should use `sentence` or keep only `is_final` segments.
+- `streaming-live-data`: the full JSON shape of control-socket commands (`{"command": "sendmsg", ...}`), the bot's replies, and the socket URL rules (the bot id is inserted into the path only on bots with `agent_config_id`).
+- `building-voice-agents/references/custom-functions.md`: the request a tool endpoint receives (`{name, bot, args}`, `X-Bot-ID`, no signature) and a minimal endpoint.
+- `handling-webhooks`: one token pattern (`MEETSTREAM_WEBHOOK_SECRET`, `?token=`) that still works in local tests.
+- `getting-transcripts-and-media`: a polling snippet that checks the status code (202 is a success status in most HTTP clients; 409 and 422 are final).
+
+### Changed
+- Every skill file is under 20 KB: GitHub Copilot CLI does not read larger files in one go. `building-voice-agents` and `meetstream-cli` moved recipes into `references/`; large references are split into parts with an index (`scripts/split_md.py`); the generator splits large generated files; `build_stores.py` fails on any file over 20 KB.
+- Bridge examples use `/audio` and `/control` (paths ending in `/bridge` get the hosted-agent variant of the protocol).
+- The agent catalog (`GET /mia`, `mia_managed`) carries prices: quote prices only from it. `top_up_link` is an MCP tool, not a response field. Never state storage or retention prices.
+
 ## [3.4.2] - 2026-11-26
 
 ### Changed

@@ -39,6 +39,17 @@ links last 1 hour, so fetch fresh ones and never store them. Hard rules: the `me
    - 202: still processing; poll with a cap. A streaming-only provider never makes a post-call
      transcript, so it stays 202: stop on `bot.done`.
    - 422: the run failed (`transcript_status: "Failed"` and the reason). Final: do not retry.
+   - 409 on `/bots/{bot_id}/get_transcript`: the bot was not admitted, so there is no transcript.
+   A 202 is a **success status**: most HTTP clients (Python `urllib`, `requests`, `fetch`) do
+   not raise on it, so check the status code before you parse the body as a transcript:
+   ```python
+   for _ in range(120):                       # about 10 minutes at 5 s
+       with urlopen(Request(f"{base}/transcript/{tid}/get_transcript", headers=auth)) as r:
+           if r.status == 200:
+               segments = json.load(r); break
+       time.sleep(5)                          # 202: still processing
+   # urlopen raises HTTPError for 409 (not admitted) and 422 (failed): stop, do not retry
+   ```
 4. Re-run on a finished recording: `POST /api/v1/bots/{bot_id}/transcribe` with exactly one
    `provider` object (no server default: 400 without one). Each run gets a new `transcript_id` and
    one `transcription.processed` or `.failed` (no `bot.done`, no `custom_attributes`).
