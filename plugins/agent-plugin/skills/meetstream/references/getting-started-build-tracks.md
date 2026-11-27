@@ -208,7 +208,7 @@ The user signs in once in the browser; MeetStream creates the key. Never ask for
 
 The user's own app code is the only thing that needs the key, and the agent never reads, prints or writes it.
 
-- **On the user's laptop:** apps made with `meetstream init` call MeetStream through `meetstream api`, with the CLI sign-in, so no key goes into project files (CLI 1.1, coming with the next CLI release). Until then, or for other apps, the user creates a key at https://app.meetstream.ai/api-keys and adds it to the app's `.env` file (listed in `.gitignore`) themselves.
+- **On the user's laptop:** apps made with `meetstream init` call MeetStream through `meetstream api`, with the CLI sign-in, so no key goes into project files (CLI 1.1.0 and later). On an older CLI, or for other apps, the user creates a key at https://app.meetstream.ai/api-keys and adds it to the app's `.env` file (listed in `.gitignore`) themselves.
 - **On a server or in CI:** the key goes in the server's secret store (AWS Secrets Manager, Doppler, Vault, the CI secret settings). With CLI 1.1, `meetstream env --with-key` writes the key and its API URL into a server `.env`.
 
 > **Never commit a key to git.** If a key leaks, rotate it at https://app.meetstream.ai/api-keys.

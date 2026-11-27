@@ -149,7 +149,8 @@ def help_paths(run, prefix: list[str], flags: dict | None = None) -> list[str]:
     paths = []
     block = False
     for line in text.splitlines():
-        if re.match(r"^(Available Commands|Get started|Meetings|Your agent in the call|Tools):", line):
+        # Any command block heading (cobra groups, "Additional Commands"), not usage, flags or examples.
+        if re.match(r"^[A-Z][A-Za-z ,'-]*:$", line) and not re.match(r"^(Usage|Flags|Global Flags|Examples|Aliases):$", line):
             block = True
             continue
         if block and not line.strip():
@@ -169,7 +170,14 @@ def sync_cli_released(lock: dict, version: str) -> None:
                               env={"MEETSTREAM_TELEMETRY": "0", "PATH": "/usr/bin:/bin:/usr/local/bin:/opt/homebrew/bin"}
                               ).stdout
     flags: dict = {}
-    paths = sorted(set(help_paths(run, [], flags)))
+    # From 1.1 the released CLI has its own catalog (hidden commands included); older ones need the help walk.
+    try:
+        cat = json.loads(run(["commands", "--json", "--no-input"]))
+        cmds = [c for c in cat.get("commands", []) if not c.get("planned")]
+        paths = sorted(c["path"] for c in cmds)
+        flags = {c["path"]: sorted(f["name"] for f in c.get("flags") or [] if f["name"] != "help") for c in cmds}
+    except (ValueError, KeyError, TypeError):
+        paths = sorted(set(help_paths(run, [], flags)))
     (SRC / "cli-released.json").write_text(json.dumps({"version": version, "paths": paths,
                                                        "flags": {k: flags[k] for k in sorted(flags)}}, indent=1) + "\n",
                                            encoding="utf-8")

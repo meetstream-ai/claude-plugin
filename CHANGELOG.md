@@ -12,6 +12,9 @@ Parity with the CLI 1.1 and SDK 1.5.0 fixes (MS-2488), and findings from the fir
 - `getting-transcripts-and-media`: a 409 can also be `TRANSCRIPTION_NOT_ENABLED`; a skipped run keeps answering 202, so stop on `TranscriptStatus: "Skipped"` or `bot.done`.
 - The generated CLI map marks flags that are new on a released command as *(pre-release)* (`join --follow`, `--transcription`, `--live-transcription`, `--transcription-mode`, `listen --forward-to`, `--tunnel`). `sync_sources.py --cli-released` now records each released command's flags.
 
+### Changed
+- CLI 1.1.0 is released (27 Nov 2026): the CLI map reads the released CLI's own catalog (`commands --json`, hidden commands included), so 1.1 commands and flags are no longer marked pre-release. `meetstream-cli` names what 1.1 added and how to update an older CLI.
+
 ### Added
 - CLI 1.1 `--transcription-mode` (sentence by default for live captions) and the SDK 1.5.0 helpers: `isFinalSegment` / `is_final_segment`, `parseCustomFunctionCall` / `parse_custom_function_call`, and a replay window that checks the signed body's `timestamp`.
 

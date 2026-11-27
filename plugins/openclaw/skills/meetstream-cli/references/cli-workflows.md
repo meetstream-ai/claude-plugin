@@ -41,9 +41,9 @@ meetstream bots get <bot-id> --part participants --json   # also: detail, chats,
   `--retention-hours`, `--storage-id` (customer S3), `--separate-audio`, `--separate-video`,
   `--attr key=value`, `--idempotency-key`.
 - Re-run transcription on a finished meeting: `meetstream transcribe <bot-id> -p <provider>`
-  (no default provider on the server; `meetstream` needs no key). Listing runs as a command
-  (`meetstream transcriptions`) comes in the next CLI release; today use the MCP
-  `list_transcriptions` tool or `GET /api/v1/bots/{bot_id}/transcriptions`.
+  (no default provider on the server; `meetstream` needs no key). List the runs with
+  `meetstream transcriptions <bot-id>` (CLI 1.1.0), the MCP `list_transcriptions` tool, or
+  `GET /api/v1/bots/{bot_id}/transcriptions`.
 - Speaker timeline: `meetstream bots timeline <bot-id> [--download]`.
 - End or clean up: `meetstream bots remove <bot-id>`; permanent delete
   `meetstream bots delete <bot-id> --yes` (confirm with the user first).

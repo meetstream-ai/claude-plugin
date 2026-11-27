@@ -303,6 +303,8 @@ def gen_cli() -> str:
     for c in sorted(cmds, key=lambda x: x["path"]):
         flags = []
         for f in c.get("flags") or []:
+            if f["name"] == "help":
+                continue
             s = f"`--{f['name']}`"
             if f.get("enum"):
                 s += " (" + "|".join(f["enum"]) + ")"

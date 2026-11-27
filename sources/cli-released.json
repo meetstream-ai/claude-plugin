@@ -1,7 +1,6 @@
 {
- "version": "1.0.1",
+ "version": "1.1.0",
  "paths": [
-  "agent",
   "agent bench",
   "agent context",
   "agent login",
@@ -9,12 +8,12 @@
   "agent serve",
   "agent setup",
   "agent status",
-  "auth",
+  "ai install",
+  "api",
   "auth logout",
   "auth set-key",
   "auth status",
   "balance",
-  "bots",
   "bots delete",
   "bots get",
   "bots hand",
@@ -24,9 +23,7 @@
   "bots show-image",
   "bots status",
   "bots summary",
-  "bots tail",
   "bots timeline",
-  "calendar",
   "calendar auto-join",
   "calendar cancel",
   "calendar connect",
@@ -35,13 +32,14 @@
   "calendar reschedule",
   "calendar schedule",
   "calendar unschedule",
+  "commands",
   "docs",
   "doctor",
+  "env",
+  "init",
   "join",
   "listen",
   "login",
-  "logins",
-  "logins google",
   "logins google add",
   "logins google add-domain",
   "logins google disable",
@@ -50,8 +48,9 @@
   "logins google enable",
   "logins google list",
   "logins google remove",
+  "logins google remove-domain",
   "logins google set-cert",
-  "logins teams",
+  "logins google update-domain",
   "logins teams add",
   "logins teams add-domain",
   "logins teams disable",
@@ -61,10 +60,10 @@
   "logins teams get",
   "logins teams list",
   "logins teams remove",
+  "logins teams remove-domain",
   "logins teams set-password",
-  "mcp",
+  "logins teams update-domain",
   "mcp add",
-  "mia",
   "mia apply",
   "mia check",
   "mia create",
@@ -72,15 +71,18 @@
   "mia get",
   "mia list",
   "mia update",
+  "mock",
   "recordings",
   "setup",
   "skill",
   "transcribe",
   "transcript",
+  "transcription providers",
+  "transcriptions",
+  "trigger",
   "version"
  ],
  "flags": {
-  "agent": [],
   "agent bench": [
    "agent",
    "binary",
@@ -141,14 +143,21 @@
    "workdir"
   ],
   "agent status": [],
-  "auth": [],
+  "ai install": [
+   "all",
+   "dry-run"
+  ],
+  "api": [
+   "data",
+   "envelope",
+   "method"
+  ],
   "auth logout": [],
   "auth set-key": [],
   "auth status": [
    "offline"
   ],
   "balance": [],
-  "bots": [],
   "bots delete": [
    "yes"
   ],
@@ -170,11 +179,9 @@
    "watch"
   ],
   "bots summary": [],
-  "bots tail": [],
   "bots timeline": [
    "download"
   ],
-  "calendar": [],
   "calendar auto-join": [
    "name",
    "video"
@@ -194,20 +201,41 @@
   "calendar reschedule": [],
   "calendar schedule": [],
   "calendar unschedule": [],
+  "commands": [],
   "docs": [],
   "doctor": [
    "agent",
    "binary",
    "no-warm"
   ],
+  "env": [
+   "check",
+   "dir",
+   "overwrite",
+   "with-key"
+  ],
+  "init": [
+   "dir",
+   "email",
+   "force",
+   "lang",
+   "list",
+   "live-transcription",
+   "llm",
+   "no-env",
+   "transcription",
+   "use-case",
+   "with-key",
+   "yes"
+  ],
   "join": [
    "agent-config",
-   "agent-config-id",
    "agent-param",
    "attr",
    "bot-message",
    "callback",
    "everyone-left-timeout",
+   "follow",
    "google-login-domain",
    "idempotency-key",
    "image-url",
@@ -215,6 +243,7 @@
    "language",
    "live-audio-ws",
    "live-transcript-webhook",
+   "live-transcription",
    "live-video-ws",
    "max-recording-seconds",
    "name",
@@ -228,6 +257,8 @@
    "storage-id",
    "teams-login-domain",
    "transcript",
+   "transcription",
+   "transcription-mode",
    "video",
    "video-layout",
    "waiting-room-timeout",
@@ -237,18 +268,17 @@
    "zoom-zak-url"
   ],
   "listen": [
-   "forward",
+   "forward-to",
    "host",
    "path",
-   "port"
+   "port",
+   "tunnel"
   ],
   "login": [
    "no-browser",
    "no-calendar",
    "with-key"
   ],
-  "logins": [],
-  "logins google": [],
   "logins google add": [
    "cert",
    "domain",
@@ -275,12 +305,18 @@
    "domain",
    "yes"
   ],
+  "logins google remove-domain": [
+   "yes"
+  ],
   "logins google set-cert": [
    "cert",
    "domain",
    "key"
   ],
-  "logins teams": [],
+  "logins google update-domain": [
+   "login-mode",
+   "name"
+  ],
   "logins teams add": [
    "domain",
    "email",
@@ -301,14 +337,18 @@
   "logins teams remove": [
    "yes"
   ],
+  "logins teams remove-domain": [
+   "yes"
+  ],
   "logins teams set-password": [
    "password-stdin"
   ],
-  "mcp": [],
+  "logins teams update-domain": [
+   "name"
+  ],
   "mcp add": [
    "write"
   ],
-  "mia": [],
   "mia apply": [
    "dry-run",
    "file"
@@ -324,6 +364,13 @@
   "mia list": [],
   "mia update": [
    "file"
+  ],
+  "mock": [
+   "host",
+   "list",
+   "port",
+   "scenario",
+   "step"
   ],
   "recordings": [],
   "setup": [
@@ -350,12 +397,20 @@
   "transcribe": [
    "callback",
    "language",
-   "provider"
+   "provider",
+   "transcription"
   ],
   "transcript": [
    "raw",
    "timeout",
    "wait"
+  ],
+  "transcription providers": [],
+  "transcriptions": [],
+  "trigger": [
+   "bot",
+   "forward-to",
+   "list"
   ],
   "version": []
  }
