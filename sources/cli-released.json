@@ -78,5 +78,285 @@
   "transcribe",
   "transcript",
   "version"
- ]
+ ],
+ "flags": {
+  "agent": [],
+  "agent bench": [
+   "agent",
+   "binary",
+   "compare",
+   "effort",
+   "export",
+   "max-models",
+   "models",
+   "parallel"
+  ],
+  "agent context": [
+   "agent",
+   "ignore-rules",
+   "workdir"
+  ],
+  "agent login": [
+   "no-browser"
+  ],
+  "agent logout": [],
+  "agent serve": [
+   "agent",
+   "binary",
+   "command",
+   "debug",
+   "effort",
+   "ignore-rules",
+   "max-access",
+   "model",
+   "no-meeting-md",
+   "no-prime",
+   "no-relay",
+   "owner",
+   "port",
+   "relay",
+   "timeout",
+   "tunnel",
+   "tunnel-url",
+   "workdir"
+  ],
+  "agent setup": [
+   "access",
+   "agent",
+   "agent-config",
+   "brain",
+   "dry-run",
+   "ears",
+   "effort",
+   "mode",
+   "model",
+   "name",
+   "new-agent",
+   "no-calendar",
+   "no-start",
+   "owner",
+   "test",
+   "voice",
+   "voice-keys",
+   "workdir"
+  ],
+  "agent status": [],
+  "auth": [],
+  "auth logout": [],
+  "auth set-key": [],
+  "auth status": [
+   "offline"
+  ],
+  "balance": [],
+  "bots": [],
+  "bots delete": [
+   "yes"
+  ],
+  "bots get": [
+   "part"
+  ],
+  "bots hand": [],
+  "bots list": [
+   "all",
+   "limit",
+   "page"
+  ],
+  "bots remove": [],
+  "bots say": [],
+  "bots show-image": [
+   "duration"
+  ],
+  "bots status": [
+   "watch"
+  ],
+  "bots summary": [],
+  "bots tail": [],
+  "bots timeline": [
+   "download"
+  ],
+  "calendar": [],
+  "calendar auto-join": [
+   "name",
+   "video"
+  ],
+  "calendar cancel": [],
+  "calendar connect": [
+   "client-id",
+   "client-secret",
+   "join-rule",
+   "open",
+   "own-app",
+   "provider",
+   "refresh-token"
+  ],
+  "calendar events": [],
+  "calendar list": [],
+  "calendar reschedule": [],
+  "calendar schedule": [],
+  "calendar unschedule": [],
+  "docs": [],
+  "doctor": [
+   "agent",
+   "binary",
+   "no-warm"
+  ],
+  "join": [
+   "agent-config",
+   "agent-config-id",
+   "agent-param",
+   "attr",
+   "bot-message",
+   "callback",
+   "everyone-left-timeout",
+   "google-login-domain",
+   "idempotency-key",
+   "image-url",
+   "join-at",
+   "language",
+   "live-audio-ws",
+   "live-transcript-webhook",
+   "live-video-ws",
+   "max-recording-seconds",
+   "name",
+   "no-strict-email",
+   "no-zoom-use-own-app",
+   "retention-hours",
+   "separate-audio",
+   "separate-video",
+   "sign-in-email",
+   "socket-ws",
+   "storage-id",
+   "teams-login-domain",
+   "transcript",
+   "video",
+   "video-layout",
+   "waiting-room-timeout",
+   "zoom-obf",
+   "zoom-obf-url",
+   "zoom-use-own-app",
+   "zoom-zak-url"
+  ],
+  "listen": [
+   "forward",
+   "host",
+   "path",
+   "port"
+  ],
+  "login": [
+   "no-browser",
+   "no-calendar",
+   "with-key"
+  ],
+  "logins": [],
+  "logins google": [],
+  "logins google add": [
+   "cert",
+   "domain",
+   "email",
+   "inactive",
+   "key"
+  ],
+  "logins google add-domain": [
+   "login-mode",
+   "name"
+  ],
+  "logins google disable": [
+   "domain"
+  ],
+  "logins google domain": [],
+  "logins google domains": [],
+  "logins google enable": [
+   "domain"
+  ],
+  "logins google list": [
+   "domain"
+  ],
+  "logins google remove": [
+   "domain",
+   "yes"
+  ],
+  "logins google set-cert": [
+   "cert",
+   "domain",
+   "key"
+  ],
+  "logins teams": [],
+  "logins teams add": [
+   "domain",
+   "email",
+   "inactive",
+   "password-stdin"
+  ],
+  "logins teams add-domain": [
+   "name"
+  ],
+  "logins teams disable": [],
+  "logins teams domain": [],
+  "logins teams domains": [],
+  "logins teams enable": [],
+  "logins teams get": [],
+  "logins teams list": [
+   "domain"
+  ],
+  "logins teams remove": [
+   "yes"
+  ],
+  "logins teams set-password": [
+   "password-stdin"
+  ],
+  "mcp": [],
+  "mcp add": [
+   "write"
+  ],
+  "mia": [],
+  "mia apply": [
+   "dry-run",
+   "file"
+  ],
+  "mia check": [],
+  "mia create": [
+   "file"
+  ],
+  "mia delete": [
+   "yes"
+  ],
+  "mia get": [],
+  "mia list": [],
+  "mia update": [
+   "file"
+  ],
+  "recordings": [],
+  "setup": [
+   "access",
+   "agent",
+   "agent-config",
+   "brain",
+   "dry-run",
+   "ears",
+   "effort",
+   "mode",
+   "model",
+   "name",
+   "new-agent",
+   "no-calendar",
+   "no-start",
+   "owner",
+   "test",
+   "voice",
+   "voice-keys",
+   "workdir"
+  ],
+  "skill": [],
+  "transcribe": [
+   "callback",
+   "language",
+   "provider"
+  ],
+  "transcript": [
+   "raw",
+   "timeout",
+   "wait"
+  ],
+  "version": []
+ }
 }

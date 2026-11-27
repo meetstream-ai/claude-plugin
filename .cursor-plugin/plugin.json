@@ -2,7 +2,7 @@
   "$schema": "https://cursor.com/schemas/cursor-plugin/plugin.json",
   "name": "meetstream",
   "displayName": "MeetStream",
-  "version": "3.5.0",
+  "version": "3.5.1",
   "description": "Build tracks: 1) the Recording bot (meeting bots for Zoom, Google Meet and Microsoft Teams: post-call or real-time transcription); 2) the Bridge server (agents on your own stack, free local models); 3) the hosted Agents API (voice agents; LiveKit and local agents coming soon). Hosted MeetStream MCP server with browser sign-in.",
   "author": {
     "name": "MeetStream",

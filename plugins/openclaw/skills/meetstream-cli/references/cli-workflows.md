@@ -55,7 +55,7 @@ meetstream listen -p 3333 --json        # loopback receiver: one JSON line per e
 meetstream join <url> -t meetstream_streaming -c https://<public-url>/webhook --live-transcript-webhook https://<public-url>/webhook --json
 ```
 `-t meetstream_streaming` is MeetStream live transcription (no provider key). Deepgram, AssemblyAI, Sarvam and other `*_streaming` providers need the user's key in the dashboard.
-`listen --forward <url>` also relays events elsewhere. `meetstream bots tail` (events over the
+`listen --forward <url>` (1.0.1; `--forward-to` from 1.1, which also keeps the `X-MeetStream-*` signature headers) relays events to your app. `meetstream bots tail` (events over the
 relay, no tunnel) is planned: today it exits 2 with a hint.
 
 ### W4 · Talk in the meeting from the terminal

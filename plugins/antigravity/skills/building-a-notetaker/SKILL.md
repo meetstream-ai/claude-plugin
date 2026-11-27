@@ -131,8 +131,10 @@ def on_event(event: dict) -> list | None:
     detail = requests.get(f"{BASE}/bots/{event['bot_id']}/detail", headers=H).json()
     tid = detail["bot_details"]["transcript_id"]
     r = requests.get(f"{BASE}/transcript/{tid}/get_transcript", headers=H)
-    if r.status_code == 422:  # the run failed: final, show the reason, do not retry
-        raise RuntimeError(r.json().get("message"))
+    if r.status_code == 202:  # still processing: a success status, so check it before parsing
+        return None           # poll again later, with a cap
+    if r.status_code in (409, 422):  # 409 no transcript (not admitted, or not enabled); 422 failed
+        raise RuntimeError(r.json().get("message"))  # final: show the reason, do not retry
     r.raise_for_status()
     return lines(r.json())
 
