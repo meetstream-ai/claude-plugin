@@ -281,6 +281,7 @@ def gen_cli() -> str:
     cat = load(SRC / "cli-commands.json")
     rel = load(SRC / "cli-released.json")
     released = set(rel["paths"])
+    rel_flags = rel.get("flags", {})  # per released command: its flag names (MS-2488)
     wf = load(DATA / "cli-workflows.json")
     skip = wf.get("not_in_skills", {})
     cmds = [c for c in cat["commands"] if not c.get("planned") and c["path"] not in skip]
@@ -289,7 +290,8 @@ def gen_cli() -> str:
     out = header("meetstream CLI map",
                  f"The CLI for agent users: workflows with the API calls under them, then every command and flag. "
                  f"Catalog from CLI {cat.get('version')}; released CLI is {rel['version']}. "
-                 f"Commands marked **pre-release** are not in {rel['version']} yet: do not tell users they can run them until a release has them.",
+                 f"Commands marked **pre-release** are not in {rel['version']} yet, and flags marked *(pre-release)* are new on a released command: "
+                 f"do not tell users they can run them until a release has them.",
                  ["cli", "cli_released"])
     out += toc(["Rules", "Workflows", "Commands"])
     out += ("## Rules\n\n- Always pass `--json --no-input`; parse stdout; human text goes to stderr.\n"
@@ -301,9 +303,13 @@ def gen_cli() -> str:
     for c in sorted(cmds, key=lambda x: x["path"]):
         flags = []
         for f in c.get("flags") or []:
+            if f["name"] == "help":
+                continue
             s = f"`--{f['name']}`"
             if f.get("enum"):
                 s += " (" + "|".join(f["enum"]) + ")"
+            if c["path"] in released and c["path"] in rel_flags and f["name"] not in rel_flags[c["path"]]:
+                s += " *(pre-release)*"
             flags.append(s)
         tag = " **pre-release**" if c["path"] not in released else ""
         out += f"| `meetstream {c['path']}`{tag} | {cell(c.get('short'))} | {cell(', '.join(flags))} |\n"

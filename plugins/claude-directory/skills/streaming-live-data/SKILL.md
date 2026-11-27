@@ -96,6 +96,10 @@ An app that writes every POST shows each sentence two or more times.
  "live_transcription_required": {"webhook_url": "https://<public-url>/live?token=<secret>"}}
 ```
 
+From the CLI (1.1): `join --live-transcription meetstream` sends `sentence` by default
+(`--transcription-mode raw|sentence|word_level` to change it). The SDKs (1.5.0) have
+`isFinalSegment(payload)` / `is_final_segment(payload)` for raw mode.
+
 Payload (sentence): `{"bot_id", "speakerName", "speakerId", "timestamp", "utterance", "transcript",
 "end_of_turn": true, "transcription_mode": "sentence"}`. In `raw`, keep only POSTs where
 `is_final` is `true` (Deepgram) or `end_of_turn` is `true` (AssemblyAI) before you store or act.
@@ -157,6 +161,15 @@ commands you send. Every command is a JSON text frame whose **`command`** key na
 {"command": "sendaudio", "bot_id": "<bot_id>", "audiochunk": "<base64 PCM16 LE>", "sample_rate": 48000, "encoding": "pcm16", "channels": 1, "endianness": "little"}
 {"command": "interrupt", "bot_id": "<bot_id>", "action": "clear_audio_queue"}
 ```
+
+**Wait for `{"command": "meeting_ready"}` before you send anything.** The control socket opens
+(`"type": "ready"`) while the bot is still joining or in the lobby, often 15 to 20 seconds
+before it is in the meeting. On Google Meet, commands sent before `meeting_ready` are dropped
+with no reply, and so was a chat message sent half a second after it (seen live, 27 Nov 2026).
+Queue chat and audio until `meeting_ready`, wait about 5 more seconds before the first chat
+message, and confirm each one by its `{"command": "sendmsg", "status": "sent"}` reply (it can
+take several seconds); resend once if no reply arrives within 15 seconds. `bot_id` on a command
+is optional.
 
 The bot answers on the same socket, for example `{"command": "sendmsg", "status": "sent"}`
 after each chat message and `{"command": "sendaudio", "status": "sent"}` after each audio
@@ -229,7 +242,8 @@ Models for the bridge, free to run locally; check each model's license before co
        "live_audio_required": {"websocket_url": "wss://your-bridge.example/audio"},
        "socket_connection_url": {"websocket_url": "wss://your-bridge.example/control"}})
    ```
-4. Both sockets open with a `{"type": "ready", "bot_id": "..."}` handshake; keep one AI
+4. Both sockets open with a `{"type": "ready", "bot_id": "..."}` handshake (send nothing until
+   the control socket's `meeting_ready`); keep one AI
    session per `bot_id`, created when the first socket connects and closed when both have
    disconnected.
 5. Audio in: decode each frame by its type byte (`0x01` or `0x04`, on every platform,

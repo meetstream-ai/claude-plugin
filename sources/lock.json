@@ -24,16 +24,17 @@
   },
   "sources": {
     "cli": {
-      "fetched": "2026-11-25T05:31:19+00:00",
+      "fetched": "2026-11-27T14:14:29+00:00",
       "from": "meetstream commands --json",
-      "sha256": "5b76706056cdd30989a5bfb62bfe8c292edc3f675ef43cf432793b67f411e0d6",
-      "version": "1.1.0-dev"
+      "sha256": "8af6ecf5e6c0e0dcc52c5cecaf474d4605af246058e201f699c7b69062f836d6",
+      "version": "1.1.0"
     },
     "cli_released": {
-      "count": 77,
-      "fetched": "2026-11-25T05:25:32+00:00",
-      "sha256": "2e108d8d2695f579fbfa90865e8df92b2284b238982bccefc7ca8c92c04f6b41",
-      "version": "1.0.1"
+      "count": 80,
+      "fetched": "2026-11-27T14:14:29+00:00",
+      "from": "meetstream-cli 1.1.0 commands --json (PyPI)",
+      "sha256": "78aafe26a2a8236cdefb7670dbe49f9c324d853b572de11476ea8f6a85d9b6fc",
+      "version": "1.1.0"
     },
     "llms": {
       "fetched": "2026-11-25T05:16:45+00:00",

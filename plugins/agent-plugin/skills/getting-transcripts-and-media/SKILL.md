@@ -39,7 +39,11 @@ links last 1 hour, so fetch fresh ones and never store them. Hard rules: the `me
    - 202: still processing; poll with a cap. A streaming-only provider never makes a post-call
      transcript, so it stays 202: stop on `bot.done`.
    - 422: the run failed (`transcript_status: "Failed"` and the reason). Final: do not retry.
-   - 409 on `/bots/{bot_id}/get_transcript`: the bot was not admitted, so there is no transcript.
+   - 409 on `/bots/{bot_id}/get_transcript`: there is no transcript. The body's `code` says why:
+     the bot was not admitted, or `TRANSCRIPTION_NOT_ENABLED` (the bot had no transcript provider).
+   - A run that was skipped (no usable audio) keeps answering 202 with "Current status: Skipped".
+     Stop when `GET /bots/{bot_id}/detail` shows `TranscriptStatus: "Skipped"` (or on `bot.done`
+     with no `transcription.processed`); do not poll it to the cap.
    A 202 is a **success status**: most HTTP clients (Python `urllib`, `requests`, `fetch`) do
    not raise on it, so check the status code before you parse the body as a transcript:
    ```python

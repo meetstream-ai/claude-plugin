@@ -124,13 +124,33 @@ def sync_cli(lock: dict, binary: str) -> None:
                                                  "fetched": now(), "from": "meetstream commands --json"})
 
 
-def help_paths(run, prefix: list[str]) -> list[str]:
-    """Walk `meetstream <path> --help` and return every command path (released CLIs have no catalog)."""
+def help_flags(text: str) -> list[str]:
+    """Flag names in the local `Flags:` block of one `--help` text (global flags left out)."""
+    names, block = [], False
+    for line in text.splitlines():
+        if line.startswith("Flags:"):
+            block = True
+            continue
+        if block and (not line.strip() or not line.startswith(" ")):
+            block = False
+            continue
+        m = re.search(r"--([a-z][a-z0-9-]*)", line) if block else None
+        if m and m.group(1) != "help":
+            names.append(m.group(1))
+    return sorted(set(names))
+
+
+def help_paths(run, prefix: list[str], flags: dict | None = None) -> list[str]:
+    """Walk `meetstream <path> --help` and return every command path (released CLIs have no catalog).
+    With `flags`, also record each command's local flag names (MS-2488: marks 1.1-only flags)."""
     text = run(prefix + ["--help"])
+    if flags is not None and prefix:
+        flags[" ".join(prefix)] = help_flags(text)
     paths = []
     block = False
     for line in text.splitlines():
-        if re.match(r"^(Available Commands|Get started|Meetings|Your agent in the call|Tools):", line):
+        # Any command block heading (cobra groups, "Additional Commands"), not usage, flags or examples.
+        if re.match(r"^[A-Z][A-Za-z ,'-]*:$", line) and not re.match(r"^(Usage|Flags|Global Flags|Examples|Aliases):$", line):
             block = True
             continue
         if block and not line.strip():
@@ -140,7 +160,7 @@ def help_paths(run, prefix: list[str]) -> list[str]:
         if m and m.group(1) not in ("help", "completion"):
             sub = prefix + [m.group(1)]
             paths.append(" ".join(sub))
-            paths += help_paths(run, sub)
+            paths += help_paths(run, sub, flags)
     return paths
 
 
@@ -149,8 +169,17 @@ def sync_cli_released(lock: dict, version: str) -> None:
         return subprocess.run(["npx", "-y", f"@meetstream/cli@{version}"] + args, capture_output=True, text=True,
                               env={"MEETSTREAM_TELEMETRY": "0", "PATH": "/usr/bin:/bin:/usr/local/bin:/opt/homebrew/bin"}
                               ).stdout
-    paths = sorted(set(help_paths(run, [])))
-    (SRC / "cli-released.json").write_text(json.dumps({"version": version, "paths": paths}, indent=1) + "\n",
+    flags: dict = {}
+    # From 1.1 the released CLI has its own catalog (hidden commands included); older ones need the help walk.
+    try:
+        cat = json.loads(run(["commands", "--json", "--no-input"]))
+        cmds = [c for c in cat.get("commands", []) if not c.get("planned")]
+        paths = sorted(c["path"] for c in cmds)
+        flags = {c["path"]: sorted(f["name"] for f in c.get("flags") or [] if f["name"] != "help") for c in cmds}
+    except (ValueError, KeyError, TypeError):
+        paths = sorted(set(help_paths(run, [], flags)))
+    (SRC / "cli-released.json").write_text(json.dumps({"version": version, "paths": paths,
+                                                       "flags": {k: flags[k] for k in sorted(flags)}}, indent=1) + "\n",
                                            encoding="utf-8")
     lock["sources"]["cli_released"] = keep_time(lock, "cli_released", {"version": version, "count": len(paths), "fetched": now(),
                                                                    "sha256": sha(json.dumps(paths).encode())})

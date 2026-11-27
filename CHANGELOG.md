@@ -2,6 +2,22 @@
 
 All notable changes to the MeetStream Claude Code plugin.
 
+## [3.5.1] - 2026-11-27
+
+Parity with the CLI 1.1 and SDK 1.5.0 fixes (MS-2488), and findings from the first live round against the real API.
+
+### Fixed
+- `streaming-live-data`: wait for `{"command": "meeting_ready"}` before sending on the control socket. Live on Google Meet, the socket opens 15 to 20 seconds before the bot is in the meeting, and earlier commands are dropped with no reply, as was a chat sent half a second after `meeting_ready`. Wait about 5 seconds more and confirm each chat by its `sent` reply. Every harness's bridge app sent its greeting too early.
+- `building-a-notetaker`: the transcript snippet checks 202 (still processing) before parsing, and treats 409 and 422 as final.
+- `getting-transcripts-and-media`: a 409 can also be `TRANSCRIPTION_NOT_ENABLED`; a skipped run keeps answering 202, so stop on `TranscriptStatus: "Skipped"` or `bot.done`.
+- The generated CLI map marks flags that are new on a released command as *(pre-release)* (`join --follow`, `--transcription`, `--live-transcription`, `--transcription-mode`, `listen --forward-to`, `--tunnel`). `sync_sources.py --cli-released` now records each released command's flags.
+
+### Changed
+- CLI 1.1.0 is released (27 Nov 2026): the CLI map reads the released CLI's own catalog (`commands --json`, hidden commands included), so 1.1 commands and flags are no longer marked pre-release. `meetstream-cli` names what 1.1 added and how to update an older CLI.
+
+### Added
+- CLI 1.1 `--transcription-mode` (sentence by default for live captions) and the SDK 1.5.0 helpers: `isFinalSegment` / `is_final_segment`, `parseCustomFunctionCall` / `parse_custom_function_call`, and a replay window that checks the signed body's `timestamp`.
+
 ## [3.5.0] - 2026-11-27
 
 Fixes from the cross-harness build tests (MS-2485): Codex, Copilot and OpenCode each built 9 sample apps from these skills, and hidden tests ran them against a production-accurate `meetstream mock`. Every failure traced to a gap below.

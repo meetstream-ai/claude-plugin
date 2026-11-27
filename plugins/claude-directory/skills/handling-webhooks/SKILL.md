@@ -131,6 +131,11 @@ the variable is **unset**, process every request and log one warning at startup
 test (`meetstream mock`, `meetstream trigger`) working; set the secret before the URL is public.
 Also check that `bot_id` is one of your bots.
 
+**Replay window (signed workspace endpoints).** The HMAC covers the raw body, and the body's
+`timestamp` field is what `X-MeetStream-Timestamp` copies. Check the age of the timestamp
+**inside the verified body** (and reject a header that differs from it), never the header
+alone. The SDKs (1.5.0) do this when you pass a tolerance to their verify helper.
+
 ```python
 SECRET = os.environ.get("MEETSTREAM_WEBHOOK_SECRET", "")
 def authorized(path: str) -> bool:

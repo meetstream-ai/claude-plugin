@@ -694,7 +694,9 @@
       "meetstream",
       "deepgram",
       "assemblyai",
-      "smallest"
+      "sarvam",
+      "smallest",
+      "jigsawstack"
      ]
     },
     {
@@ -723,6 +725,7 @@
       "sarvam",
       "smallest",
       "jigsawstack",
+      "aws_transcribe",
       "meeting_captions"
      ]
     },
@@ -837,7 +840,9 @@
       "meetstream",
       "deepgram",
       "assemblyai",
-      "smallest"
+      "sarvam",
+      "smallest",
+      "jigsawstack"
      ]
     },
     {
@@ -920,7 +925,18 @@
       "sarvam",
       "smallest",
       "jigsawstack",
+      "aws_transcribe",
       "meeting_captions"
+     ]
+    },
+    {
+     "name": "transcription-mode",
+     "type": "string",
+     "usage": "live transcript POSTs: sentence (default with --live-transcription), raw (adds interim results) or word_level",
+     "enum": [
+      "sentence",
+      "raw",
+      "word_level"
      ]
     },
     {
@@ -1598,6 +1614,7 @@
       "sarvam",
       "smallest",
       "jigsawstack",
+      "aws_transcribe",
       "meeting_captions"
      ]
     }
@@ -1684,5 +1701,5 @@
   "--no-input",
   "--no-color"
  ],
- "version": "1.1.0-dev"
+ "version": "1.1.0"
 }

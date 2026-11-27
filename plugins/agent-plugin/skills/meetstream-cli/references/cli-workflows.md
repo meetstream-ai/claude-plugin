@@ -41,9 +41,9 @@ meetstream bots get <bot-id> --part participants --json   # also: detail, chats,
   `--retention-hours`, `--storage-id` (customer S3), `--separate-audio`, `--separate-video`,
   `--attr key=value`, `--idempotency-key`.
 - Re-run transcription on a finished meeting: `meetstream transcribe <bot-id> -p <provider>`
-  (no default provider on the server; `meetstream` needs no key). Listing runs as a command
-  (`meetstream transcriptions`) comes in the next CLI release; today use the MCP
-  `list_transcriptions` tool or `GET /api/v1/bots/{bot_id}/transcriptions`.
+  (no default provider on the server; `meetstream` needs no key). List the runs with
+  `meetstream transcriptions <bot-id>` (CLI 1.1.0), the MCP `list_transcriptions` tool, or
+  `GET /api/v1/bots/{bot_id}/transcriptions`.
 - Speaker timeline: `meetstream bots timeline <bot-id> [--download]`.
 - End or clean up: `meetstream bots remove <bot-id>`; permanent delete
   `meetstream bots delete <bot-id> --yes` (confirm with the user first).
@@ -55,7 +55,7 @@ meetstream listen -p 3333 --json        # loopback receiver: one JSON line per e
 meetstream join <url> -t meetstream_streaming -c https://<public-url>/webhook --live-transcript-webhook https://<public-url>/webhook --json
 ```
 `-t meetstream_streaming` is MeetStream live transcription (no provider key). Deepgram, AssemblyAI, Sarvam and other `*_streaming` providers need the user's key in the dashboard.
-`listen --forward <url>` also relays events elsewhere. `meetstream bots tail` (events over the
+`listen --forward <url>` (1.0.1; `--forward-to` from 1.1, which also keeps the `X-MeetStream-*` signature headers) relays events to your app. `meetstream bots tail` (events over the
 relay, no tunnel) is planned: today it exits 2 with a hint.
 
 ### W4 · Talk in the meeting from the terminal

@@ -1,7 +1,6 @@
 {
- "version": "1.0.1",
+ "version": "1.1.0",
  "paths": [
-  "agent",
   "agent bench",
   "agent context",
   "agent login",
@@ -9,12 +8,12 @@
   "agent serve",
   "agent setup",
   "agent status",
-  "auth",
+  "ai install",
+  "api",
   "auth logout",
   "auth set-key",
   "auth status",
   "balance",
-  "bots",
   "bots delete",
   "bots get",
   "bots hand",
@@ -24,9 +23,7 @@
   "bots show-image",
   "bots status",
   "bots summary",
-  "bots tail",
   "bots timeline",
-  "calendar",
   "calendar auto-join",
   "calendar cancel",
   "calendar connect",
@@ -35,13 +32,14 @@
   "calendar reschedule",
   "calendar schedule",
   "calendar unschedule",
+  "commands",
   "docs",
   "doctor",
+  "env",
+  "init",
   "join",
   "listen",
   "login",
-  "logins",
-  "logins google",
   "logins google add",
   "logins google add-domain",
   "logins google disable",
@@ -50,8 +48,9 @@
   "logins google enable",
   "logins google list",
   "logins google remove",
+  "logins google remove-domain",
   "logins google set-cert",
-  "logins teams",
+  "logins google update-domain",
   "logins teams add",
   "logins teams add-domain",
   "logins teams disable",
@@ -61,10 +60,10 @@
   "logins teams get",
   "logins teams list",
   "logins teams remove",
+  "logins teams remove-domain",
   "logins teams set-password",
-  "mcp",
+  "logins teams update-domain",
   "mcp add",
-  "mia",
   "mia apply",
   "mia check",
   "mia create",
@@ -72,11 +71,347 @@
   "mia get",
   "mia list",
   "mia update",
+  "mock",
   "recordings",
   "setup",
   "skill",
   "transcribe",
   "transcript",
+  "transcription providers",
+  "transcriptions",
+  "trigger",
   "version"
- ]
+ ],
+ "flags": {
+  "agent bench": [
+   "agent",
+   "binary",
+   "compare",
+   "effort",
+   "export",
+   "max-models",
+   "models",
+   "parallel"
+  ],
+  "agent context": [
+   "agent",
+   "ignore-rules",
+   "workdir"
+  ],
+  "agent login": [
+   "no-browser"
+  ],
+  "agent logout": [],
+  "agent serve": [
+   "agent",
+   "binary",
+   "command",
+   "debug",
+   "effort",
+   "ignore-rules",
+   "max-access",
+   "model",
+   "no-meeting-md",
+   "no-prime",
+   "no-relay",
+   "owner",
+   "port",
+   "relay",
+   "timeout",
+   "tunnel",
+   "tunnel-url",
+   "workdir"
+  ],
+  "agent setup": [
+   "access",
+   "agent",
+   "agent-config",
+   "brain",
+   "dry-run",
+   "ears",
+   "effort",
+   "mode",
+   "model",
+   "name",
+   "new-agent",
+   "no-calendar",
+   "no-start",
+   "owner",
+   "test",
+   "voice",
+   "voice-keys",
+   "workdir"
+  ],
+  "agent status": [],
+  "ai install": [
+   "all",
+   "dry-run"
+  ],
+  "api": [
+   "data",
+   "envelope",
+   "method"
+  ],
+  "auth logout": [],
+  "auth set-key": [],
+  "auth status": [
+   "offline"
+  ],
+  "balance": [],
+  "bots delete": [
+   "yes"
+  ],
+  "bots get": [
+   "part"
+  ],
+  "bots hand": [],
+  "bots list": [
+   "all",
+   "limit",
+   "page"
+  ],
+  "bots remove": [],
+  "bots say": [],
+  "bots show-image": [
+   "duration"
+  ],
+  "bots status": [
+   "watch"
+  ],
+  "bots summary": [],
+  "bots timeline": [
+   "download"
+  ],
+  "calendar auto-join": [
+   "name",
+   "video"
+  ],
+  "calendar cancel": [],
+  "calendar connect": [
+   "client-id",
+   "client-secret",
+   "join-rule",
+   "open",
+   "own-app",
+   "provider",
+   "refresh-token"
+  ],
+  "calendar events": [],
+  "calendar list": [],
+  "calendar reschedule": [],
+  "calendar schedule": [],
+  "calendar unschedule": [],
+  "commands": [],
+  "docs": [],
+  "doctor": [
+   "agent",
+   "binary",
+   "no-warm"
+  ],
+  "env": [
+   "check",
+   "dir",
+   "overwrite",
+   "with-key"
+  ],
+  "init": [
+   "dir",
+   "email",
+   "force",
+   "lang",
+   "list",
+   "live-transcription",
+   "llm",
+   "no-env",
+   "transcription",
+   "use-case",
+   "with-key",
+   "yes"
+  ],
+  "join": [
+   "agent-config",
+   "agent-param",
+   "attr",
+   "bot-message",
+   "callback",
+   "everyone-left-timeout",
+   "follow",
+   "google-login-domain",
+   "idempotency-key",
+   "image-url",
+   "join-at",
+   "language",
+   "live-audio-ws",
+   "live-transcript-webhook",
+   "live-transcription",
+   "live-video-ws",
+   "max-recording-seconds",
+   "name",
+   "no-strict-email",
+   "no-zoom-use-own-app",
+   "retention-hours",
+   "separate-audio",
+   "separate-video",
+   "sign-in-email",
+   "socket-ws",
+   "storage-id",
+   "teams-login-domain",
+   "transcript",
+   "transcription",
+   "transcription-mode",
+   "video",
+   "video-layout",
+   "waiting-room-timeout",
+   "zoom-obf",
+   "zoom-obf-url",
+   "zoom-use-own-app",
+   "zoom-zak-url"
+  ],
+  "listen": [
+   "forward-to",
+   "host",
+   "path",
+   "port",
+   "tunnel"
+  ],
+  "login": [
+   "no-browser",
+   "no-calendar",
+   "with-key"
+  ],
+  "logins google add": [
+   "cert",
+   "domain",
+   "email",
+   "inactive",
+   "key"
+  ],
+  "logins google add-domain": [
+   "login-mode",
+   "name"
+  ],
+  "logins google disable": [
+   "domain"
+  ],
+  "logins google domain": [],
+  "logins google domains": [],
+  "logins google enable": [
+   "domain"
+  ],
+  "logins google list": [
+   "domain"
+  ],
+  "logins google remove": [
+   "domain",
+   "yes"
+  ],
+  "logins google remove-domain": [
+   "yes"
+  ],
+  "logins google set-cert": [
+   "cert",
+   "domain",
+   "key"
+  ],
+  "logins google update-domain": [
+   "login-mode",
+   "name"
+  ],
+  "logins teams add": [
+   "domain",
+   "email",
+   "inactive",
+   "password-stdin"
+  ],
+  "logins teams add-domain": [
+   "name"
+  ],
+  "logins teams disable": [],
+  "logins teams domain": [],
+  "logins teams domains": [],
+  "logins teams enable": [],
+  "logins teams get": [],
+  "logins teams list": [
+   "domain"
+  ],
+  "logins teams remove": [
+   "yes"
+  ],
+  "logins teams remove-domain": [
+   "yes"
+  ],
+  "logins teams set-password": [
+   "password-stdin"
+  ],
+  "logins teams update-domain": [
+   "name"
+  ],
+  "mcp add": [
+   "write"
+  ],
+  "mia apply": [
+   "dry-run",
+   "file"
+  ],
+  "mia check": [],
+  "mia create": [
+   "file"
+  ],
+  "mia delete": [
+   "yes"
+  ],
+  "mia get": [],
+  "mia list": [],
+  "mia update": [
+   "file"
+  ],
+  "mock": [
+   "host",
+   "list",
+   "port",
+   "scenario",
+   "step"
+  ],
+  "recordings": [],
+  "setup": [
+   "access",
+   "agent",
+   "agent-config",
+   "brain",
+   "dry-run",
+   "ears",
+   "effort",
+   "mode",
+   "model",
+   "name",
+   "new-agent",
+   "no-calendar",
+   "no-start",
+   "owner",
+   "test",
+   "voice",
+   "voice-keys",
+   "workdir"
+  ],
+  "skill": [],
+  "transcribe": [
+   "callback",
+   "language",
+   "provider",
+   "transcription"
+  ],
+  "transcript": [
+   "raw",
+   "timeout",
+   "wait"
+  ],
+  "transcription providers": [],
+  "transcriptions": [],
+  "trigger": [
+   "bot",
+   "forward-to",
+   "list"
+  ],
+  "version": []
+ }
 }

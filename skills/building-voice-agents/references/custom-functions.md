@@ -59,6 +59,12 @@ There is **no signature header**. Protect the endpoint with a function-specific 
 `headers` (for example `Authorization: Bearer <token>`) and check it. Header values are
 stored in the agent config and visible to anyone who can read it, so use a narrow token.
 
+The SDKs (1.5.0) parse it for you: `parseCustomFunctionCall(body, headers, {payloadArgsOnly})`
+(Node) or `parse_custom_function_call(body, headers, payload_args_only=...)` (Python) return the
+name, the bot id (from `X-Bot-ID` first) and the args. Say which shape your function uses; the
+parser does not guess it from the body, because the args come from the model. Every field is
+unauthenticated until your endpoint checks its own secret.
+
 ## What to answer
 
 Return JSON with any 2xx status; the body (capped at `response_cap_chars`, default 15000)

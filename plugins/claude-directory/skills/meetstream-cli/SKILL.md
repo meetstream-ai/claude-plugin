@@ -25,9 +25,11 @@ the `meetstream` CLI (released version 1.0.1, repo meetstream-ai/cli). Do not wr
 code unless the user asks for a script; app builds go to the need skills (`sending-bots`,
 `handling-webhooks` and the others in the `meetstream` router). Full command reference and JSON
 shapes: `skills/meetstream/references/meetstream-cli.md` (`meetstream skill` prints the same text).
-Commands marked pre-release in `skills/meetstream/references/generated/cli-map.md` (`init`, `api`,
-`mock`, `trigger`, `env`, `transcriptions`, `ai install`) come in the next CLI release: mention them
-only as coming, never as a command to run today.
+CLI 1.1.0 (27 Nov 2026) has `init`, `api`, `mock`, `trigger`, `env`, `transcriptions` and `ai install`,
+plus `join --follow`, `--transcription`, `--live-transcription`, `--transcription-mode` and `listen
+--forward-to`/`--tunnel`. If a user's CLI is older, `meetstream --version` shows it: update with
+`npm install -g @meetstream/cli@latest` or `pipx upgrade meetstream-cli`. Anything marked pre-release
+in `skills/meetstream/references/generated/cli-map.md` is not released yet.
 
 **Install the meetstream CLI** (see https://docs.meetstream.ai/build-with-ai/meetstream-cli). Sign in with `meetstream login` (it opens the browser and stores a key; never ask for the key in the chat). Always pass `--json --no-input`. Exit codes: 0 ok, 1 API error, 2 usage or not signed in, 3 not ready yet, 4 transcript failed. JSON shapes: `skills/meetstream/references/meetstream-cli.md`.
 
