@@ -79,11 +79,45 @@ the meeting to produce a post-call transcript from the stored audio.
 
 Note this is an **HTTPS webhook**, not a WebSocket, despite being "real time".
 
+### Delivery mode: `transcription_mode` (set it, the default sends duplicates)
+
+Each `*_streaming` provider takes `transcription_mode`. **The default is `raw`**, which
+sends interim results (`"is_final": false`) and then the final text for the same speech.
+An app that writes every POST shows each sentence two or more times.
+
+| Mode | What each POST carries | Use it for |
+|---|---|---|
+| `sentence` | One finished, punctuated sentence (`utterance`, `transcript`, `end_of_turn: true`) | Captions saved to a file or database, notes, triggers ("act once per sentence") |
+| `raw` (default) | Everything the provider returns: interim (`is_final: false`) then final (`is_final: true`) | A live UI that replaces interim text in place |
+| `word_level` | One word per POST (`transcript` is the word, `utterance` is `""`) | Word-by-word captions |
+
+```json
+{"recording_config": {"transcript": {"provider": {"meetstream_streaming": {"transcription_mode": "sentence"}}}},
+ "live_transcription_required": {"webhook_url": "https://<public-url>/live?token=<secret>"}}
+```
+
+Payload (sentence): `{"bot_id", "speakerName", "speakerId", "timestamp", "utterance", "transcript",
+"end_of_turn": true, "transcription_mode": "sentence"}`. In `raw`, keep only POSTs where
+`is_final` is `true` (Deepgram) or `end_of_turn` is `true` (AssemblyAI) before you store or act.
+Live POSTs carry no `event` key and no signature: put a secret token in the URL and check it
+(`handling-webhooks`). `meeting_captions` uses a different envelope:
+`{"type": "caption", "bot_id", "caption": {"text", "speakerName", ...}}`.
+Docs: https://docs.meetstream.ai/guides/transcription-recordings/live-transcription
+
 ## Live audio
 
 `live_audio_required` opens a WebSocket from the bot to your server carrying PCM audio
 frames with speaker metadata. You host the server; it must be `wss://` and publicly
-reachable.
+reachable. The bot first sends `{"type": "ready", "bot_id": "..."}` (take the bot id from
+it), then binary frames only (layouts below).
+
+**Socket URLs.** On a bot without an agent the bot dials your URLs exactly as you give
+them, so route `/audio` and `/control` (or whatever you chose). On a bot with
+`agent_config_id`, MeetStream inserts the bot id after the host
+(`wss://host/path` becomes `wss://host/<bot_id>/path`), so match on the path suffix, not the
+full path. Paths ending in `/bridge` and `/bridge/audio` get the hosted-agent variant of
+the protocol (fewer status replies); the meetstream-agent starter uses them on purpose. For
+a server you write yourself, `/audio` and `/control` are simpler.
 
 ## Live video
 
@@ -115,14 +149,27 @@ only; the bot's own hand is never reported.
 
 `socket_connection_url` gives you a command channel into the meeting. The bot connects to
 your `wss://` endpoint, sends `{"type": "ready", "bot_id": "..."}`, then executes the JSON
-commands you send (each carries `"bot_id"`):
+commands you send. Every command is a JSON text frame whose **`command`** key names it
+(not `type`; only the bot's own messages use `type`):
+
+```json
+{"command": "sendmsg", "bot_id": "<bot_id>", "message": "Hi, I'm the meeting assistant (an AI).", "msg": "Hi, I'm the meeting assistant (an AI)."}
+{"command": "sendaudio", "bot_id": "<bot_id>", "audiochunk": "<base64 PCM16 LE>", "sample_rate": 48000, "encoding": "pcm16", "channels": 1, "endianness": "little"}
+{"command": "interrupt", "bot_id": "<bot_id>", "action": "clear_audio_queue"}
+```
+
+The bot answers on the same socket, for example `{"command": "sendmsg", "status": "sent"}`
+after each chat message and `{"command": "sendaudio", "status": "sent"}` after each audio
+chunk (Google Meet), plus `{"command": "meeting_ready"}` once it is admitted and
+`{"command": "participant_update", "count": N}`. Binary audio also works:
+`[0x02][sample_rate u32 LE][channels u8][PCM16 LE]`.
 
 | Command | Effect |
 |---|---|
 | `sendaudio` | Play audio into the call: `audiochunk` (base64 PCM16 LE), `sample_rate`, `encoding: "pcm16"`, `channels: 1`, `endianness: "little"`. Google Meet always plays it as 48 kHz |
 | `sendmsg` | Post a chat message. Send both `message` and `msg` so one payload works on every platform |
 | `interrupt` | `{"action": "clear_audio_queue"}`: stop playback and clear the queue. On Zoom and Teams it then holds further audio until `resume_audio` |
-| `resume_audio` | `{"resume_id": "turn-42"}`: allow audio again after an `interrupt` (Zoom answers `resume_audio_ack`). Google Meet ignores it, so send it on every platform before each new reply |
+| `resume_audio` | `{"resume_id": "turn-42"}`: allow audio again after an `interrupt` (the bot answers `resume_audio_ack`). Google Meet does not need it, so send it on every platform before each new reply |
 | `sendimg` / `sendimg_url` | Set the bot's video frame (`img` base64, or `img_url`). Zoom and Teams; on Google Meet use the `send_image` MCP tool |
 
 Pace `sendaudio` slightly ahead of real time (roughly 0.8x the chunk duration) so the
@@ -147,10 +194,10 @@ Models for the bridge, free to run locally; check each model's license before co
   Claude Code).
 - Text-to-speech: Piper, Kokoro, Chatterbox, macOS `say`.
 
-1. Run a bridge server with two WebSocket endpoints, `/bridge/audio` (meeting audio in,
-   binary frames) and `/bridge` (JSON commands out). Put a random secret token in both
-   paths (for example `wss://host/<token>/bridge/audio`) and reject other paths: the URLs
-   are public and carry no other auth. Start from the MeetStream Bridge
+1. Run a bridge server with two WebSocket endpoints, `/audio` (meeting audio in, binary
+   frames) and `/control` (JSON commands out). Put a random secret token in both paths (for
+   example `wss://host/<token>/audio`), check it, and route on the path suffix: the URLs are
+   public and carry no other auth. Start from the MeetStream Bridge
    starter at https://github.com/meetstream-ai/meetstream-agent (FastAPI, OpenAI Realtime
    by default; swap in local models), or build to the bridge docs.
 2. Expose it on a public `wss://` host. On a laptop, use a local tunnel (ngrok or
@@ -161,26 +208,26 @@ Models for the bridge, free to run locally; check each model's license before co
 3. Send a bot with both sockets on the same host. From a terminal, with the `meetstream` CLI:
    ```bash
    meetstream join "https://meet.google.com/abc-defg-hij" -n "Assistant" \
-     --live-audio-ws wss://your-bridge.example/bridge/audio \
-     --socket-ws wss://your-bridge.example/bridge --json --no-input
+     --live-audio-ws wss://your-bridge.example/audio \
+     --socket-ws wss://your-bridge.example/control --json --no-input
    ```
    In app code, the API or SDK:
    ```bash
    curl -X POST https://api.meetstream.ai/api/v1/bots/create_bot \
      -H "Authorization: Token YOUR_API_KEY" -H "Content-Type: application/json" \
      -d '{"meeting_link": "https://meet.google.com/abc-defg-hij", "bot_name": "Assistant",
-          "live_audio_required": {"websocket_url": "wss://your-bridge.example/bridge/audio"},
-          "socket_connection_url": {"websocket_url": "wss://your-bridge.example/bridge"}}'
+          "live_audio_required": {"websocket_url": "wss://your-bridge.example/audio"},
+          "socket_connection_url": {"websocket_url": "wss://your-bridge.example/control"}}'
    ```
    ```ts
    await ms.bots.create({ meeting_link, bot_name: 'Assistant',            // @meetstream/sdk
-     live_audio_required: { websocket_url: 'wss://your-bridge.example/bridge/audio' },
-     socket_connection_url: { websocket_url: 'wss://your-bridge.example/bridge' } });
+     live_audio_required: { websocket_url: 'wss://your-bridge.example/audio' },
+     socket_connection_url: { websocket_url: 'wss://your-bridge.example/control' } });
    ```
    ```python
    ms.bots.create({"meeting_link": meeting_link, "bot_name": "Assistant",  # meetstream-sdk
-       "live_audio_required": {"websocket_url": "wss://your-bridge.example/bridge/audio"},
-       "socket_connection_url": {"websocket_url": "wss://your-bridge.example/bridge"}})
+       "live_audio_required": {"websocket_url": "wss://your-bridge.example/audio"},
+       "socket_connection_url": {"websocket_url": "wss://your-bridge.example/control"}})
    ```
 4. Both sockets open with a `{"type": "ready", "bot_id": "..."}` handshake; keep one AI
    session per `bot_id`, created when the first socket connects and closed when both have

@@ -122,6 +122,24 @@ you are not, protect the route another way: a secret path segment, an allowlist,
 shared token in the query string. Never treat an unauthenticated public webhook route
 as trusted input.
 
+**Token pattern for unsigned URLs (`callback_url`, live transcript URL).** Use one env var,
+`MEETSTREAM_WEBHOOK_SECRET`. When you create the bot, append `?token=<secret>` to each URL.
+In the handler, compare the `token` query value with `hmac.compare_digest`, answer `200`
+either way (so MeetStream does not see errors), and process only matching requests. When
+the variable is **unset**, process every request and log one warning at startup
+("MEETSTREAM_WEBHOOK_SECRET not set: webhook URLs are unauthenticated"). That keeps a local
+test (`meetstream mock`, `meetstream trigger`) working; set the secret before the URL is public.
+Also check that `bot_id` is one of your bots.
+
+```python
+SECRET = os.environ.get("MEETSTREAM_WEBHOOK_SECRET", "")
+def authorized(path: str) -> bool:
+    if not SECRET:
+        return True  # local development; warned at startup
+    token = parse_qs(urlsplit(path).query).get("token", [""])[0]
+    return hmac.compare_digest(token, SECRET)
+```
+
 Signed requests carry two headers:
 
 | Header | Value |

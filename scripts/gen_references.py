@@ -361,6 +361,13 @@ def main() -> int:
     ap.add_argument("--check", action="store_true")
     a = ap.parse_args()
     files = build()
+    # MS-2485: keep every generated file under 20 KB (some harnesses skip larger files).
+    from split_md import split
+    for n in list(files):
+        parts = split(files[n], n[:-3])
+        if parts:
+            del files[n]
+            files.update(parts)
     if a.check:
         bad = [n for n, text in files.items() if not (OUT / n).is_file() or (OUT / n).read_text(encoding="utf-8") != text]
         extra = sorted(p.name for p in OUT.glob("*.md") if p.name not in files) if OUT.is_dir() else []
