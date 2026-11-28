@@ -3,7 +3,7 @@
 
 Every public operation: 69 in the API spec, plus 15 routes that the docs describe only in guides. REST base URL `https://api.meetstream.ai`, header `Authorization: Token <key>` (MCP uses OAuth, not this header). Request fields in **bold** are required.
 
-Sources: openapi v1.0.0 63c037d5; llms b5a4ab82. Latest docs: https://docs.meetstream.ai/llms.txt (append `.md` to any page).
+Sources: openapi v1.0.0 f8d7e0e6; llms b5a4ab82. Latest docs: https://docs.meetstream.ai/llms.txt (append `.md` to any page).
 
 ## Parts
 

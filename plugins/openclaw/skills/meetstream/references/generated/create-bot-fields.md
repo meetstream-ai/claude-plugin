@@ -3,7 +3,7 @@
 
 Every field of `POST /api/v1/bots/create_bot`, grouped by feature (78 fields including nested ones). Required fields say **yes**. Guide-only fields that the spec lacks: `whatsapp.account_id` (WhatsApp, beta) and `automatic_leave.call_end_grace_seconds`. `live_video_required` is in the spec but not implemented.
 
-Sources: openapi v1.0.0 63c037d5. Latest docs: https://docs.meetstream.ai/llms.txt (append `.md` to any page).
+Sources: openapi v1.0.0 f8d7e0e6. Latest docs: https://docs.meetstream.ai/llms.txt (append `.md` to any page).
 
 ## Contents
 

@@ -10,14 +10,14 @@
     "https://docs.meetstream.ai/guides/features/deduplication-idempotency-keys": "99c3757be953ccf2d0bfbf568ccd47bd1747e573c5c8895635ab787f6facaa38",
     "https://docs.meetstream.ai/guides/features/participants-and-speaker-timeline": "8a86d97a2a2172dc6b5ce0c43a49445eddd7229b7764f0ef561344bf04d4ed3c",
     "https://docs.meetstream.ai/guides/features/usage-and-retention": "d7051c5a447c1c72b8b56264397ec1e205d09bc289f3e3fb2f06e90f1d46241b",
-    "https://docs.meetstream.ai/guides/get-started/dashboard-setup": "d216d2d544d902b5b8f863efbdc507e3fdcfd7f3862250fa08ba17e810c4035f",
+    "https://docs.meetstream.ai/guides/get-started/dashboard-setup": "9919187db53841c8321c4760400f1cf6e085791da97d04fc078fdad1aa7db106",
     "https://docs.meetstream.ai/guides/mia/pricing-and-keys": "78101f9cd86f1b960395e6e03430557b5b7c6ad298a02b282531cc0aa0a0798f",
     "https://docs.meetstream.ai/guides/reference/bot-status-and-error-codes": "70cef768385173ab1c230a8f7009f13a41b1610a6eb6ccbb74bf971ba3a8f7bf",
     "https://docs.meetstream.ai/guides/transcription-recordings/live-transcription": "6d3565aecac3dbd3c87aaf65fbd3025de98577341af01ea9a51f909fe6cc1e4a",
     "https://docs.meetstream.ai/guides/transcription-recordings/post-call-transcription": "0a733ea645c9db5ac5f81b6f1a3f7bc8b0c9d7dcd3acc98ec743205159e8bf55",
     "https://docs.meetstream.ai/guides/transcription-recordings/providers/transcription-providers": "ff1ea850be0affcf8f21866b0c57ad62e610efb8beb8f61c4da2575b5e477bdd",
     "https://docs.meetstream.ai/guides/webhooks/webhook-signature-verification": "67e5fc2c6f5c2bfd717f249df9d178acb52efb8e3de65eb88808cf0fb064904f",
-    "https://docs.meetstream.ai/guides/webhooks/webhooks-and-events": "32a407bdadb30d5b285dbd19c7c4ff150d6f6504db995bacf0a6d313cfae1ba3",
+    "https://docs.meetstream.ai/guides/webhooks/webhooks-and-events": "ec29f0c8eb9d147832c8e0c10ce83f5b5abd98c9ef3263211013091a3798c522",
     "https://docs.meetstream.ai/guides/webhooks/workspace-webhooks": "62fbdb5088f5cedc2ce53f381e62129a870135d02f3e8c1b42cd7e1d11f066d8",
     "https://docs.meetstream.ai/guides/websockets/meeting-control-patterns": "98f68257f87bed6c67e203c0cdc3526b92fa4236f3433249247a543d77a62839",
     "https://docs.meetstream.ai/guides/websockets/real-time-audio-streaming": "a86c3828c36458194e3b59d298f5c6654ebcbe389b2b1a314d87cac12957253d"
@@ -48,8 +48,8 @@
       "sha256": "0eda25aad23bb4f5de3e97dc4dec07e1b921e7f5aae0aa45b919c793dc2621d1"
     },
     "openapi": {
-      "fetched": "2026-11-26T14:14:13+00:00",
-      "sha256": "63c037d516c8b6f8036274ea685dad448c55e084f1cc18c3bc40d4ea41780b28",
+      "fetched": "2026-11-28T03:21:29+00:00",
+      "sha256": "f8d7e0e6e2d98849dc4c9c795ad3aa6d308a2c62361da554ae20f2664f2c8511",
       "url": "https://docs.meetstream.ai/openapi.yaml",
       "version": "1.0.0"
     }
